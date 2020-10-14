@@ -92,6 +92,8 @@ func Baseline(ctx context.Context, output string) {
 		fmt.Println(string(jsonRes))
 		return
 	}
+	fmt.Println("Available Storage Provisioners:")
+	fmt.Println()
 	for _, provisioner := range provisionerList {
 		provisioner.Print()
 		fmt.Println()

@@ -14,12 +14,14 @@
 
 package main
 
+//go:generate ./scripts/load_csi_provisioners.sh
+
 import (
 	"github.com/kastenhq/kubestr/cmd"
 )
 
 func main() {
-	Execute()
+	_ = Execute()
 }
 
 // Execute executes the main command
