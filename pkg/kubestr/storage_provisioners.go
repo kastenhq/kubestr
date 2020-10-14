@@ -3,7 +3,9 @@ package kubestr
 import (
 	"context"
 	"fmt"
+	"regexp"
 	"strconv"
+	"strings"
 
 	kanvolume "github.com/kanisterio/kanister/pkg/kube/volume"
 	"github.com/pkg/errors"
@@ -40,18 +42,56 @@ const (
 // Provisioner holds the important information of a provisioner
 type Provisioner struct {
 	ProvisionerName       string
-	IsCSIProvisioner      bool
-	SupportsCSISnapshots  bool
+	CSIDriver             *CSIDriver
 	URL                   string
 	StorageClasses        []*SCInfo
 	VolumeSnapshotClasses []*VSCInfo
 	StatusList            []Status
 }
 
-type ProvisionerDetails struct {
-	IsCSI     bool
-	Snapshots bool
-	URL       string `json:",omitempty"`
+type CSIDriver struct {
+	NameUrl             string
+	DriverName          string
+	Versions            string
+	Description         string
+	Persistence         string
+	AccessModes         string
+	DynamicProvisioning string
+	Features            string
+}
+
+func (c *CSIDriver) Provider() string {
+	re := regexp.MustCompile(`\[(.*?)\]`)
+	match := re.FindStringSubmatch(c.NameUrl) // find the left most match
+	if len(match) < 2 {
+		return ""
+	}
+	return match[1]
+}
+
+func (c *CSIDriver) URL() string {
+	re := regexp.MustCompile(`\((.*?)\)`)
+	match := re.FindAllStringSubmatch(c.NameUrl, -1)
+	if len(match) < 1 {
+		return ""
+	}
+	url := match[len(match)-1] // find the right most match
+	if len(url) < 2 {
+		return ""
+	}
+	return url[1]
+}
+
+func (c *CSIDriver) Print() {
+	fmt.Printf("  Provider:            %s\n", c.Provider())
+	fmt.Printf("  Website:             %s\n", c.URL())
+	fmt.Printf("  Available Versions:  %s\n", c.Versions)
+	fmt.Printf("  Description:         %s\n", c.Description)
+	fmt.Printf("  Additional Features: %s\n", c.Features)
+}
+
+func (c *CSIDriver) SupportsSnapshots() bool {
+	return strings.Contains(c.Features, "Snapshot")
 }
 
 // SCInfo stores the info of a StorageClass
@@ -75,10 +115,34 @@ func (v *Provisioner) Print() {
 	for _, status := range v.StatusList {
 		status.Print("  ")
 	}
+	switch {
+	case v.CSIDriver != nil:
+		fmt.Println("  This is a CSI driver!")
+		fmt.Println("  (The following info may not be up to date. Please check with the provider for more information.)")
+		v.CSIDriver.Print()
+	default:
+		fmt.Println("  This is an in tree provisioner.")
+	}
+
+	if len(v.StorageClasses) > 0 {
+		fmt.Println()
+		fmt.Println("  To perform a FIO test, run-")
+		fmt.Println("    curl https://kubestr/fio.sh | bash <storage class>")
+		switch {
+		case len(v.VolumeSnapshotClasses) == 0 && v.CSIDriver != nil && v.CSIDriver.SupportsSnapshots():
+			fmt.Println()
+			fmt.Println("  This provisioner supports snapshots, however no Volume Snaphsot Classes were found.")
+		case len(v.VolumeSnapshotClasses) > 0:
+			fmt.Println()
+			fmt.Println("  To perform a snapshot/restore test, run-")
+			fmt.Println("    curl https://kubestr/snaprestore.sh | bash <storage class> <volume snapshot class>")
+		}
+	}
+	fmt.Println()
 	if len(v.StorageClasses) > 0 {
 		fmt.Printf("  Storage Classes:\n")
 		for _, sc := range v.StorageClasses {
-			fmt.Printf("    %s\n", sc.Name)
+			fmt.Printf("    * %s\n", sc.Name)
 			for _, status := range sc.StatusList {
 				status.Print("      ")
 			}
@@ -88,7 +152,7 @@ func (v *Provisioner) Print() {
 	if len(v.VolumeSnapshotClasses) > 0 {
 		fmt.Printf("  Volume Snapshot Classes:\n")
 		for _, vsc := range v.VolumeSnapshotClasses {
-			fmt.Printf("    %s\n", vsc.Name)
+			fmt.Printf("    * %s\n", vsc.Name)
 			for _, status := range vsc.StatusList {
 				status.Print("      ")
 			}
@@ -117,31 +181,33 @@ func (p *Kubestr) processProvisioner(ctx context.Context, provisioner string) (*
 	retProvisioner := &Provisioner{
 		ProvisionerName: provisioner,
 	}
-	// fetch provisioner details
-	// check if CSI provisisoner
-	// load storageClass
+
 	storageClassList, err := p.loadStorageClasses(ctx)
 	if err != nil {
 		return nil, err
 	}
 	for _, storageClass := range storageClassList.Items {
-		retProvisioner.StorageClasses = append(retProvisioner.StorageClasses,
-			p.validateStorageClass(provisioner, storageClass)) // review this
+		if storageClass.Provisioner == provisioner {
+			retProvisioner.StorageClasses = append(retProvisioner.StorageClasses,
+				p.validateStorageClass(provisioner, storageClass)) // review this
+		}
 	}
 
-	if retProvisioner.IsCSIProvisioner { // && retProvisioner.SupportsCSISnapshots
+	for _, csiDriver := range CSIDriverList {
+		if csiDriver.DriverName == provisioner {
+			retProvisioner.CSIDriver = csiDriver
+		}
+	}
+
+	if retProvisioner.CSIDriver != nil { // && retProvisioner.SupportsCSISnapshots
 		if !p.hasCSIDriverObject(ctx, provisioner) {
 			retProvisioner.StatusList = append(retProvisioner.StatusList,
 				makeStatus(StatusWarning, "Missing CSIDriver Object. Required by some provisioners.", nil))
 		}
-		csiSnapshotCapable, err := p.isK8sVersionCSISnapshotCapable(ctx)
-		if err != nil {
-			return nil, errors.Wrap(err, "Failed to validate if Kubernetes version was CSI capable")
-		}
-		if !csiSnapshotCapable { //  && retProvisioner.SupportsCSISnapshots {
+		if clusterCsiSnapshotCapable, err := p.isK8sVersionCSISnapshotCapable(ctx); err != nil || !clusterCsiSnapshotCapable {
 			retProvisioner.StatusList = append(retProvisioner.StatusList,
 				makeStatus(StatusInfo, "Cluster is not CSI snapshot capable. Requires VolumeSnapshotDataSource feature gate.", nil))
-			return retProvisioner, nil
+			return retProvisioner, errors.Wrap(err, "Failed to validate if Kubernetes version was CSI capable")
 		}
 		csiSnapshotGroupVersion := p.getCSIGroupVersion()
 		if csiSnapshotGroupVersion == nil {
@@ -161,7 +227,6 @@ func (p *Kubestr) processProvisioner(ctx context.Context, provisioner string) (*
 			}
 		}
 	}
-
 	return retProvisioner, nil
 }
 
@@ -249,11 +314,6 @@ func (p *Kubestr) validateStorageClass(provisioner string, storageClass sv1.Stor
 		Name: storageClass.Name,
 		Raw:  storageClass,
 	}
-	// validations for storage classes
-	if len(scStatus.StatusList) == 0 {
-		scStatus.StatusList = append(scStatus.StatusList,
-			makeStatus(StatusOK, "Valid StorageClass.", nil))
-	}
 	return scStatus
 }
 
@@ -276,10 +336,6 @@ func (p *Kubestr) validateVolumeSnapshotClass(vsc unstructured.Unstructured, pro
 			retVSC.StatusList = append(retVSC.StatusList,
 				makeStatus(StatusError, fmt.Sprintf("VolumeSnapshotClass (%s) missing 'driver' field", vsc.GetName()), nil))
 		}
-	}
-	if len(retVSC.StatusList) == 0 {
-		retVSC.StatusList = append(retVSC.StatusList,
-			makeStatus(StatusOK, "Valid VolumeSnapshotClass.", nil))
 	}
 	return retVSC
 }
