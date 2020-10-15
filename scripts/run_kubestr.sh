@@ -78,7 +78,7 @@ check_image() {
   if [ -z "$image" ]
   then
       # need to change this to public dockerhub
-      image=ghcr.io/kastenhq/kubestr:latest
+      image=ghcr.io/kastenhq/kubestr:${DEFAULT_IMAGE_TAG}
   fi
   print_success " --> ${image}"
 }
