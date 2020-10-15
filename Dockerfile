@@ -1,6 +1,4 @@
-FROM golang
-
-ENV GO111MODULE=on
+FROM golang:alpine AS builder
 
 WORKDIR /app
 
@@ -11,7 +9,10 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
+RUN GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /bin/kubestr
 
-EXPOSE 8080
-ENTRYPOINT ["/app/kubestr"]
+FROM scratch
+
+COPY --from=builder /bin/kubestr /bin/kubestr
+
+ENTRYPOINT ["/bin/kubestr"]
