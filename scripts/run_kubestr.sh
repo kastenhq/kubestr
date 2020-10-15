@@ -78,8 +78,9 @@ check_image() {
   if [ -z "$image" ]
   then
       # need to change this to public dockerhub
-      image=gcr.io/kasten-images/kubestr:${DEFAULT_IMAGE_TAG}
+      image=ghcr.io/kastenhq/kubestr:latest
   fi
+  print_success " --> ${image}"
 }
 
 failed=0
@@ -124,8 +125,7 @@ spec:
       - image: ${image}
         imagePullPolicy: IfNotPresent
         name: kubestr
-        command: [ "/bin/bash", "-c", "--" ]
-        args: [ "./kubestr; sleep 2" ]
+        command: [ "/kubestr", "sleep2" ]
         env:
           - name: POD_NAMESPACE
             valueFrom:

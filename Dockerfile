@@ -11,7 +11,14 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o kubestr .
 
-EXPOSE 8080
-ENTRYPOINT ["/app/kubestr"]
+WORKDIR /dist
+
+RUN cp /app/kubestr .
+
+FROM alpine:3.9
+
+COPY --from=builder /dist/kubestr /
+
+ENTRYPOINT ["/kubestr"]
