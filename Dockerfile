@@ -1,6 +1,9 @@
-FROM golang
+FROM golang:alpine AS builder
 
-ENV GO111MODULE=on
+ENV GO111MODULE=on \
+    CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64
 
 WORKDIR /app
 
@@ -11,7 +14,7 @@ RUN go mod download
 
 COPY . .
 
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o kubestr .
+RUN go build -ldflags="-w -s" -o kubestr .
 
 WORKDIR /dist
 
