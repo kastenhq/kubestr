@@ -78,7 +78,7 @@ check_image() {
   if [ -z "$image" ]
   then
       # need to change this to public dockerhub
-      image=ghcr.io/kastenhq/kubestr:${DEFAULT_IMAGE_TAG}
+      image=ghcr.io/kastenhq/kubestr:latest
   fi
   print_success " --> ${image}"
 }
@@ -123,9 +123,9 @@ spec:
     spec:
       containers:
       - image: ${image}
-        imagePullPolicy: IfNotPresent
+        imagePullPolicy: Always
         name: kubestr
-        command: [ "/kubestr", "sleep2" ]
+        command: [ "/kubestr" ]
         env:
           - name: POD_NAMESPACE
             valueFrom:
@@ -140,7 +140,7 @@ kubectl apply -f kubestr.yaml
 
 trap "kubectl delete -f kubestr.yaml" EXIT
 
-while [[ $(kubectl -n ${namespace} get pods --selector=job-name=kubestr -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" ]];
+while [[ $(kubectl -n ${namespace} get pods --selector=job-name=kubestr -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" && $(kubectl -n ${namespace} get pods --selector=job-name=kubestr -o 'jsonpath={..phase}') != "Succeeded" ]];
 do echo "Waiting for pod $(kubectl -n ${namespace} get pods --selector=job-name=kubestr --output=jsonpath='{.items[*].metadata.name}') to be ready - $(kubectl -n ${namespace} get pods --selector=job-name=kubestr -o 'jsonpath={..status.containerStatuses[0].state.waiting.reason}')" && sleep 1;
 done
 echo "Pod Ready!"

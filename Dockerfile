@@ -1,9 +1,10 @@
-FROM golang:alpine AS builder
+DockerfileFROM golang:alpine AS builder
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
     GOOS=linux \
-    GOARCH=amd64
+    GOARCH=amd64 \
+    GOBIN=/dist
 
 WORKDIR /app
 
@@ -14,11 +15,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go build -ldflags="-w -s" -o kubestr .
-
-WORKDIR /dist
-
-RUN cp /app/kubestr .
+RUN go get -ldflags="-w -s" .
 
 FROM alpine:3.9
 
