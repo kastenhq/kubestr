@@ -96,6 +96,7 @@ func Baseline(ctx context.Context, output string) {
 	}
 	fmt.Println("Available Storage Provisioners:")
 	fmt.Println()
+	time.Sleep(500 * time.Millisecond)
 	for _, provisioner := range provisionerList {
 		provisioner.Print()
 		fmt.Println()
