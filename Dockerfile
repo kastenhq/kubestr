@@ -1,5 +1,11 @@
 FROM golang:alpine AS builder
 
+ENV GO111MODULE=on \
+    CGO_ENABLED=0 \
+    GOOS=linux \
+    GOARCH=amd64 \
+    GOBIN=/dist
+
 WORKDIR /app
 
 COPY go.mod .
@@ -9,10 +15,10 @@ RUN go mod download
 
 COPY . .
 
-RUN GOOS=linux GOARCH=amd64 go build -ldflags="-w -s" -o /bin/kubestr
+RUN go get -ldflags="-w -s" .
 
-FROM scratch
+FROM alpine:3.9
 
-COPY --from=builder /bin/kubestr /bin/kubestr
+COPY --from=builder /dist/kubestr /
 
-ENTRYPOINT ["/bin/kubestr"]
+ENTRYPOINT ["/kubestr"]
