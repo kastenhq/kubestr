@@ -14,6 +14,7 @@ import (
 type Kubestr struct {
 	cli                     kubernetes.Interface
 	dynCli                  dynamic.Interface
+	sdsfgValidator          snapshotDataSourceFG
 	storageClassList        *sv1.StorageClassList
 	volumeSnapshotClassList *unstructured.UnstructuredList
 }
@@ -38,7 +39,14 @@ func NewKubestr() (*Kubestr, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Kubestr{cli: cli, dynCli: dynCli}, nil
+	return &Kubestr{
+		cli:    cli,
+		dynCli: dynCli,
+		sdsfgValidator: &snapshotDataSourceFGValidator{
+			cli:    cli,
+			dynCli: dynCli,
+		},
+	}, nil
 }
 
 // getDynCli loads the config and returns a dynamic CLI
