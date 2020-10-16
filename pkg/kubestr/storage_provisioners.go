@@ -247,7 +247,7 @@ func (p *Kubestr) hasCSIDriverObject(ctx context.Context, provisioner string) bo
 }
 
 func (p *Kubestr) isK8sVersionCSISnapshotCapable(ctx context.Context) (bool, error) {
-	k8sVersion, err := p.getK8sVersion()
+	k8sVersion, err := p.validateK8sVersionHelper()
 	if err != nil {
 		return false, err
 	}

@@ -5,6 +5,7 @@ import (
 	"strconv"
 
 	"github.com/pkg/errors"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	version "k8s.io/apimachinery/pkg/version"
 )
 
@@ -23,15 +24,15 @@ const (
 func (p *Kubestr) KubernetesChecks() []*TestOutput {
 	var result []*TestOutput
 	result = append(result, p.validateK8sVersion())
-	result = append(result, p.getRBAC())
-	result = append(result, p.getAggregatedLayer())
+	result = append(result, p.validateRBAC())
+	result = append(result, p.validateAggregatedLayer())
 	return result
 }
 
 // validateK8sVersion validates the clusters K8s version
 func (p *Kubestr) validateK8sVersion() *TestOutput {
 	testName := "Kubernetes Version Check"
-	version, err := p.getK8sVersion()
+	version, err := p.validateK8sVersionHelper()
 	if err != nil {
 		return makeTestOutput(testName, StatusError, err.Error(), nil)
 	}
@@ -39,14 +40,14 @@ func (p *Kubestr) validateK8sVersion() *TestOutput {
 }
 
 // getK8sVersion fetches the k8s vesion
-func (p *Kubestr) getK8sVersion() (*version.Info, error) {
+func (p *Kubestr) validateK8sVersionHelper() (*version.Info, error) {
 	version, err := p.cli.Discovery().ServerVersion()
 	if err != nil {
 		return nil, err
 	}
 
 	majorStr := version.Major
-	if string(majorStr[len(majorStr)-1]) == "+" {
+	if len(majorStr) > 1 && string(majorStr[len(majorStr)-1]) == "+" {
 		majorStr = majorStr[:len(majorStr)-1]
 	}
 	major, err := strconv.Atoi(majorStr)
@@ -55,7 +56,7 @@ func (p *Kubestr) getK8sVersion() (*version.Info, error) {
 	}
 
 	minorStr := version.Minor
-	if string(minorStr[len(minorStr)-1]) == "+" {
+	if len(minorStr) > 1 && string(minorStr[len(minorStr)-1]) == "+" {
 		minorStr = minorStr[:len(minorStr)-1]
 	}
 	minor, err := strconv.Atoi(minorStr)
@@ -69,33 +70,49 @@ func (p *Kubestr) getK8sVersion() (*version.Info, error) {
 	return version, nil
 }
 
-// getRBAC runs the Rbac test
-func (p *Kubestr) getRBAC() *TestOutput {
+func (p *Kubestr) validateRBAC() *TestOutput {
 	testName := "RBAC Check"
 	//fmt.Println("  Checking if Kubernetes RBAC is enabled:")
-	serverGroups, err := p.cli.Discovery().ServerGroups()
+	group, err := p.validateRBACHelper()
 	if err != nil {
 		return makeTestOutput(testName, StatusError, err.Error(), nil)
+	}
+	return makeTestOutput(testName, StatusOK, "Kubernetes RBAC is enabled", *group)
+}
+
+// getRBAC runs the Rbac test
+func (p *Kubestr) validateRBACHelper() (*v1.APIGroup, error) {
+	serverGroups, err := p.cli.Discovery().ServerGroups()
+	if err != nil {
+		return nil, err
 	}
 	for _, group := range serverGroups.Groups {
 		if group.Name == RbacGroupName {
-			return makeTestOutput(testName, StatusOK, "Kubernetes RBAC is enabled", group)
+			return &group, nil
 		}
 	}
-	return makeTestOutput(testName, StatusError, "Kubernetes RBAC is not enabled", nil)
+	return nil, fmt.Errorf("Kubernetes RBAC is not enabled")
+}
+
+func (p *Kubestr) validateAggregatedLayer() *TestOutput {
+	testName := "Aggregated Layer Check"
+	resourceList, err := p.validateAggregatedLayerHelper()
+	if err != nil {
+		makeTestOutput(testName, StatusError, err.Error(), nil)
+	}
+	return makeTestOutput(testName, StatusOK, "The Kubernetes Aggregated Layer is enabled", resourceList)
 }
 
 // getAggregatedLayer checks the aggregated API layer
-func (p *Kubestr) getAggregatedLayer() *TestOutput {
-	testName := "Aggregated Layer Check"
+func (p *Kubestr) validateAggregatedLayerHelper() (*v1.APIResourceList, error) {
 	_, serverResources, err := p.cli.Discovery().ServerGroupsAndResources()
 	if err != nil {
-		return makeTestOutput(testName, StatusError, err.Error(), nil)
+		return nil, err
 	}
 	for _, resourceList := range serverResources {
 		if resourceList.GroupVersion == "apiregistration.k8s.io/v1" || resourceList.GroupVersion == "apiregistration.k8s.io/v1beta1" {
-			return makeTestOutput(testName, StatusOK, "The Kubernetes Aggregated Layer is enabled", resourceList)
+			return resourceList, nil
 		}
 	}
-	return makeTestOutput(testName, StatusError, "Can not detect the Aggregated Layer. Is it enabled?", nil)
+	return nil, fmt.Errorf("Can not detect the Aggregated Layer. Is it enabled?")
 }
