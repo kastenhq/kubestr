@@ -29,6 +29,6 @@ Push it! -
 `docker push <yourRepo:version>`
 
 You can now run your image in a pod by executing the run_kubestr script -  
-`curl https://kastenhq.github.io/kubestr/scripts/run_kubestr.sh/run_kubestr.sh | bash /dev/stdin -i  <yourRepo:version>`
+`curl https://kastenhq.github.io/kubestr/scripts/run_kubestr.sh | bash /dev/stdin -i  <yourRepo:version>`
 
 
