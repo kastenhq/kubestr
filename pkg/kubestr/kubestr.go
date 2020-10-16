@@ -18,6 +18,16 @@ type Kubestr struct {
 	volumeSnapshotClassList *unstructured.UnstructuredList
 }
 
+const Logo = `
+**************************************
+__  __ ______ _______ _______ ______
+|  |/  |  __  |     __|_     _|   __ \
+|     <|  __  |__     | |   | |      <
+|__|\__|______|_______| |___| |___|__|
+
+**************************************
+`
+
 // NewKubestr initializes a new kubestr object to run preflight tests
 func NewKubestr() (*Kubestr, error) {
 	cli, err := kube.NewClient()

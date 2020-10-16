@@ -71,6 +71,7 @@ func Baseline(ctx context.Context, output string) {
 		fmt.Println(err.Error())
 		return
 	}
+	fmt.Print(kubestr.Logo)
 	result := p.KubernetesChecks()
 	if output == "json" {
 		jsonRes, _ := json.MarshalIndent(result, "", "    ")
@@ -80,6 +81,7 @@ func Baseline(ctx context.Context, output string) {
 	for _, retval := range result {
 		retval.Print()
 		fmt.Println()
+		time.Sleep(500 * time.Millisecond)
 	}
 
 	provisionerList, err := p.ValidateProvisioners(ctx)
@@ -97,6 +99,7 @@ func Baseline(ctx context.Context, output string) {
 	for _, provisioner := range provisionerList {
 		provisioner.Print()
 		fmt.Println()
+		time.Sleep(500 * time.Millisecond)
 	}
 }
 
