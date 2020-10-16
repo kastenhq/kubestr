@@ -82,12 +82,12 @@ func (c *CSIDriver) URL() string {
 	return url[1]
 }
 
-func (c *CSIDriver) Print() {
-	fmt.Printf("  Provider:            %s\n", c.Provider())
-	fmt.Printf("  Website:             %s\n", c.URL())
-	fmt.Printf("  Available Versions:  %s\n", c.Versions)
-	fmt.Printf("  Description:         %s\n", c.Description)
-	fmt.Printf("  Additional Features: %s\n", c.Features)
+func (c *CSIDriver) Print(prefix string) {
+	fmt.Printf(prefix+"  Provider:            %s\n", c.Provider())
+	fmt.Printf(prefix+"  Website:             %s\n", c.URL())
+	fmt.Printf(prefix+"  Available Versions:  %s\n", c.Versions)
+	fmt.Printf(prefix+"  Description:         %s\n", c.Description)
+	fmt.Printf(prefix+"  Additional Features: %s\n", c.Features)
 }
 
 func (c *CSIDriver) SupportsSnapshots() bool {
@@ -111,50 +111,52 @@ type VSCInfo struct {
 
 // Print prints the provionsioner specific details
 func (v *Provisioner) Print() {
-	fmt.Println(v.ProvisionerName + ":")
+	printSuccessColor("  " + v.ProvisionerName + ":")
 	for _, status := range v.StatusList {
-		status.Print("  ")
+		status.Print("    ")
 	}
 	switch {
 	case v.CSIDriver != nil:
-		fmt.Println("  This is a CSI driver!")
-		fmt.Println("  (The following info may not be up to date. Please check with the provider for more information.)")
-		v.CSIDriver.Print()
+		fmt.Println("    This is a CSI driver!")
+		fmt.Println("    (The following info may not be up to date. Please check with the provider for more information.)")
+		v.CSIDriver.Print("  ")
+	case strings.HasPrefix(v.ProvisionerName, "kubernetes.io"):
+		fmt.Println("    This is an in tree provisioner.")
 	default:
-		fmt.Println("  This is an in tree provisioner.")
+		fmt.Println("    Unknown driver type.")
 	}
 
 	if len(v.StorageClasses) > 0 {
 		fmt.Println()
-		fmt.Println("  To perform a FIO test, run-")
-		fmt.Println("    curl https://kubestr/fio.sh | bash <storage class>")
+		fmt.Println("    To perform a FIO test, run-")
+		fmt.Println("      curl https://kubestr/fio.sh | bash <storage class>")
 		switch {
 		case len(v.VolumeSnapshotClasses) == 0 && v.CSIDriver != nil && v.CSIDriver.SupportsSnapshots():
 			fmt.Println()
-			fmt.Println("  This provisioner supports snapshots, however no Volume Snaphsot Classes were found.")
+			fmt.Println("    This provisioner supports snapshots, however no Volume Snaphsot Classes were found.")
 		case len(v.VolumeSnapshotClasses) > 0:
 			fmt.Println()
-			fmt.Println("  To perform a snapshot/restore test, run-")
-			fmt.Println("    curl https://kubestr/snaprestore.sh | bash <storage class> <volume snapshot class>")
+			fmt.Println("    To perform a snapshot/restore test, run-")
+			fmt.Println("      curl https://kubestr/snaprestore.sh | bash <storage class> <volume snapshot class>")
 		}
 	}
 	fmt.Println()
 	if len(v.StorageClasses) > 0 {
-		fmt.Printf("  Storage Classes:\n")
+		fmt.Printf("    Storage Classes:\n")
 		for _, sc := range v.StorageClasses {
-			fmt.Printf("    * %s\n", sc.Name)
+			fmt.Printf("      * %s\n", sc.Name)
 			for _, status := range sc.StatusList {
-				status.Print("      ")
+				status.Print("        ")
 			}
 		}
 	}
 
 	if len(v.VolumeSnapshotClasses) > 0 {
-		fmt.Printf("  Volume Snapshot Classes:\n")
+		fmt.Printf("    Volume Snapshot Classes:\n")
 		for _, vsc := range v.VolumeSnapshotClasses {
-			fmt.Printf("    * %s\n", vsc.Name)
+			fmt.Printf("      * %s\n", vsc.Name)
 			for _, status := range vsc.StatusList {
-				status.Print("      ")
+				status.Print("        ")
 			}
 		}
 	}

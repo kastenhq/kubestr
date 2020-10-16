@@ -63,6 +63,11 @@ func printSuccessMessage(message string) {
 	fmt.Println()
 }
 
+func printSuccessColor(message string) {
+	fmt.Printf(SuccessColor, message)
+	fmt.Println()
+}
+
 // printInfoMessage prints a warning
 func printInfoMessage(message string) {
 	fmt.Println(message)
