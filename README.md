@@ -4,7 +4,7 @@ Kubestr is a tool that qualifies the storage options present in a cluster.
 In upcoming releases we plan to suport running an FIO test on the storage as well as testing the snapshotting capabilities of a storage provisioner.
 
 To run the tool -  
-`curl https://raw.githubusercontent.com/kastenhq/kubestr/master/scripts/run_kubestr.sh | bash`
+`curl https://kastenhq.github.io/kubestr/scripts/run_kubestr.sh | bash`
 
 ## Developers
 
@@ -29,6 +29,6 @@ Push it! -
 `docker push <yourRepo:version>`
 
 You can now run your image in a pod by executing the run_kubestr script -  
-`curl https://raw.githubusercontent.com/kastenhq/kubestr/master/scripts/run_kubestr.sh | bash /dev/stdin -i  <yourRepo:version>`
+`curl https://kastenhq.github.io/kubestr/scripts/run_kubestr.sh/run_kubestr.sh | bash /dev/stdin -i  <yourRepo:version>`
 
 
