@@ -15,6 +15,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime/schema"
+	"k8s.io/client-go/dynamic"
+	"k8s.io/client-go/kubernetes"
 )
 
 const (
@@ -122,6 +124,8 @@ func (v *Provisioner) Print() {
 		v.CSIDriver.Print("  ")
 	case strings.HasPrefix(v.ProvisionerName, "kubernetes.io"):
 		fmt.Println("    This is an in tree provisioner.")
+	case strings.Contains(v.ProvisionerName, "csi"):
+		fmt.Println("    This might be a CSI Driver. But it is not publicly listed.")
 	default:
 		fmt.Println("    Unknown driver type.")
 	}
@@ -225,7 +229,7 @@ func (p *Kubestr) processProvisioner(ctx context.Context, provisioner string) (*
 		for _, vsc := range vscs.Items {
 			if p.getDriverNameFromUVSC(vsc, csiSnapshotGroupVersion.GroupVersion) == provisioner {
 				retProvisioner.VolumeSnapshotClasses = append(retProvisioner.VolumeSnapshotClasses,
-					p.validateVolumeSnapshotClass(vsc, provisioner, csiSnapshotGroupVersion.GroupVersion))
+					p.validateVolumeSnapshotClass(vsc, csiSnapshotGroupVersion.GroupVersion))
 			}
 		}
 	}
@@ -247,7 +251,7 @@ func (p *Kubestr) hasCSIDriverObject(ctx context.Context, provisioner string) bo
 }
 
 func (p *Kubestr) isK8sVersionCSISnapshotCapable(ctx context.Context) (bool, error) {
-	k8sVersion, err := p.getK8sVersion()
+	k8sVersion, err := p.validateK8sVersionHelper()
 	if err != nil {
 		return false, err
 	}
@@ -260,52 +264,7 @@ func (p *Kubestr) isK8sVersionCSISnapshotCapable(ctx context.Context) (bool, err
 		return false, err
 	}
 	if minor < 17 && k8sVersion.Major == "1" {
-		return p.validateVolumeSnapshotDataSourceFeatureGate(ctx)
-	}
-	return true, nil
-}
-
-func (p *Kubestr) validateVolumeSnapshotDataSourceFeatureGate(ctx context.Context) (bool, error) {
-	ns := getPodNamespace()
-
-	// deletes if exists. If it doesn't exist, this is a noop
-	err := kanvolume.DeletePVC(p.cli, ns, FeatureGateTestPVCName)
-	if err != nil {
-		return false, errors.Wrap(err, "Error deleting VolumeSnapshotDataSource feature-gate validation pvc")
-	}
-	// defer delete
-	defer func() {
-		_ = kanvolume.DeletePVC(p.cli, ns, FeatureGateTestPVCName)
-	}()
-
-	// create PVC
-	snapshotKind := "VolumeSnapshot"
-	snapshotAPIGroup := "snapshot.storage.k8s.io"
-	pvc := &v1.PersistentVolumeClaim{
-		ObjectMeta: metav1.ObjectMeta{
-			Name: FeatureGateTestPVCName,
-		},
-		Spec: v1.PersistentVolumeClaimSpec{
-			AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
-			DataSource: &v1.TypedLocalObjectReference{
-				APIGroup: &snapshotAPIGroup,
-				Kind:     snapshotKind,
-				Name:     "fakeSnap",
-			},
-			Resources: v1.ResourceRequirements{
-				Requests: v1.ResourceList{
-					v1.ResourceStorage: resource.MustParse("1Gi"),
-				},
-			},
-		},
-	}
-
-	pvcRes, err := p.cli.CoreV1().PersistentVolumeClaims(ns).Create(ctx, pvc, metav1.CreateOptions{})
-	if err != nil {
-		return false, errors.Wrap(err, "Error creating VolumeSnapshotDataSource feature-gate validation pvc")
-	}
-	if pvcRes.Spec.DataSource == nil {
-		return false, nil
+		return p.sdsfgValidator.validate(ctx)
 	}
 	return true, nil
 }
@@ -320,7 +279,7 @@ func (p *Kubestr) validateStorageClass(provisioner string, storageClass sv1.Stor
 }
 
 // validateVolumeSnapshotClass validates the VolumeSnapshotClass
-func (p *Kubestr) validateVolumeSnapshotClass(vsc unstructured.Unstructured, provisionerName string, groupVersion string) *VSCInfo {
+func (p *Kubestr) validateVolumeSnapshotClass(vsc unstructured.Unstructured, groupVersion string) *VSCInfo {
 	retVSC := &VSCInfo{
 		Name: vsc.GetName(),
 		Raw:  vsc,
@@ -413,4 +372,58 @@ func (p *Kubestr) getCSIGroupVersion() *metav1.GroupVersionForDiscovery {
 		}
 	}
 	return nil
+}
+
+type snapshotDataSourceFG interface {
+	validate(ctx context.Context) (bool, error)
+}
+
+type snapshotDataSourceFGValidator struct {
+	cli    kubernetes.Interface
+	dynCli dynamic.Interface
+}
+
+func (s *snapshotDataSourceFGValidator) validate(ctx context.Context) (bool, error) {
+	ns := getPodNamespace()
+
+	// deletes if exists. If it doesn't exist, this is a noop
+	err := kanvolume.DeletePVC(s.cli, ns, FeatureGateTestPVCName)
+	if err != nil {
+		return false, errors.Wrap(err, "Error deleting VolumeSnapshotDataSource feature-gate validation pvc")
+	}
+	// defer delete
+	defer func() {
+		_ = kanvolume.DeletePVC(s.cli, ns, FeatureGateTestPVCName)
+	}()
+
+	// create PVC
+	snapshotKind := "VolumeSnapshot"
+	snapshotAPIGroup := "snapshot.storage.k8s.io"
+	pvc := &v1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: FeatureGateTestPVCName,
+		},
+		Spec: v1.PersistentVolumeClaimSpec{
+			AccessModes: []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
+			DataSource: &v1.TypedLocalObjectReference{
+				APIGroup: &snapshotAPIGroup,
+				Kind:     snapshotKind,
+				Name:     "fakeSnap",
+			},
+			Resources: v1.ResourceRequirements{
+				Requests: v1.ResourceList{
+					v1.ResourceStorage: resource.MustParse("1Gi"),
+				},
+			},
+		},
+	}
+
+	pvcRes, err := s.cli.CoreV1().PersistentVolumeClaims(ns).Create(ctx, pvc, metav1.CreateOptions{})
+	if err != nil {
+		return false, errors.Wrap(err, "Error creating VolumeSnapshotDataSource feature-gate validation pvc")
+	}
+	if pvcRes.Spec.DataSource == nil {
+		return false, nil
+	}
+	return true, nil
 }
