@@ -200,12 +200,12 @@ func (p *Kubestr) processProvisioner(ctx context.Context, provisioner string) (*
 	}
 
 	for _, csiDriver := range CSIDriverList {
-		if csiDriver.DriverName == provisioner {
+		if strings.Contains(provisioner, csiDriver.DriverName) {
 			retProvisioner.CSIDriver = csiDriver
 		}
 	}
 
-	if retProvisioner.CSIDriver != nil { // && retProvisioner.SupportsCSISnapshots
+	if retProvisioner.CSIDriver != nil {
 		if !p.hasCSIDriverObject(ctx, provisioner) {
 			retProvisioner.StatusList = append(retProvisioner.StatusList,
 				makeStatus(StatusWarning, "Missing CSIDriver Object. Required by some provisioners.", nil))
