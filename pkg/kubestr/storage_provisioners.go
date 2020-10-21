@@ -140,7 +140,7 @@ func (v *Provisioner) Print() {
 			fmt.Println("    This provisioner supports snapshots, however no Volume Snaphsot Classes were found.")
 		case len(v.VolumeSnapshotClasses) > 0:
 			fmt.Println()
-			fmt.Println("    To perform a snapshot/restore test, run-")
+			fmt.Println("    (Coming soon) To perform a snapshot/restore test, run-")
 			fmt.Println("      curl https://kubestr/snaprestore.sh | bash <storage class> <volume snapshot class>")
 		}
 	}
