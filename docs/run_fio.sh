@@ -22,7 +22,7 @@ readonly -a REQUIRED_TOOLS=(
     kubectl
 )
 
-DEFAULT_IMAGE_TAG="latest"
+DEFAULT_IMAGE_TAG="0.2.0"
 DEFAULT_PV_SIZE="100"
 DEFAULT_JOB_NAME="kubestr-fio"
 
