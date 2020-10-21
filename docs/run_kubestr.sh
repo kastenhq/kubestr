@@ -11,6 +11,7 @@ readonly -a REQUIRED_TOOLS=(
 )
 
 DEFAULT_IMAGE_TAG="latest"
+DEFAULT_JOB_NAME="kubestr"
 
 helpFunction()
 {
@@ -22,7 +23,7 @@ helpFunction()
    exit 1 # Exit script after printing help
 }
 
-while getopts "i:n:s:c:" opt
+while getopts "i:n:" opt
 do
    case "$opt" in
       i ) image="$OPTARG" ;;
@@ -34,7 +35,7 @@ done
 if [ -z "$namespace" ]
 then
    echo "Namespace option not provided, using default namespace";
-   namespace=default
+   namespace="default"
 fi
 
 print_heading() {
@@ -84,7 +85,6 @@ check_image() {
 }
 
 failed=0
-helm_version=""
 check_tools && check_image && check_kubectl_access
 if [[ ${failed} != 0 ]]; then
     print_error "Pre-checks failed"
@@ -97,16 +97,16 @@ cat > kubestr.yaml << EOF
 apiVersion: v1
 kind: ServiceAccount
 metadata:
-  name: kubestr
+  name: ${DEFAULT_JOB_NAME}
   namespace: ${namespace}
 ---
 kind: ClusterRoleBinding
 apiVersion: rbac.authorization.k8s.io/v1
 metadata:
-  name: kubestr
+  name: ${DEFAULT_JOB_NAME}
 subjects:
   - kind: ServiceAccount
-    name: kubestr
+    name: ${DEFAULT_JOB_NAME}
     namespace: ${namespace}
 roleRef:
   kind: ClusterRole
@@ -116,7 +116,7 @@ roleRef:
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: kubestr
+  name: ${DEFAULT_JOB_NAME}
   namespace: ${namespace}
 spec:
   template:
@@ -124,7 +124,7 @@ spec:
       containers:
       - image: ${image}
         imagePullPolicy: Always
-        name: kubestr
+        name: ${DEFAULT_JOB_NAME}
         command: [ "/kubestr" ]
         env:
           - name: POD_NAMESPACE
@@ -132,7 +132,7 @@ spec:
               fieldRef:
                 fieldPath: metadata.namespace
       restartPolicy: Never
-      serviceAccount: kubestr
+      serviceAccount: ${DEFAULT_JOB_NAME}
   backoffLimit: 4
 EOF
 
@@ -140,11 +140,11 @@ kubectl apply -f kubestr.yaml
 
 trap "kubectl delete -f kubestr.yaml" EXIT
 
-while [[ $(kubectl -n ${namespace} get pods --selector=job-name=kubestr -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" && $(kubectl -n ${namespace} get pods --selector=job-name=kubestr -o 'jsonpath={..phase}') != "Succeeded" ]];
-do echo "Waiting for pod $(kubectl -n ${namespace} get pods --selector=job-name=kubestr --output=jsonpath='{.items[*].metadata.name}') to be ready - $(kubectl -n ${namespace} get pods --selector=job-name=kubestr -o 'jsonpath={..status.containerStatuses[0].state.waiting.reason}')" && sleep 1;
+while [[ $(kubectl -n ${namespace} get pods --selector=job-name=${DEFAULT_JOB_NAME} -o 'jsonpath={..status.conditions[?(@.type=="Ready")].status}') != "True" && $(kubectl -n ${namespace} get pods --selector=job-name=${DEFAULT_JOB_NAME} -o 'jsonpath={..phase}') != "Succeeded" ]];
+do echo "Waiting for pod $(kubectl -n ${namespace} get pods --selector=job-name=${DEFAULT_JOB_NAME} --output=jsonpath='{.items[*].metadata.name}') to be ready - $(kubectl -n ${namespace} get pods --selector=job-name=${DEFAULT_JOB_NAME} -o 'jsonpath={..status.containerStatuses[0].state.waiting.reason}')" && sleep 1;
 done
 echo "Pod Ready!"
 echo ""
-pod=$(kubectl -n ${namespace} get pods --selector=job-name=kubestr --output=jsonpath='{.items[*].metadata.name}')
+pod=$(kubectl -n ${namespace} get pods --selector=job-name=${DEFAULT_JOB_NAME} --output=jsonpath='{.items[*].metadata.name}')
 kubectl logs -n ${namespace} ${pod} -f
 echo ""
