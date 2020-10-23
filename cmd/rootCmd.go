@@ -39,16 +39,18 @@ var (
 		},
 	}
 
-	// fioCheckerStorageClass string
-	// fioCmd                 = &cobra.Command{
-	// 	Use:   "fio",
-	// 	Short: "Runs an fio test on a given storage class",
-	// 	Long: `Run an fio test on a storageclass and calculates
-	// 	its performance.`,
-	// 	Run: func(cmd *cobra.Command, args []string) {
-	// 		Fio(output, fioCheckerStorageClass)
-	// 	},
-	// }
+	fioCheckerStorageClass string
+	fioCmd                 = &cobra.Command{
+		Use:   "fio",
+		Short: "Runs an fio test on a given storage class",
+		Long: `Run an fio test on a storageclass and calculates
+		its performance.`,
+		Run: func(cmd *cobra.Command, args []string) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			Fio(ctx, output, fioCheckerStorageClass)
+		},
+	}
 )
 
 func init() {
@@ -96,7 +98,7 @@ func Baseline(ctx context.Context, output string) {
 	}
 	fmt.Println("Available Storage Provisioners:")
 	fmt.Println()
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond) // Added to introduce lag.
 	for _, provisioner := range provisionerList {
 		provisioner.Print()
 		fmt.Println()
@@ -104,18 +106,18 @@ func Baseline(ctx context.Context, output string) {
 	}
 }
 
-// // Fio executes the FIO test.
-// func Fio(output, storageclass string) {
-// 	p := kubestr.NewKubestr()
-// 	result := p.Baseline()
-// 	if output == "json" {
-// 		jsonRes, _ := json.MarshalIndent(result, "", "    ")
-// 		fmt.Println(string(jsonRes))
-// 		return
-// 	}
-// 	for _, retval := range result {
-// 		retval.Print()
-// 		fmt.Println()
-// 	}
-// 	return
-// }
+// Fio executes the FIO test.
+func Fio(ctx context.Context, output, storageclass string) {
+	p, err := kubestr.NewKubestr()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	result := p.FIO(ctx, storageclass)
+	if output == "json" {
+		jsonRes, _ := json.MarshalIndent(result, "", "    ")
+		fmt.Println(string(jsonRes))
+		return
+	}
+	result.Print()
+}

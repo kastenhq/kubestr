@@ -2,6 +2,7 @@ package kubestr
 
 import (
 	"github.com/kanisterio/kanister/pkg/kube"
+	"github.com/kastenhq/kubestr/pkg/fio"
 	"github.com/pkg/errors"
 	sv1 "k8s.io/api/storage/v1"
 	unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -17,6 +18,7 @@ type Kubestr struct {
 	sdsfgValidator          snapshotDataSourceFG
 	storageClassList        *sv1.StorageClassList
 	volumeSnapshotClassList *unstructured.UnstructuredList
+	fio                     fio.FIO
 }
 
 const Logo = `
@@ -45,6 +47,9 @@ func NewKubestr() (*Kubestr, error) {
 		sdsfgValidator: &snapshotDataSourceFGValidator{
 			cli:    cli,
 			dynCli: dynCli,
+		},
+		fio: &fio.FIOrunner{
+			Cli: cli,
 		},
 	}, nil
 }
