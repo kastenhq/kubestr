@@ -56,8 +56,8 @@ var (
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "", "Options(json)")
 
-	// rootCmd.AddCommand(fioCmd)
-	// fioCmd.Flags().StringVarP(&fioCheckerStorageClass, "storageclass", "s", "", "The Name of a storageclass")
+	rootCmd.AddCommand(fioCmd)
+	fioCmd.Flags().StringVarP(&fioCheckerStorageClass, "storageclass", "s", "", "The Name of a storageclass")
 	// //rootCmd.AddCommand(provCmd)
 }
 
