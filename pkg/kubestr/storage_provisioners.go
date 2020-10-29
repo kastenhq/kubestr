@@ -133,15 +133,14 @@ func (v *Provisioner) Print() {
 	if len(v.StorageClasses) > 0 {
 		fmt.Println()
 		fmt.Println("    To perform a FIO test, run-")
-		fmt.Println("      curl https://kastenhq.github.io/kubestr/run_fio.sh | bash /dev/stdin -s <storage class>")
+		fmt.Println("      curl https://kastenhq.github.io/kubestr/run_fio2.sh | bash /dev/stdin -s <storage class>")
 		switch {
 		case len(v.VolumeSnapshotClasses) == 0 && v.CSIDriver != nil && v.CSIDriver.SupportsSnapshots():
 			fmt.Println()
 			fmt.Println("    This provisioner supports snapshots, however no Volume Snaphsot Classes were found.")
 		case len(v.VolumeSnapshotClasses) > 0:
 			fmt.Println()
-			fmt.Println("    (Coming soon) To perform a snapshot/restore test, run-")
-			fmt.Println("      curl https://kubestr/snaprestore.sh | bash <storage class> <volume snapshot class>")
+			fmt.Println("    (Coming soon) Test snapshot/restore functionality.")
 		}
 	}
 	fmt.Println()
