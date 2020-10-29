@@ -39,23 +39,28 @@ var (
 		},
 	}
 
-	// fioCheckerStorageClass string
-	// fioCmd                 = &cobra.Command{
-	// 	Use:   "fio",
-	// 	Short: "Runs an fio test on a given storage class",
-	// 	Long: `Run an fio test on a storageclass and calculates
-	// 	its performance.`,
-	// 	Run: func(cmd *cobra.Command, args []string) {
-	// 		Fio(output, fioCheckerStorageClass)
-	// 	},
-	// }
+	fioCheckerStorageClass string
+	fioCheckerConfigMap    string
+	fioCheckerTestName     string
+	fioCmd                 = &cobra.Command{
+		Use:   "fio",
+		Short: "Runs an fio test",
+		Long:  `Run an fio test`,
+		Run: func(cmd *cobra.Command, args []string) {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			Fio(ctx, output, fioCheckerStorageClass, fioCheckerConfigMap, fioCheckerTestName)
+		},
+	}
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "", "Options(json)")
 
-	// rootCmd.AddCommand(fioCmd)
-	// fioCmd.Flags().StringVarP(&fioCheckerStorageClass, "storageclass", "s", "", "The Name of a storageclass")
+	rootCmd.AddCommand(fioCmd)
+	fioCmd.Flags().StringVarP(&fioCheckerStorageClass, "storageclass", "s", "", "The Name of a storageclass")
+	fioCmd.Flags().StringVarP(&fioCheckerConfigMap, "configmap", "c", "", "The Name of a configmap in the current namespace")
+	fioCmd.Flags().StringVarP(&fioCheckerTestName, "testname", "t", "", "The Name of a predefined kubestr fio test")
 	// //rootCmd.AddCommand(provCmd)
 }
 
@@ -96,7 +101,7 @@ func Baseline(ctx context.Context, output string) {
 	}
 	fmt.Println("Available Storage Provisioners:")
 	fmt.Println()
-	time.Sleep(500 * time.Millisecond)
+	time.Sleep(500 * time.Millisecond) // Added to introduce lag.
 	for _, provisioner := range provisionerList {
 		provisioner.Print()
 		fmt.Println()
@@ -104,18 +109,18 @@ func Baseline(ctx context.Context, output string) {
 	}
 }
 
-// // Fio executes the FIO test.
-// func Fio(output, storageclass string) {
-// 	p := kubestr.NewKubestr()
-// 	result := p.Baseline()
-// 	if output == "json" {
-// 		jsonRes, _ := json.MarshalIndent(result, "", "    ")
-// 		fmt.Println(string(jsonRes))
-// 		return
-// 	}
-// 	for _, retval := range result {
-// 		retval.Print()
-// 		fmt.Println()
-// 	}
-// 	return
-// }
+// Fio executes the FIO test.
+func Fio(ctx context.Context, output, storageclass, configMapName, testName string) {
+	p, err := kubestr.NewKubestr()
+	if err != nil {
+		fmt.Println(err.Error())
+		return
+	}
+	result := p.FIO(ctx, storageclass, configMapName, testName)
+	if output == "json" {
+		jsonRes, _ := json.MarshalIndent(result, "", "    ")
+		fmt.Println(string(jsonRes))
+		return
+	}
+	result.Print()
+}
