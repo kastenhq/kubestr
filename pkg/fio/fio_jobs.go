@@ -11,7 +11,7 @@ var fioJobs = map[string]*v1.ConfigMap{
 			GenerateName: DefaultFIOJob,
 		},
 		Data: map[string]string{
-			ConfigMapPredefinedTestKey: testJob1,
+			DefaultFIOJob: testJob1,
 		},
 	},
 }
