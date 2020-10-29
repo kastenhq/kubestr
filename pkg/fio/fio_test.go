@@ -34,7 +34,7 @@ func (s *FIOTestSuite) TestRunner(c *C) {
 
 func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 	ctx := context.Background()
-	for _, tc := range []struct {
+	for i, tc := range []struct {
 		cli           kubernetes.Interface
 		stepper       *fakeFioStepper
 		args          *RunFIOArgs
@@ -46,7 +46,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 		expectedTFN   string
 		expectedPVC   string
 	}{
-		{
+		{ // storageclass not found
 			cli: fake.NewSimpleClientset(),
 			stepper: &fakeFioStepper{
 				lcmConfigMap: &v1.ConfigMap{
@@ -73,8 +73,8 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				ConfigMapName: "CM1",
 				JobName:       "job",
 			},
-			checker:       IsNil,
-			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "DPOD", "DPVC"},
+			checker:       NotNil,
+			expectedSteps: []string{"LCM", "DCM"},
 			expectedSC:    "sc",
 			expectedSize:  DefaultPVCSize,
 			expectedTFN:   "testfile.fio",
@@ -109,44 +109,8 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				JobName:       "job",
 			},
 			checker:       IsNil,
-			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "DPOD", "DPVC"},
+			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
 			expectedSC:    "sc",
-			expectedSize:  DefaultPVCSize,
-			expectedTFN:   "testfile.fio",
-			expectedCM:    "CM1",
-			expectedPVC:   "PVC",
-		},
-		{ // storage class provided by config map overided by args
-			cli: fake.NewSimpleClientset(),
-			stepper: &fakeFioStepper{
-				lcmConfigMap: &v1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "CM1",
-					},
-					Data: map[string]string{
-						"testfile.fio": "testfiledata",
-						ConfigMapSCKey: "SC2",
-					},
-				},
-				cPVC: &v1.PersistentVolumeClaim{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "PVC",
-					},
-				},
-				cPod: &v1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "Pod",
-					},
-				},
-			},
-			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				JobName:       "job",
-				StorageClass:  "SC1", // use this one
-			},
-			checker:       IsNil,
-			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "DPOD", "DPVC"},
-			expectedSC:    "SC1",
 			expectedSize:  DefaultPVCSize,
 			expectedTFN:   "testfile.fio",
 			expectedCM:    "CM1",
@@ -181,7 +145,44 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				JobName:       "job",
 			},
 			checker:       IsNil,
-			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "DPOD", "DPVC"},
+			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
+			expectedSC:    "SC2",
+			expectedSize:  "10Gi",
+			expectedTFN:   "testfile.fio",
+			expectedCM:    "CM1",
+			expectedPVC:   "PVC",
+		},
+		{ // fio test error
+			cli: fake.NewSimpleClientset(),
+			stepper: &fakeFioStepper{
+				lcmConfigMap: &v1.ConfigMap{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "CM1",
+					},
+					Data: map[string]string{
+						"testfile.fio":   "testfiledata",
+						ConfigMapSCKey:   "SC2",
+						ConfigMapSizeKey: "10Gi",
+					},
+				},
+				cPVC: &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "PVC",
+					},
+				},
+				cPod: &v1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "Pod",
+					},
+				},
+				rFIOErr: fmt.Errorf("run fio error"),
+			},
+			args: &RunFIOArgs{
+				ConfigMapName: "CM1",
+				JobName:       "job",
+			},
+			checker:       NotNil,
+			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
 			expectedSC:    "SC2",
 			expectedSize:  "10Gi",
 			expectedTFN:   "testfile.fio",
@@ -206,6 +207,11 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 						Name: "PVC",
 					},
 				},
+				cPod: &v1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name: "Pod",
+					},
+				},
 				cPodErr: fmt.Errorf("pod create error"),
 			},
 			args: &RunFIOArgs{
@@ -213,7 +219,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				JobName:       "job",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "DPVC"},
+			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "DPOD", "DPVC", "DCM"},
 		},
 		{ // create PVC error
 			cli: fake.NewSimpleClientset(),
@@ -235,7 +241,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				JobName:       "job",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"LCM", "SCE", "CPVC"},
+			expectedSteps: []string{"LCM", "SCE", "CPVC", "DCM"},
 		},
 		{ // storageclass not found
 			cli: fake.NewSimpleClientset(),
@@ -257,7 +263,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				JobName:       "job",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"LCM", "SCE"},
+			expectedSteps: []string{"LCM", "SCE", "DCM"},
 		},
 		{ // testfilename retrieval error, more than one provided
 			cli: fake.NewSimpleClientset(),
@@ -279,7 +285,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				JobName:       "job",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"LCM"},
+			expectedSteps: []string{"LCM", "DCM"},
 		},
 		{ // storageclass not provided in args or configmap
 			cli: fake.NewSimpleClientset(),
@@ -304,7 +310,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				JobName:       "job",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"LCM"},
+			expectedSteps: []string{"LCM", "DCM"},
 		},
 		{ // load configmap error
 			cli: fake.NewSimpleClientset(),
@@ -316,6 +322,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 			expectedSteps: []string{"LCM"},
 		},
 	} {
+		c.Log(i)
 		fio := &FIOrunner{
 			Cli:      tc.cli,
 			fioSteps: tc.stepper,
@@ -359,6 +366,9 @@ type fakeFioStepper struct {
 	cPodErr    error
 
 	dPodErr error
+
+	rFIOout string
+	rFIOErr error
 }
 
 func (f *fakeFioStepper) storageClassExists(ctx context.Context, storageClass string) error {
@@ -366,9 +376,9 @@ func (f *fakeFioStepper) storageClassExists(ctx context.Context, storageClass st
 	f.sceExpSC = storageClass
 	return f.sceErr
 }
-func (f *fakeFioStepper) loadConfigMap(ctx context.Context, configMapName, jobName string) (*v1.ConfigMap, error) {
+func (f *fakeFioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.ConfigMap, error) {
 	f.steps = append(f.steps, "LCM")
-	f.lcmExpCM = configMapName
+	f.lcmExpCM = args.ConfigMapName
 	return f.lcmConfigMap, f.lcmErr
 }
 func (f *fakeFioStepper) createPVC(ctx context.Context, storageclass, size string) (*v1.PersistentVolumeClaim, error) {
@@ -391,6 +401,14 @@ func (f *fakeFioStepper) createPod(ctx context.Context, pvcName, configMapName, 
 func (f *fakeFioStepper) deletePod(ctx context.Context, podName string) error {
 	f.steps = append(f.steps, "DPOD")
 	return f.dPodErr
+}
+func (f *fakeFioStepper) runFIOCommand(ctx context.Context, podName, containerName, testFileName string) (string, error) {
+	f.steps = append(f.steps, "RFIOC")
+	return f.rFIOout, f.rFIOErr
+}
+func (f *fakeFioStepper) deleteConfigMap(ctx context.Context, configMap *v1.ConfigMap) error {
+	f.steps = append(f.steps, "DCM")
+	return nil
 }
 
 func (s *FIOTestSuite) TestStorageClassExists(c *C) {
@@ -419,19 +437,23 @@ func (s *FIOTestSuite) TestStorageClassExists(c *C) {
 
 func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 	ctx := context.Background()
-	for _, tc := range []struct {
+	for i, tc := range []struct {
 		cli           kubernetes.Interface
 		configMapName string
 		jobName       string
+		args          *RunFIOArgs
 		cmChecker     Checker
 		errChecker    Checker
 		failCreates   bool
+		hasLabel      bool
 	}{
 		{ // provided cm name not found
-			cli:           fake.NewSimpleClientset(),
-			configMapName: "nonexistantcm",
-			cmChecker:     IsNil,
-			errChecker:    NotNil,
+			cli: fake.NewSimpleClientset(),
+			args: &RunFIOArgs{
+				ConfigMapName: "nonexistantcm",
+			},
+			cmChecker:  IsNil,
+			errChecker: NotNil,
 		},
 		{ // specified config map found
 			cli: fake.NewSimpleClientset(&v1.ConfigMap{
@@ -441,9 +463,11 @@ func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 				},
 				Data: map[string]string{},
 			}),
-			configMapName: "CM1",
-			cmChecker:     NotNil,
-			errChecker:    IsNil,
+			args: &RunFIOArgs{
+				ConfigMapName: "CM1",
+			},
+			cmChecker:  NotNil,
+			errChecker: IsNil,
 		},
 		{ // specified config map not found in namespace
 			cli: fake.NewSimpleClientset(&v1.ConfigMap{
@@ -453,37 +477,50 @@ func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 				},
 				Data: map[string]string{},
 			}),
-			configMapName: "CM1",
-			cmChecker:     IsNil,
-			errChecker:    NotNil,
+			args: &RunFIOArgs{
+				ConfigMapName: "CM1",
+			},
+			cmChecker:  IsNil,
+			errChecker: NotNil,
 		},
 		{ // creates the default job ConfigMap
 			cli:        fake.NewSimpleClientset(),
 			cmChecker:  NotNil,
 			errChecker: IsNil,
+			args:       &RunFIOArgs{},
+			hasLabel:   true,
 		},
 		{ // job doesn't exist.
 			cli:        fake.NewSimpleClientset(),
 			cmChecker:  IsNil,
 			errChecker: NotNil,
-			jobName:    "nonExistentJob",
+			args: &RunFIOArgs{
+				JobName: "nonExistentJob",
+			},
+			jobName: "nonExistentJob",
 		},
 		{ // Fails to create default job
 			cli:         fake.NewSimpleClientset(),
 			cmChecker:   IsNil,
 			errChecker:  NotNil,
+			args:        &RunFIOArgs{},
 			failCreates: true,
 		},
 	} {
+		c.Log(i)
 		stepper := &fioStepper{cli: tc.cli}
 		if tc.failCreates {
 			stepper.cli.(*fake.Clientset).Fake.PrependReactor("create", "configmaps", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 				return true, nil, errors.New("Error creating object")
 			})
 		}
-		cm, err := stepper.loadConfigMap(ctx, tc.configMapName, tc.jobName)
+		cm, err := stepper.loadConfigMap(ctx, tc.args)
 		c.Check(err, tc.errChecker)
 		c.Check(cm, tc.cmChecker)
+		if cm != nil {
+			_, ok := cm.Labels[CreatedByFIOLabel]
+			c.Assert(ok, Equals, tc.hasLabel)
+		}
 	}
 }
 
@@ -671,15 +708,12 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 			}
 			c.Assert(len(pod.Spec.Containers), Equals, 1)
 			c.Assert(pod.Spec.Containers[0].Name, Equals, ContainerName)
-			c.Assert(pod.Spec.Containers[0].Command, DeepEquals, []string{"fio"})
-			c.Assert(pod.Spec.Containers[0].Args, DeepEquals, []string{"--directory", "/dataset", "/etc/fio-config/$(CONFIG_FILE_NAME)"})
+			c.Assert(pod.Spec.Containers[0].Command, DeepEquals, []string{"/bin/sh"})
+			c.Assert(pod.Spec.Containers[0].Args, DeepEquals, []string{"-c", "tail -f /dev/null"})
 			c.Assert(pod.Spec.Containers[0].VolumeMounts, DeepEquals, []v1.VolumeMount{
-				{Name: "persistent-storage", MountPath: "/dataset"},
-				{Name: "config-map", MountPath: "/etc/configmap"},
+				{Name: "persistent-storage", MountPath: VolumeMountPath},
+				{Name: "config-map", MountPath: ConfigMapMountPath},
 			})
-			c.Assert(len(pod.Spec.Containers[0].Env), Equals, 1)
-			c.Assert(pod.Spec.Containers[0].Env[0].Name, Equals, "CONFIG_FILE_NAME")
-			c.Assert(pod.Spec.Containers[0].Env[0].Value, Equals, tc.testFileName)
 		}
 	}
 }
@@ -727,6 +761,126 @@ func (s *FIOTestSuite) TestFioTestFileName(c *C) {
 		c.Check(err, tc.errChecker)
 		c.Assert(ret, Equals, tc.retVal)
 	}
+}
+
+func (s *FIOTestSuite) TestRunFioCommand(c *C) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		executor      *fakeKubeExecutor
+		errChecker    Checker
+		podName       string
+		containerName string
+		testFileName  string
+	}{
+		{
+			executor: &fakeKubeExecutor{
+				keErr:    nil,
+				keStrErr: "",
+				keStdOut: "success",
+			},
+			errChecker:    IsNil,
+			podName:       "pod",
+			containerName: "container",
+			testFileName:  "tfName",
+		},
+		{
+			executor: &fakeKubeExecutor{
+				keErr:    fmt.Errorf("kubeexec err"),
+				keStrErr: "",
+				keStdOut: "success",
+			},
+			errChecker:    NotNil,
+			podName:       "pod",
+			containerName: "container",
+			testFileName:  "tfName",
+		},
+	} {
+		stepper := &fioStepper{
+			kubeExecutor: tc.executor,
+		}
+		out, err := stepper.runFIOCommand(ctx, tc.podName, tc.containerName, tc.testFileName)
+		c.Check(err, tc.errChecker)
+		c.Assert(out, Equals, tc.executor.keStdOut)
+		c.Assert(tc.executor.keInPodName, Equals, tc.podName)
+		c.Assert(tc.executor.keInContainerName, Equals, tc.containerName)
+		c.Assert(len(tc.executor.keInCommand), Equals, 4)
+		c.Assert(tc.executor.keInCommand[0], Equals, "fio")
+		c.Assert(tc.executor.keInCommand[1], Equals, "--directory")
+		c.Assert(tc.executor.keInCommand[2], Equals, VolumeMountPath)
+		jobFilePath := fmt.Sprintf("%s/%s", ConfigMapMountPath, tc.testFileName)
+		c.Assert(tc.executor.keInCommand[3], Equals, jobFilePath)
+	}
+}
+
+func (s *FIOTestSuite) TestDeleteConfigMap(c *C) {
+	ctx := context.Background()
+	defaultNS := "default"
+	os.Setenv(PodNamespaceEnvKey, defaultNS)
+	for _, tc := range []struct {
+		cli        kubernetes.Interface
+		cm         *v1.ConfigMap
+		errChecker Checker
+		lenCMList  int
+	}{
+		{ // Don't delete it unless it has the label
+			cli: fake.NewSimpleClientset(&v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cm",
+					Namespace: defaultNS,
+				},
+			}),
+			cm: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cm",
+					Namespace: defaultNS,
+				},
+			},
+			errChecker: IsNil,
+			lenCMList:  1,
+		},
+		{ // Has label delete
+			cli: fake.NewSimpleClientset(&v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cm",
+					Namespace: defaultNS,
+				},
+			}),
+			cm: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cm",
+					Namespace: defaultNS,
+					Labels: map[string]string{
+						CreatedByFIOLabel: "true",
+					},
+				},
+			},
+			errChecker: IsNil,
+			lenCMList:  0,
+		},
+		{ // No cm exists
+			cli: fake.NewSimpleClientset(),
+			cm: &v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cm",
+					Namespace: defaultNS,
+					Labels: map[string]string{
+						CreatedByFIOLabel: "true",
+					},
+				},
+			},
+			errChecker: NotNil,
+		},
+	} {
+		stepper := &fioStepper{cli: tc.cli}
+		err := stepper.deleteConfigMap(ctx, tc.cm)
+		c.Check(err, tc.errChecker)
+		if err == nil {
+			list, err := stepper.cli.CoreV1().ConfigMaps(defaultNS).List(ctx, metav1.ListOptions{})
+			c.Check(err, IsNil)
+			c.Assert(len(list.Items), Equals, tc.lenCMList)
+		}
+	}
+	os.Unsetenv(PodNamespaceEnvKey)
 }
 
 func (s *FIOTestSuite) TestWaitForPodReady(c *C) {
@@ -867,4 +1021,22 @@ type fakePodSpecMerger struct {
 
 func (fm *fakePodSpecMerger) mergePodSpec(ctx context.Context, namespace string, podSpec v1.PodSpec) (v1.PodSpec, error) {
 	return podSpec, fm.psmErr
+}
+
+type fakeKubeExecutor struct {
+	keErr             error
+	keStdOut          string
+	keStrErr          string
+	keInNS            string
+	keInPodName       string
+	keInContainerName string
+	keInCommand       []string
+}
+
+func (fk *fakeKubeExecutor) exec(namespace, podName, containerName string, command []string) (string, string, error) {
+	fk.keInNS = namespace
+	fk.keInPodName = podName
+	fk.keInContainerName = containerName
+	fk.keInCommand = command
+	return fk.keStdOut, fk.keStrErr, fk.keErr
 }

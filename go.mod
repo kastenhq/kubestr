@@ -4,7 +4,7 @@ go 1.14
 
 replace (
 	github.com/graymeta/stow => github.com/kastenhq/stow v0.1.2-kasten
-	github.com/kanisterio/kanister => github.com/kanisterio/kanister v0.0.0-20200806084024-f6822ca9fb14
+	github.com/kanisterio/kanister => github.com/kanisterio/kanister v0.0.0-20201019101000-6d342798b895
 )
 
 require (
