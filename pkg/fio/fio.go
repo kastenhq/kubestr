@@ -23,8 +23,7 @@ const (
 	// ConfigMapSCKey describes the storage class key in a config map
 	ConfigMapSCKey = "storageclass"
 	// ConfigMapSizeKey describes the size key in a config map
-	ConfigMapSizeKey           = "pvcsize"
-	ConfigMapPredefinedTestKey = "fiotest.fio"
+	ConfigMapSizeKey = "pvcsize"
 	// DefaultPVCSize is the default PVC size
 	DefaultPVCSize = "100Gi"
 	// PVCGenerateName is the name to generate for the PVC
@@ -154,11 +153,11 @@ func (s *fioStepper) storageClassExists(ctx context.Context, storageClass string
 	return nil
 }
 
-func getConfigMapJob(jobName string) *v1.ConfigMap {
-	if jobName == "" {
-		jobName = DefaultFIOJob
+func getConfigMapJob(jobNamePtr *string) *v1.ConfigMap {
+	if *jobNamePtr == "" {
+		*jobNamePtr = DefaultFIOJob
 	}
-	cm, ok := fioJobs[jobName]
+	cm, ok := fioJobs[*jobNamePtr]
 	if !ok {
 		return nil
 	}
@@ -167,7 +166,7 @@ func getConfigMapJob(jobName string) *v1.ConfigMap {
 
 func (s *fioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.ConfigMap, error) {
 	if args.ConfigMapName == "" {
-		cm := getConfigMapJob(args.JobName)
+		cm := getConfigMapJob(&args.JobName)
 		if cm == nil {
 			return nil, fmt.Errorf("Predefined job (%s) not found", args.JobName)
 		}
@@ -191,19 +190,18 @@ func (s *fioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.C
 	if val, ok := configMap.Data[ConfigMapSizeKey]; !ok || val == "" {
 		configMap.Data[ConfigMapSizeKey] = DefaultPVCSize
 	}
-
 	// if entry fio entry exists use it.
 	for key := range configMap.Data {
 		if key != ConfigMapSizeKey && key != ConfigMapSCKey {
-			return configMap, nil
+			return s.cli.CoreV1().ConfigMaps(GetPodNamespace()).Update(ctx, configMap, metav1.UpdateOptions{})
 		}
 	}
 	// otherwise load one
-	cm := getConfigMapJob(args.JobName)
+	cm := getConfigMapJob(&args.JobName)
 	if cm == nil {
 		return nil, fmt.Errorf("Predefined job (%s) not found in configmap", args.JobName)
 	}
-	configMap.Data[ConfigMapPredefinedTestKey] = cm.Data[ConfigMapPredefinedTestKey]
+	configMap.Data[args.JobName] = cm.Data[args.JobName]
 	return s.cli.CoreV1().ConfigMaps(GetPodNamespace()).Update(ctx, configMap, metav1.UpdateOptions{})
 }
 
