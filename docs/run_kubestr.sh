@@ -10,7 +10,7 @@ readonly -a REQUIRED_TOOLS=(
     kubectl
 )
 
-DEFAULT_IMAGE_TAG="0.2.0"
+DEFAULT_IMAGE_TAG="latest"
 DEFAULT_JOB_NAME="kubestr"
 
 helpFunction()
