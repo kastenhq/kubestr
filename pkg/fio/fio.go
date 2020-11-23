@@ -20,10 +20,14 @@ const (
 	PodNamespaceEnvKey = "POD_NAMESPACE"
 	// DefaultFIOJob describes the default FIO job
 	DefaultFIOJob = "default-fio"
+	// KubestrFIOJob describes the default FIO job
+	KubestrFIOJobGenName = "kubestr-fio"
 	// ConfigMapSCKey describes the storage class key in a config map
 	ConfigMapSCKey = "storageclass"
 	// ConfigMapSizeKey describes the size key in a config map
 	ConfigMapSizeKey = "pvcsize"
+	// ConfigMapJobKey is the default fio job key
+	ConfigMapJobKey = "fiojob"
 	// DefaultPVCSize is the default PVC size
 	DefaultPVCSize = "100Gi"
 	// PVCGenerateName is the name to generate for the PVC
@@ -153,36 +157,20 @@ func (s *fioStepper) storageClassExists(ctx context.Context, storageClass string
 	return nil
 }
 
-func getConfigMapJob(jobNamePtr *string) *v1.ConfigMap {
-	if *jobNamePtr == "" {
-		*jobNamePtr = DefaultFIOJob
-	}
-	cm, ok := fioJobs[*jobNamePtr]
-	if !ok {
-		return nil
-	}
-	return cm
-}
-
 func (s *fioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.ConfigMap, error) {
-	if args.ConfigMapName == "" {
-		cm := getConfigMapJob(&args.JobName)
-		if cm == nil {
-			return nil, fmt.Errorf("Predefined job (%s) not found", args.JobName)
-		}
-		cm.Labels = map[string]string{CreatedByFIOLabel: "true"}
-		cmResult, err := s.cli.CoreV1().ConfigMaps(GetPodNamespace()).Create(ctx, cm, metav1.CreateOptions{})
+	configMap := &v1.ConfigMap{}
+	var err error
+	if args.ConfigMapName != "" {
+		configMap, err = s.cli.CoreV1().ConfigMaps(GetPodNamespace()).Get(ctx, args.ConfigMapName, metav1.GetOptions{})
 		if err != nil {
-			return nil, errors.Wrapf(err, "Unable to create configMap for predefined job (%s)", args.JobName)
+			return nil, errors.Wrapf(err, "Failed to load configMap (%s) in namespace (%s)", args.ConfigMapName, GetPodNamespace())
 		}
-		args.ConfigMapName = cmResult.Name
 	}
-	// fetch configmap
-	configMap, err := s.cli.CoreV1().ConfigMaps(GetPodNamespace()).Get(ctx, args.ConfigMapName, metav1.GetOptions{})
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to load configMap (%s) in namespace (%s)", args.ConfigMapName, GetPodNamespace())
+
+	if configMap.Data == nil {
+		configMap.Data = map[string]string{}
 	}
-	// storage class, size, test
+
 	if args.StorageClass != "" {
 		configMap.Data[ConfigMapSCKey] = args.StorageClass
 	}
@@ -190,19 +178,31 @@ func (s *fioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.C
 	if val, ok := configMap.Data[ConfigMapSizeKey]; !ok || val == "" {
 		configMap.Data[ConfigMapSizeKey] = DefaultPVCSize
 	}
-	// if entry fio entry exists use it.
-	for key := range configMap.Data {
-		if key != ConfigMapSizeKey && key != ConfigMapSCKey {
-			return s.cli.CoreV1().ConfigMaps(GetPodNamespace()).Update(ctx, configMap, metav1.UpdateOptions{})
+
+	switch {
+	case len(configMap.Data) > 3:
+		return nil, fmt.Errorf("Invalid configmap data- %v", configMap.Data)
+	case args.JobName != "": // replace existing job with provided one
+		fioJob, ok := fioJobs[args.JobName]
+		if !ok {
+			return nil, fmt.Errorf("Unable to find fio job (%s)", args.JobName)
 		}
+		configMapJobKey := ConfigMapJobKey
+		for key := range configMap.Data {
+			if key != ConfigMapSizeKey && key != ConfigMapSCKey {
+				configMapJobKey = key
+			}
+		}
+		configMap.Data[configMapJobKey] = fioJob
+	case len(configMap.Data) == 2: // if none provided use default
+		configMap.Data[ConfigMapJobKey] = fioJobs[DefaultFIOJob]
+	default:
 	}
-	// otherwise load one
-	cm := getConfigMapJob(&args.JobName)
-	if cm == nil {
-		return nil, fmt.Errorf("Predefined job (%s) not found in configmap", args.JobName)
-	}
-	configMap.Data[args.JobName] = cm.Data[args.JobName]
-	return s.cli.CoreV1().ConfigMaps(GetPodNamespace()).Update(ctx, configMap, metav1.UpdateOptions{})
+	// create
+	configMap.Name = ""
+	configMap.GenerateName = KubestrFIOJobGenName
+	configMap.Labels = map[string]string{CreatedByFIOLabel: "true"}
+	return s.cli.CoreV1().ConfigMaps(GetPodNamespace()).Create(ctx, configMap, metav1.CreateOptions{})
 }
 
 func (s *fioStepper) createPVC(ctx context.Context, storageclass, size string) (*v1.PersistentVolumeClaim, error) {
