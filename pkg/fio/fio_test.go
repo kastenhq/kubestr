@@ -465,6 +465,74 @@ func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 			}),
 			args: &RunFIOArgs{
 				ConfigMapName: "CM1",
+				StorageClass:  "sc",
+			},
+			cmChecker:  NotNil,
+			errChecker: IsNil,
+		},
+		{ // specified config map found, replace storage class
+			cli: fake.NewSimpleClientset(&v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "CM1",
+					Namespace: "default",
+				},
+				Data: map[string]string{},
+			}),
+			args: &RunFIOArgs{
+				ConfigMapName: "CM1",
+				StorageClass:  "sc",
+			},
+			cmChecker:  NotNil,
+			errChecker: IsNil,
+		},
+		{ // specified config map found, invalid config map
+			cli: fake.NewSimpleClientset(&v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "CM1",
+					Namespace: "default",
+				},
+				Data: map[string]string{
+					"fiojob":   "data",
+					"baddata1": "baddata",
+				},
+			}),
+			args: &RunFIOArgs{
+				ConfigMapName: "CM1",
+				StorageClass:  "sc",
+			},
+			cmChecker:  IsNil,
+			errChecker: NotNil,
+		},
+		{ // specified config map found, replace with job
+			cli: fake.NewSimpleClientset(&v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "CM1",
+					Namespace: "default",
+				},
+				Data: map[string]string{
+					"job1": "jobdetails",
+				},
+			}),
+			args: &RunFIOArgs{
+				ConfigMapName: "CM1",
+				StorageClass:  "sc",
+				JobName:       DefaultFIOJob,
+			},
+			cmChecker:  NotNil,
+			errChecker: IsNil,
+		},
+		{ // specified config map found, replace with job
+			cli: fake.NewSimpleClientset(&v1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "CM1",
+					Namespace: "default",
+				},
+				Data: map[string]string{},
+			}),
+			args: &RunFIOArgs{
+				ConfigMapName: "CM1",
+				StorageClass:  "sc",
+				JobName:       DefaultFIOJob,
 			},
 			cmChecker:  NotNil,
 			errChecker: IsNil,
@@ -488,7 +556,6 @@ func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 			cmChecker:  NotNil,
 			errChecker: IsNil,
 			args:       &RunFIOArgs{},
-			hasLabel:   true,
 		},
 		{ // job doesn't exist.
 			cli:        fake.NewSimpleClientset(),
@@ -519,7 +586,7 @@ func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 		c.Check(cm, tc.cmChecker)
 		if cm != nil {
 			_, ok := cm.Labels[CreatedByFIOLabel]
-			c.Assert(ok, Equals, tc.hasLabel)
+			c.Assert(ok, Equals, true)
 		}
 	}
 }
