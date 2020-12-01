@@ -62,7 +62,7 @@ func init() {
 
 	rootCmd.AddCommand(fioCmd)
 	fioCmd.Flags().StringVarP(&fioCheckerStorageClass, "storageclass", "c", "", "The name of a storageclass. (Required)")
-	fioCmd.MarkFlagRequired("storageclass")
+	_ = fioCmd.MarkFlagRequired("storageclass")
 	fioCmd.Flags().StringVarP(&fioCheckerSize, "size", "s", fio.DefaultPVCSize, "The size of the volume used to run FIO.")
 	fioCmd.Flags().StringVarP(&fioCheckerNamespace, "namespace", "n", fio.DefaultNS, "The namespace used to run FIO.")
 	fioCmd.Flags().StringVarP(&fioCheckerFilePath, "fiofile", "f", "", "The path to a an fio config file.")

@@ -831,14 +831,6 @@ func (f *fakePodReadyChecker) waitForPodReady(ctx context.Context, namespace, na
 	return f.prcErr
 }
 
-type fakePodSpecMerger struct {
-	psmErr error
-}
-
-func (fm *fakePodSpecMerger) mergePodSpec(ctx context.Context, namespace string, podSpec v1.PodSpec) (v1.PodSpec, error) {
-	return podSpec, fm.psmErr
-}
-
 type fakeKubeExecutor struct {
 	keErr             error
 	keStdOut          string
