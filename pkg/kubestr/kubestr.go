@@ -18,7 +18,7 @@ type Kubestr struct {
 	sdsfgValidator          snapshotDataSourceFG
 	storageClassList        *sv1.StorageClassList
 	volumeSnapshotClassList *unstructured.UnstructuredList
-	fio                     fio.FIO
+	Fio                     fio.FIO
 }
 
 const Logo = `
@@ -48,7 +48,7 @@ func NewKubestr() (*Kubestr, error) {
 			cli:    cli,
 			dynCli: dynCli,
 		},
-		fio: &fio.FIOrunner{
+		Fio: &fio.FIOrunner{
 			Cli: cli,
 		},
 	}, nil

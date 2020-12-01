@@ -34,9 +34,9 @@ func (p *Kubestr) validateK8sVersion() *TestOutput {
 	testName := "Kubernetes Version Check"
 	version, err := p.validateK8sVersionHelper()
 	if err != nil {
-		return makeTestOutput(testName, StatusError, err.Error(), nil)
+		return MakeTestOutput(testName, StatusError, err.Error(), nil)
 	}
-	return makeTestOutput(testName, StatusOK, fmt.Sprintf("Valid kubernetes version (%s)", version.String()), version)
+	return MakeTestOutput(testName, StatusOK, fmt.Sprintf("Valid kubernetes version (%s)", version.String()), version)
 }
 
 // getK8sVersion fetches the k8s vesion
@@ -75,9 +75,9 @@ func (p *Kubestr) validateRBAC() *TestOutput {
 	//fmt.Println("  Checking if Kubernetes RBAC is enabled:")
 	group, err := p.validateRBACHelper()
 	if err != nil {
-		return makeTestOutput(testName, StatusError, err.Error(), nil)
+		return MakeTestOutput(testName, StatusError, err.Error(), nil)
 	}
-	return makeTestOutput(testName, StatusOK, "Kubernetes RBAC is enabled", *group)
+	return MakeTestOutput(testName, StatusOK, "Kubernetes RBAC is enabled", *group)
 }
 
 // getRBAC runs the Rbac test
@@ -98,9 +98,9 @@ func (p *Kubestr) validateAggregatedLayer() *TestOutput {
 	testName := "Aggregated Layer Check"
 	resourceList, err := p.validateAggregatedLayerHelper()
 	if err != nil {
-		makeTestOutput(testName, StatusError, err.Error(), nil)
+		MakeTestOutput(testName, StatusError, err.Error(), nil)
 	}
-	return makeTestOutput(testName, StatusOK, "The Kubernetes Aggregated Layer is enabled", resourceList)
+	return MakeTestOutput(testName, StatusOK, "The Kubernetes Aggregated Layer is enabled", resourceList)
 }
 
 // getAggregatedLayer checks the aggregated API layer

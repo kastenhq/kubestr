@@ -3,6 +3,7 @@ package fio
 import (
 	"context"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"testing"
 
@@ -10,6 +11,7 @@ import (
 	. "gopkg.in/check.v1"
 	v1 "k8s.io/api/core/v1"
 	scv1 "k8s.io/api/storage/v1"
+	sv1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -46,42 +48,56 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 		expectedTFN   string
 		expectedPVC   string
 	}{
+		{ // invalid args (storageclass)
+			cli:     fake.NewSimpleClientset(),
+			stepper: &fakeFioStepper{},
+			args:    &RunFIOArgs{},
+			checker: NotNil,
+		},
+		{ // invalid args (size)
+			cli:     fake.NewSimpleClientset(),
+			stepper: &fakeFioStepper{},
+			args: &RunFIOArgs{
+				StorageClass: "sc",
+			},
+			checker: NotNil,
+		},
+		{ // invalid args (namespace)
+			cli:     fake.NewSimpleClientset(),
+			stepper: &fakeFioStepper{},
+			args: &RunFIOArgs{
+				StorageClass: "sc",
+				Size:         "100Gi",
+			},
+			checker: NotNil,
+		},
+		{ // namespace doesn't exist
+			cli: fake.NewSimpleClientset(),
+			stepper: &fakeFioStepper{
+				vnErr: fmt.Errorf("namespace Err"),
+			},
+			args: &RunFIOArgs{
+				StorageClass: "sc",
+				Size:         "100Gi",
+				Namespace:    "foo",
+			},
+			checker:       NotNil,
+			expectedSteps: []string{"VN"},
+		},
 		{ // storageclass not found
 			cli: fake.NewSimpleClientset(),
 			stepper: &fakeFioStepper{
-				lcmConfigMap: &v1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "CM1",
-					},
-					Data: map[string]string{
-						"testfile.fio": "testfiledata",
-					},
-				},
-				cPVC: &v1.PersistentVolumeClaim{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "PVC",
-					},
-				},
-				cPod: &v1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "Pod",
-					},
-				},
+				sceErr: fmt.Errorf("storageclass Err"),
 			},
 			args: &RunFIOArgs{
-				StorageClass:  "sc",
-				ConfigMapName: "CM1",
-				JobName:       "job",
+				StorageClass: "sc",
+				Size:         "100Gi",
+				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"LCM", "DCM"},
-			expectedSC:    "sc",
-			expectedSize:  DefaultPVCSize,
-			expectedTFN:   "testfile.fio",
-			expectedCM:    "CM1",
-			expectedPVC:   "PVC",
+			expectedSteps: []string{"VN", "SCE"},
 		},
-		{ // storage class provided by config map
+		{ // success
 			cli: fake.NewSimpleClientset(),
 			stepper: &fakeFioStepper{
 				lcmConfigMap: &v1.ConfigMap{
@@ -90,7 +106,6 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 					},
 					Data: map[string]string{
 						"testfile.fio": "testfiledata",
-						ConfigMapSCKey: "sc",
 					},
 				},
 				cPVC: &v1.PersistentVolumeClaim{
@@ -105,49 +120,14 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				},
 			},
 			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				JobName:       "job",
+				StorageClass: "sc",
+				Size:         "100Gi",
+				Namespace:    "foo",
 			},
 			checker:       IsNil,
-			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
+			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
 			expectedSC:    "sc",
 			expectedSize:  DefaultPVCSize,
-			expectedTFN:   "testfile.fio",
-			expectedCM:    "CM1",
-			expectedPVC:   "PVC",
-		},
-		{ // use size provided by Configmap
-			cli: fake.NewSimpleClientset(),
-			stepper: &fakeFioStepper{
-				lcmConfigMap: &v1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "CM1",
-					},
-					Data: map[string]string{
-						"testfile.fio":   "testfiledata",
-						ConfigMapSCKey:   "SC2",
-						ConfigMapSizeKey: "10Gi",
-					},
-				},
-				cPVC: &v1.PersistentVolumeClaim{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "PVC",
-					},
-				},
-				cPod: &v1.Pod{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "Pod",
-					},
-				},
-			},
-			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				JobName:       "job",
-			},
-			checker:       IsNil,
-			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
-			expectedSC:    "SC2",
-			expectedSize:  "10Gi",
 			expectedTFN:   "testfile.fio",
 			expectedCM:    "CM1",
 			expectedPVC:   "PVC",
@@ -160,9 +140,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 						Name: "CM1",
 					},
 					Data: map[string]string{
-						"testfile.fio":   "testfiledata",
-						ConfigMapSCKey:   "SC2",
-						ConfigMapSizeKey: "10Gi",
+						"testfile.fio": "testfiledata",
 					},
 				},
 				cPVC: &v1.PersistentVolumeClaim{
@@ -178,16 +156,12 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				rFIOErr: fmt.Errorf("run fio error"),
 			},
 			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				JobName:       "job",
+				StorageClass: "sc",
+				Size:         "100Gi",
+				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
-			expectedSC:    "SC2",
-			expectedSize:  "10Gi",
-			expectedTFN:   "testfile.fio",
-			expectedCM:    "CM1",
-			expectedPVC:   "PVC",
+			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
 		},
 		{ // create pod error
 			cli: fake.NewSimpleClientset(),
@@ -197,9 +171,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 						Name: "CM1",
 					},
 					Data: map[string]string{
-						"testfile.fio":   "testfiledata",
-						ConfigMapSCKey:   "SC2",
-						ConfigMapSizeKey: "10Gi",
+						"testfile.fio": "testfiledata",
 					},
 				},
 				cPVC: &v1.PersistentVolumeClaim{
@@ -215,11 +187,12 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				cPodErr: fmt.Errorf("pod create error"),
 			},
 			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				JobName:       "job",
+				StorageClass: "sc",
+				Size:         "100Gi",
+				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"LCM", "SCE", "CPVC", "CPOD", "DPOD", "DPVC", "DCM"},
+			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "CPOD", "DPOD", "DPVC", "DCM"},
 		},
 		{ // create PVC error
 			cli: fake.NewSimpleClientset(),
@@ -229,41 +202,18 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 						Name: "CM1",
 					},
 					Data: map[string]string{
-						"testfile.fio":   "testfiledata",
-						ConfigMapSCKey:   "SC2",
-						ConfigMapSizeKey: "10Gi",
+						"testfile.fio": "testfiledata",
 					},
 				},
 				cPVCErr: fmt.Errorf("pvc create error"),
 			},
 			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				JobName:       "job",
+				StorageClass: "sc",
+				Size:         "100Gi",
+				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"LCM", "SCE", "CPVC", "DCM"},
-		},
-		{ // storageclass not found
-			cli: fake.NewSimpleClientset(),
-			stepper: &fakeFioStepper{
-				lcmConfigMap: &v1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "CM1",
-					},
-					Data: map[string]string{
-						"testfile.fio":   "testfiledata",
-						ConfigMapSCKey:   "SC2",
-						ConfigMapSizeKey: "10Gi",
-					},
-				},
-				sceErr: fmt.Errorf("storageclass not found error"),
-			},
-			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				JobName:       "job",
-			},
-			checker:       NotNil,
-			expectedSteps: []string{"LCM", "SCE", "DCM"},
+			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "DCM"},
 		},
 		{ // testfilename retrieval error, more than one provided
 			cli: fake.NewSimpleClientset(),
@@ -273,53 +223,31 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 						Name: "CM1",
 					},
 					Data: map[string]string{
-						"testfile.fio":   "testfiledata",
-						"testfile.fio2":  "testfiledata",
-						ConfigMapSCKey:   "SC2",
-						ConfigMapSizeKey: "10Gi",
+						"testfile.fio":  "testfiledata",
+						"testfile.fio2": "testfiledata",
 					},
 				},
 			},
 			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				JobName:       "job",
+				StorageClass: "sc",
+				Size:         "100Gi",
+				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"LCM", "DCM"},
-		},
-		{ // storageclass not provided in args or configmap
-			cli: fake.NewSimpleClientset(),
-			stepper: &fakeFioStepper{
-				lcmConfigMap: &v1.ConfigMap{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "CM1",
-					},
-					Data: map[string]string{
-						"testfile.fio":   "testfiledata",
-						ConfigMapSizeKey: "10Gi",
-					},
-				},
-				cPVC: &v1.PersistentVolumeClaim{
-					ObjectMeta: metav1.ObjectMeta{
-						Name: "PVC",
-					},
-				},
-			},
-			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				JobName:       "job",
-			},
-			checker:       NotNil,
-			expectedSteps: []string{"LCM", "DCM"},
+			expectedSteps: []string{"VN", "SCE", "LCM", "DCM"},
 		},
 		{ // load configmap error
 			cli: fake.NewSimpleClientset(),
 			stepper: &fakeFioStepper{
 				lcmErr: fmt.Errorf("failed to load configmap"),
 			},
-			args:          nil,
+			args: &RunFIOArgs{
+				StorageClass: "sc",
+				Size:         "100Gi",
+				Namespace:    "foo",
+			},
 			checker:       NotNil,
-			expectedSteps: []string{"LCM"},
+			expectedSteps: []string{"VN", "SCE", "LCM"},
 		},
 	} {
 		c.Log(i)
@@ -331,8 +259,6 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 		c.Check(err, tc.checker)
 		c.Assert(tc.stepper.steps, DeepEquals, tc.expectedSteps)
 		if err == nil {
-			c.Assert(tc.expectedSC, Equals, tc.stepper.sceExpSC)
-			c.Assert(tc.expectedCM, Equals, tc.stepper.lcmExpCM)
 			c.Assert(tc.expectedSC, Equals, tc.stepper.cPVCExpSC)
 			c.Assert(tc.expectedSize, Equals, tc.stepper.cPVCExpSize)
 			c.Assert(tc.expectedTFN, Equals, tc.stepper.cPodExpFN)
@@ -345,10 +271,11 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 type fakeFioStepper struct {
 	steps []string
 
-	sceExpSC string
-	sceErr   error
+	vnErr error
 
-	lcmExpCM     string
+	sceSC  *sv1.StorageClass
+	sceErr error
+
 	lcmConfigMap *v1.ConfigMap
 	lcmErr       error
 
@@ -371,42 +298,44 @@ type fakeFioStepper struct {
 	rFIOErr error
 }
 
-func (f *fakeFioStepper) storageClassExists(ctx context.Context, storageClass string) error {
+func (f *fakeFioStepper) validateNamespace(ctx context.Context, namespace string) error {
+	f.steps = append(f.steps, "VN")
+	return f.vnErr
+}
+func (f *fakeFioStepper) storageClassExists(ctx context.Context, storageClass string) (*sv1.StorageClass, error) {
 	f.steps = append(f.steps, "SCE")
-	f.sceExpSC = storageClass
-	return f.sceErr
+	return f.sceSC, f.sceErr
 }
 func (f *fakeFioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.ConfigMap, error) {
 	f.steps = append(f.steps, "LCM")
-	f.lcmExpCM = args.ConfigMapName
 	return f.lcmConfigMap, f.lcmErr
 }
-func (f *fakeFioStepper) createPVC(ctx context.Context, storageclass, size string) (*v1.PersistentVolumeClaim, error) {
+func (f *fakeFioStepper) createPVC(ctx context.Context, storageclass, size, namespace string) (*v1.PersistentVolumeClaim, error) {
 	f.steps = append(f.steps, "CPVC")
 	f.cPVCExpSC = storageclass
 	f.cPVCExpSize = size
 	return f.cPVC, f.cPVCErr
 }
-func (f *fakeFioStepper) deletePVC(ctx context.Context, pvcName string) error {
+func (f *fakeFioStepper) deletePVC(ctx context.Context, pvcName, namespace string) error {
 	f.steps = append(f.steps, "DPVC")
 	return f.dPVCErr
 }
-func (f *fakeFioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName string) (*v1.Pod, error) {
+func (f *fakeFioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string) (*v1.Pod, error) {
 	f.steps = append(f.steps, "CPOD")
 	f.cPodExpCM = configMapName
 	f.cPodExpFN = testFileName
 	f.cPodExpPVC = pvcName
 	return f.cPod, f.cPodErr
 }
-func (f *fakeFioStepper) deletePod(ctx context.Context, podName string) error {
+func (f *fakeFioStepper) deletePod(ctx context.Context, podName, namespace string) error {
 	f.steps = append(f.steps, "DPOD")
 	return f.dPodErr
 }
-func (f *fakeFioStepper) runFIOCommand(ctx context.Context, podName, containerName, testFileName string) (string, error) {
+func (f *fakeFioStepper) runFIOCommand(ctx context.Context, podName, containerName, testFileName, namespace string) (string, error) {
 	f.steps = append(f.steps, "RFIOC")
 	return f.rFIOout, f.rFIOErr
 }
-func (f *fakeFioStepper) deleteConfigMap(ctx context.Context, configMap *v1.ConfigMap) error {
+func (f *fakeFioStepper) deleteConfigMap(ctx context.Context, configMap *v1.ConfigMap, namespace string) error {
 	f.steps = append(f.steps, "DCM")
 	return nil
 }
@@ -430,13 +359,30 @@ func (s *FIOTestSuite) TestStorageClassExists(c *C) {
 		},
 	} {
 		stepper := &fioStepper{cli: tc.cli}
-		err := stepper.storageClassExists(ctx, tc.storageClass)
+		_, err := stepper.storageClassExists(ctx, tc.storageClass)
 		c.Check(err, tc.checker)
 	}
 }
 
+func (s *FIOTestSuite) TestValidateNamespace(c *C) {
+	ctx := context.Background()
+	stepper := &fioStepper{cli: fake.NewSimpleClientset()}
+	err := stepper.validateNamespace(ctx, "ns")
+	c.Assert(err, NotNil)
+	stepper = &fioStepper{cli: fake.NewSimpleClientset(&v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ns",
+		},
+	})}
+	err = stepper.validateNamespace(ctx, "ns")
+	c.Assert(err, IsNil)
+}
+
 func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 	ctx := context.Background()
+	file, err := ioutil.TempFile("", "tempTLCfile")
+	c.Check(err, IsNil)
+	defer os.Remove(file.Name())
 	for i, tc := range []struct {
 		cli           kubernetes.Interface
 		configMapName string
@@ -447,126 +393,46 @@ func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 		failCreates   bool
 		hasLabel      bool
 	}{
-		{ // provided cm name not found
+		{ // provided file name not found
 			cli: fake.NewSimpleClientset(),
 			args: &RunFIOArgs{
-				ConfigMapName: "nonexistantcm",
+				FIOJobFilepath: "nonexistantfile",
 			},
 			cmChecker:  IsNil,
 			errChecker: NotNil,
 		},
 		{ // specified config map found
-			cli: fake.NewSimpleClientset(&v1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "CM1",
-					Namespace: "default",
-				},
-				Data: map[string]string{},
-			}),
+			cli: fake.NewSimpleClientset(),
 			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				StorageClass:  "sc",
+				FIOJobFilepath: file.Name(),
+				FIOJobName:     "random", // won't use this case
 			},
 			cmChecker:  NotNil,
 			errChecker: IsNil,
 		},
-		{ // specified config map found, replace storage class
-			cli: fake.NewSimpleClientset(&v1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "CM1",
-					Namespace: "default",
-				},
-				Data: map[string]string{},
-			}),
+		{ // specified job name, not found
+			cli: fake.NewSimpleClientset(),
 			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				StorageClass:  "sc",
-			},
-			cmChecker:  NotNil,
-			errChecker: IsNil,
-		},
-		{ // specified config map found, invalid config map
-			cli: fake.NewSimpleClientset(&v1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "CM1",
-					Namespace: "default",
-				},
-				Data: map[string]string{
-					"fiojob":   "data",
-					"baddata1": "baddata",
-				},
-			}),
-			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				StorageClass:  "sc",
+				FIOJobName: "random",
 			},
 			cmChecker:  IsNil,
 			errChecker: NotNil,
 		},
-		{ // specified config map found, replace with job
-			cli: fake.NewSimpleClientset(&v1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "CM1",
-					Namespace: "default",
-				},
-				Data: map[string]string{
-					"job1": "jobdetails",
-				},
-			}),
+		{ // specified job name, found
+			cli: fake.NewSimpleClientset(),
 			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				StorageClass:  "sc",
-				JobName:       DefaultFIOJob,
+				FIOJobName: DefaultFIOJob,
 			},
 			cmChecker:  NotNil,
 			errChecker: IsNil,
 		},
-		{ // specified config map found, replace with job
-			cli: fake.NewSimpleClientset(&v1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "CM1",
-					Namespace: "default",
-				},
-				Data: map[string]string{},
-			}),
-			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-				StorageClass:  "sc",
-				JobName:       DefaultFIOJob,
-			},
-			cmChecker:  NotNil,
-			errChecker: IsNil,
-		},
-		{ // specified config map not found in namespace
-			cli: fake.NewSimpleClientset(&v1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "CM1",
-					Namespace: "badns",
-				},
-				Data: map[string]string{},
-			}),
-			args: &RunFIOArgs{
-				ConfigMapName: "CM1",
-			},
-			cmChecker:  IsNil,
-			errChecker: NotNil,
-		},
-		{ // creates the default job ConfigMap
+		{ // use default job
 			cli:        fake.NewSimpleClientset(),
-			cmChecker:  NotNil,
-			errChecker: IsNil,
 			args:       &RunFIOArgs{},
+			cmChecker:  NotNil,
+			errChecker: IsNil,
 		},
-		{ // job doesn't exist.
-			cli:        fake.NewSimpleClientset(),
-			cmChecker:  IsNil,
-			errChecker: NotNil,
-			args: &RunFIOArgs{
-				JobName: "nonExistentJob",
-			},
-			jobName: "nonExistentJob",
-		},
-		{ // Fails to create default job
+		{ // Fails to create configMap
 			cli:         fake.NewSimpleClientset(),
 			cmChecker:   IsNil,
 			errChecker:  NotNil,
@@ -630,7 +496,7 @@ func (s *FIOTestSuite) TestCreatePVC(c *C) {
 				return true, nil, errors.New("Error creating object")
 			})
 		}
-		pvc, err := stepper.createPVC(ctx, tc.storageclass, tc.size)
+		pvc, err := stepper.createPVC(ctx, tc.storageclass, tc.size, DefaultNS)
 		c.Check(err, tc.errChecker)
 		c.Check(pvc, tc.pvcChecker)
 		if pvc != nil {
@@ -648,24 +514,23 @@ func (s *FIOTestSuite) TestDeletePVC(c *C) {
 	stepper := &fioStepper{cli: fake.NewSimpleClientset(&v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pvc",
-			Namespace: GetPodNamespace(),
+			Namespace: DefaultNS,
 		}})}
-	err := stepper.deletePVC(ctx, "pvc")
+	err := stepper.deletePVC(ctx, "pvc", DefaultNS)
 	c.Assert(err, IsNil)
-	err = stepper.deletePVC(ctx, "pvc")
+	err = stepper.deletePVC(ctx, "pvc", DefaultNS)
 	c.Assert(err, NotNil)
 }
 
 func (s *FIOTestSuite) TestCreatPod(c *C) {
 	ctx := context.Background()
-	for _, tc := range []struct {
-		pvcName          string
-		configMapName    string
-		testFileName     string
-		reactor          []k8stesting.Reactor
-		podReadyErr      error
-		podSpecMergerErr error
-		errChecker       Checker
+	for i, tc := range []struct {
+		pvcName       string
+		configMapName string
+		testFileName  string
+		reactor       []k8stesting.Reactor
+		podReadyErr   error
+		errChecker    Checker
 	}{
 		{
 			pvcName:       "pvc",
@@ -727,13 +592,6 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 			},
 		},
 		{
-			pvcName:          "pvc",
-			configMapName:    "cm",
-			testFileName:     "sdf",
-			errChecker:       NotNil,
-			podSpecMergerErr: fmt.Errorf("podspecmerger error"),
-		},
-		{
 			pvcName:       "pvc",
 			configMapName: "cm",
 			testFileName:  "",
@@ -752,15 +610,15 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 			errChecker:    NotNil,
 		},
 	} {
+		fmt.Println(i)
 		stepper := &fioStepper{
-			cli:           fake.NewSimpleClientset(),
-			podReady:      &fakePodReadyChecker{prcErr: tc.podReadyErr},
-			podSpecMerger: &fakePodSpecMerger{psmErr: tc.podSpecMergerErr},
+			cli:      fake.NewSimpleClientset(),
+			podReady: &fakePodReadyChecker{prcErr: tc.podReadyErr},
 		}
 		if tc.reactor != nil {
 			stepper.cli.(*fake.Clientset).Fake.ReactionChain = tc.reactor
 		}
-		pod, err := stepper.createPod(ctx, tc.pvcName, tc.configMapName, tc.testFileName)
+		pod, err := stepper.createPod(ctx, tc.pvcName, tc.configMapName, tc.testFileName, DefaultNS)
 		c.Check(err, tc.errChecker)
 		if err == nil {
 			c.Assert(pod.GenerateName, Equals, PodGenerateName)
@@ -790,11 +648,11 @@ func (s *FIOTestSuite) TestDeletePod(c *C) {
 	stepper := &fioStepper{cli: fake.NewSimpleClientset(&v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name:      "pod",
-			Namespace: GetPodNamespace(),
+			Namespace: DefaultNS,
 		}})}
-	err := stepper.deletePod(ctx, "pod")
+	err := stepper.deletePod(ctx, "pod", DefaultNS)
 	c.Assert(err, IsNil)
-	err = stepper.deletePod(ctx, "pod")
+	err = stepper.deletePod(ctx, "pod", DefaultNS)
 	c.Assert(err, NotNil)
 }
 
@@ -806,19 +664,16 @@ func (s *FIOTestSuite) TestFioTestFileName(c *C) {
 	}{
 		{
 			configMap: map[string]string{
-				ConfigMapSCKey:   "storageclass",
-				ConfigMapSizeKey: "10Gi",
-				"testfile.fio":   "some test data",
+				"testfile.fio": "some test data",
 			},
 			retVal:     "testfile.fio",
 			errChecker: IsNil,
 		},
 		{
 			configMap: map[string]string{
-				ConfigMapSCKey:   "storageclass",
-				ConfigMapSizeKey: "10Gi",
-				"testfile.fio":   "some test data",
-				"testfile2.fio":  "some test data2", // only support one file
+				"ConfigMapSCKey":   "storageclass",
+				"ConfigMapSizeKey": "10Gi",
+				"testfile.fio":     "some test data",
 			},
 			retVal:     "",
 			errChecker: NotNil,
@@ -865,7 +720,7 @@ func (s *FIOTestSuite) TestRunFioCommand(c *C) {
 		stepper := &fioStepper{
 			kubeExecutor: tc.executor,
 		}
-		out, err := stepper.runFIOCommand(ctx, tc.podName, tc.containerName, tc.testFileName)
+		out, err := stepper.runFIOCommand(ctx, tc.podName, tc.containerName, tc.testFileName, DefaultNS)
 		c.Check(err, tc.errChecker)
 		c.Assert(out, Equals, tc.executor.keStdOut)
 		c.Assert(tc.executor.keInPodName, Equals, tc.podName)
@@ -939,7 +794,7 @@ func (s *FIOTestSuite) TestDeleteConfigMap(c *C) {
 		},
 	} {
 		stepper := &fioStepper{cli: tc.cli}
-		err := stepper.deleteConfigMap(ctx, tc.cm)
+		err := stepper.deleteConfigMap(ctx, tc.cm, DefaultNS)
 		c.Check(err, tc.errChecker)
 		if err == nil {
 			list, err := stepper.cli.CoreV1().ConfigMaps(defaultNS).List(ctx, metav1.ListOptions{})
@@ -966,112 +821,6 @@ func (s *FIOTestSuite) TestWaitForPodReady(c *C) {
 			Phase: v1.PodRunning,
 		},
 	})
-}
-
-func (s *FIOTestSuite) TestMergePodSpec(c *C) {
-	ctx := context.Background()
-	runAsUserInt64 := int64(1)
-	for _, tc := range []struct {
-		namespace  string
-		inPodSpec  v1.PodSpec
-		podName    string
-		parentPod  *v1.Pod
-		errChecker Checker
-	}{
-		{
-			parentPod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "podName",
-					Namespace: "ns",
-				},
-				Spec: v1.PodSpec{
-					NodeSelector: map[string]string{
-						"node": "selector",
-					},
-					Tolerations: []v1.Toleration{
-						{Value: "toleration"},
-					},
-					Containers: []v1.Container{
-						{Image: "Image"},
-					},
-					SecurityContext: &v1.PodSecurityContext{
-						RunAsUser: &runAsUserInt64,
-					},
-				},
-			},
-			namespace:  "ns",
-			podName:    "podName",
-			inPodSpec:  v1.PodSpec{Containers: []v1.Container{{Name: "container1"}}},
-			errChecker: IsNil,
-		},
-		{
-			parentPod: &v1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "podName",
-					Namespace: "ns",
-				},
-				Spec: v1.PodSpec{
-					NodeSelector: map[string]string{
-						"node": "selector",
-					},
-					Tolerations: []v1.Toleration{
-						{Value: "toleration"},
-					},
-					Containers: []v1.Container{
-						{Image: "Image"},
-					},
-					SecurityContext: &v1.PodSecurityContext{
-						RunAsUser: &runAsUserInt64,
-					},
-				},
-			},
-			namespace:  "ns",
-			podName:    "podName",
-			inPodSpec:  v1.PodSpec{Containers: []v1.Container{{Name: "container1"}, {Name: "container2"}}},
-			errChecker: NotNil,
-		},
-		{
-			namespace:  "ns",
-			podName:    "podName",
-			inPodSpec:  v1.PodSpec{Containers: []v1.Container{{Name: "container1"}}},
-			errChecker: NotNil,
-		},
-		{
-			namespace:  "ns",
-			podName:    "",
-			inPodSpec:  v1.PodSpec{Containers: []v1.Container{{Name: "container1"}}},
-			errChecker: NotNil,
-		},
-	} {
-		tempHostname := os.Getenv(PodNameEnvKey)
-		defer func() {
-			os.Setenv(PodNameEnvKey, tempHostname)
-		}()
-		os.Setenv(PodNameEnvKey, tc.podName)
-
-		cli := fake.NewSimpleClientset()
-		if tc.parentPod != nil {
-			cli = fake.NewSimpleClientset(tc.parentPod)
-		}
-		psm := podSpecMerger{cli}
-		outPodSpec, err := psm.mergePodSpec(ctx, tc.namespace, tc.inPodSpec)
-		c.Check(err, tc.errChecker)
-		if err == nil {
-			c.Assert(outPodSpec, Not(DeepEquals), tc.inPodSpec)
-			c.Assert(outPodSpec.NodeSelector, DeepEquals, tc.parentPod.Spec.NodeSelector)
-			c.Assert(outPodSpec.Tolerations, DeepEquals, tc.parentPod.Spec.Tolerations)
-			c.Assert(outPodSpec.Containers[0].Image, Equals, tc.parentPod.Spec.Containers[0].Image)
-			c.Assert(outPodSpec.SecurityContext, DeepEquals, tc.parentPod.Spec.SecurityContext)
-		}
-		os.Setenv(PodNameEnvKey, tempHostname)
-	}
-}
-
-func (s *FIOTestSuite) TestGetPodNamespace(c *C) {
-	os.Setenv(PodNamespaceEnvKey, "ns")
-	ns := GetPodNamespace()
-	c.Assert(ns, Equals, "ns")
-	os.Unsetenv(PodNamespaceEnvKey)
 }
 
 type fakePodReadyChecker struct {
