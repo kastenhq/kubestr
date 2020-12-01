@@ -87,7 +87,6 @@ func (c *CSIDriver) URL() string {
 func (c *CSIDriver) Print(prefix string) {
 	fmt.Printf(prefix+"  Provider:            %s\n", c.Provider())
 	fmt.Printf(prefix+"  Website:             %s\n", c.URL())
-	fmt.Printf(prefix+"  Available Versions:  %s\n", c.Versions)
 	fmt.Printf(prefix+"  Description:         %s\n", c.Description)
 	fmt.Printf(prefix+"  Additional Features: %s\n", c.Features)
 }
@@ -129,20 +128,6 @@ func (v *Provisioner) Print() {
 	default:
 		fmt.Println("    Unknown driver type.")
 	}
-
-	if len(v.StorageClasses) > 0 {
-		fmt.Println()
-		fmt.Println("    To perform a FIO test, run-")
-		fmt.Println("      curl https://kastenhq.github.io/kubestr/run_fio2.sh | bash /dev/stdin -s <storage class>")
-		switch {
-		case len(v.VolumeSnapshotClasses) == 0 && v.CSIDriver != nil && v.CSIDriver.SupportsSnapshots():
-			fmt.Println()
-			fmt.Println("    This provisioner supports snapshots, however no Volume Snaphsot Classes were found.")
-		case len(v.VolumeSnapshotClasses) > 0:
-			fmt.Println()
-			fmt.Println("    (Coming soon) Test snapshot/restore functionality.")
-		}
-	}
 	fmt.Println()
 	if len(v.StorageClasses) > 0 {
 		fmt.Printf("    Storage Classes:\n")
@@ -161,6 +146,21 @@ func (v *Provisioner) Print() {
 			for _, status := range vsc.StatusList {
 				status.Print("        ")
 			}
+		}
+	}
+
+	if len(v.StorageClasses) > 0 {
+		fmt.Println()
+		fmt.Println("    To perform a FIO test, run-")
+		fmt.Println("      ./kubestr fio -c <storage class>")
+		fmt.Println("    Validate the results against our benchmarks at <website>. For more options try '-h'.")
+		switch {
+		case len(v.VolumeSnapshotClasses) == 0 && v.CSIDriver != nil && v.CSIDriver.SupportsSnapshots():
+			fmt.Println()
+			fmt.Println("    This provisioner supports snapshots, however no Volume Snaphsot Classes were found.")
+		case len(v.VolumeSnapshotClasses) > 0:
+			fmt.Println()
+			fmt.Println("    (Coming soon) Test snapshot/restore functionality.")
 		}
 	}
 }
