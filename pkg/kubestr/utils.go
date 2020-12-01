@@ -93,7 +93,7 @@ func (t *TestOutput) Print() {
 	}
 }
 
-func makeTestOutput(testname string, code StatusCode, mesg string, raw interface{}) *TestOutput {
+func MakeTestOutput(testname string, code StatusCode, mesg string, raw interface{}) *TestOutput {
 	return &TestOutput{
 		TestName: testname,
 		Status:   []Status{makeStatus(code, mesg, nil)},
