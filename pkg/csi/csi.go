@@ -13,6 +13,8 @@ type CSISnapshotRestoreArgs struct {
 	StorageClass        string
 	VolumeSnapshotClass string
 	Namespace           string
+	RunAsUser           int64
+	ContainerImage      string
 }
 
 func (a *CSISnapshotRestoreArgs) Validate() error {
