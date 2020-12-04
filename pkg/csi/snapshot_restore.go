@@ -38,70 +38,98 @@ const (
 	createdByLabel            = "created-by-kubestr-csi"
 	DefaultPodImage           = "ghcr.io/kastenhq/kubestr:latest"
 	clonePrefix               = "kubestr-clone-"
+	snapshotPrefix            = "kuberstr-snapshot-"
 )
 
 type SnapshotRestoreRunner struct {
 	KubeCli kubernetes.Interface
 	DynCli  dynamic.Interface
-	srSteps snapshotRestoreStepper
+	srSteps SnapshotRestoreStepper
 }
 
 func (r *SnapshotRestoreRunner) RunSnapshotRestore(ctx context.Context, args *types.CSISnapshotRestoreArgs) (*types.CSISnapshotRestoreResults, error) {
-	// r.srSteps = &snapshotRestoreStepper{
-	// 	kubeCli: s.KubeCli,
-	// 	dynCli:  s.DynCli,
-	// }
+	r.srSteps = &snapshotRestoreSteps{
+		validateOps: &validateOperations{
+			kubeCli: r.KubeCli,
+			dynCli:  r.DynCli,
+		},
+		versionFetchOps: &apiVersionFetch{
+			kubeCli: r.KubeCli,
+		},
+		createAppOps: &applicationCreate{
+			kubeCli: r.KubeCli,
+		},
+		dataValidatorOps: &validateData{
+			kubeCli: r.KubeCli,
+		},
+		snapshotCreateOps: &snapshotCreate{
+			kubeCli: r.KubeCli,
+			dynCli:  r.DynCli,
+		},
+		cleanerOps: &cleanse{
+			kubeCli: r.KubeCli,
+			dynCli:  r.DynCli,
+		},
+	}
 	return r.RunSnapshotRestoreHelper(ctx, args)
 }
 
 func (r *SnapshotRestoreRunner) RunSnapshotRestoreHelper(ctx context.Context, args *types.CSISnapshotRestoreArgs) (*types.CSISnapshotRestoreResults, error) {
 	results := &types.CSISnapshotRestoreResults{}
 	var err error
-	if r.KubeCli == nil || r.DynCli == nil { // for UT purposes
+	if r.KubeCli == nil || r.DynCli == nil {
 		return results, fmt.Errorf("cli uninitialized")
 	}
-	if err := r.srSteps.validateArgs(ctx, args); err != nil {
+	if err := r.srSteps.ValidateArgs(ctx, args); err != nil {
 		return results, errors.Wrap(err, "Failed to validate arguments.")
 	}
-	data := time.Now().Format("2006-01-02 15:04:05")
-	results.OriginalPod, results.OriginalPVC, err = r.srSteps.createApplication(ctx, args, data)
+	data := time.Now().Format("20060102150405")
+	results.OriginalPod, results.OriginalPVC, err = r.srSteps.CreateApplication(ctx, args, data)
 
 	if err == nil {
-		err = r.srSteps.validateData(ctx, args, results.OriginalPod, data)
+		err = r.srSteps.ValidateData(ctx, results.OriginalPod, data)
+	}
+
+	snapName := "kuberstr-snapshot-" + data
+	if err == nil {
+		results.Snapshot, err = r.srSteps.SnapshotApplication(ctx, args, results.OriginalPVC, snapName)
 	}
 
 	if err == nil {
-		results.Snapshot, err = r.srSteps.snapshotApplication(ctx, args, results.OriginalPVC, "snapshot")
+		results.ClonedPod, results.ClonedPVC, err = r.srSteps.RestoreApplication(ctx, args, results.Snapshot)
 	}
 
 	if err == nil {
-		results.ClonedPod, results.ClonedPVC, err = r.srSteps.restoreApplication(ctx, args, results.Snapshot)
+		err = r.srSteps.ValidateData(ctx, results.ClonedPod, data)
 	}
 
-	r.srSteps.cleanup(ctx, args, results)
+	if args.Cleanup {
+		r.srSteps.Cleanup(ctx, results)
+	}
 
 	return results, err
 }
 
-type snapshotRestoreStepper interface {
-	validateArgs(ctx context.Context, args *types.CSISnapshotRestoreArgs) error
-	createApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, data string) (*v1.Pod, *v1.PersistentVolumeClaim, error)
-	validateData(ctx context.Context, args *types.CSISnapshotRestoreArgs, pod *v1.Pod, data string) error
-	snapshotApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, pvc *v1.PersistentVolumeClaim, snapshotName string) (*v1alpha1.VolumeSnapshot, error)
-	restoreApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, snapshot *v1alpha1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error)
-	cleanup(ctx context.Context, args *types.CSISnapshotRestoreArgs, results *types.CSISnapshotRestoreResults)
+//go:generate mockgen -destination=mocks/mock_snapshot_restore_stepper.go -package=mocks . SnapshotRestoreStepper
+type SnapshotRestoreStepper interface {
+	ValidateArgs(ctx context.Context, args *types.CSISnapshotRestoreArgs) error
+	CreateApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, data string) (*v1.Pod, *v1.PersistentVolumeClaim, error)
+	ValidateData(ctx context.Context, pod *v1.Pod, data string) error
+	SnapshotApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, pvc *v1.PersistentVolumeClaim, snapshotName string) (*v1alpha1.VolumeSnapshot, error)
+	RestoreApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, snapshot *v1alpha1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error)
+	Cleanup(ctx context.Context, results *types.CSISnapshotRestoreResults)
 }
 
 type snapshotRestoreSteps struct {
-	kubeCli           kubernetes.Interface
-	dynCli            dynamic.Interface
 	validateOps       ArgumentValidator
-	versionFetch      ApiVersionFetcher
+	versionFetchOps   ApiVersionFetcher
 	createAppOps      ApplicationCreator
+	dataValidatorOps  DataValidator
 	snapshotCreateOps SnapshotCreator
+	cleanerOps        Cleaner
 }
 
-func (s *snapshotRestoreSteps) validateArgs(ctx context.Context, args *types.CSISnapshotRestoreArgs) error {
+func (s *snapshotRestoreSteps) ValidateArgs(ctx context.Context, args *types.CSISnapshotRestoreArgs) error {
 	if err := args.Validate(); err != nil {
 		return err
 	}
@@ -113,7 +141,7 @@ func (s *snapshotRestoreSteps) validateArgs(ctx context.Context, args *types.CSI
 		return err
 	}
 
-	groupVersion, err := s.versionFetch.GetCSISnapshotGroupVersion()
+	groupVersion, err := s.versionFetchOps.GetCSISnapshotGroupVersion()
 	if err != nil {
 		return err
 	}
@@ -130,7 +158,7 @@ func (s *snapshotRestoreSteps) validateArgs(ctx context.Context, args *types.CSI
 	return nil
 }
 
-func (s *snapshotRestoreSteps) createApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, genString string) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
+func (s *snapshotRestoreSteps) CreateApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, genString string) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
 	pvcArgs := &types.CreatePVCArgs{
 		GenerateName: originalPVCGenerateName,
 		StorageClass: args.StorageClass,
@@ -156,18 +184,18 @@ func (s *snapshotRestoreSteps) createApplication(ctx context.Context, args *type
 	return pod, pvc, err
 }
 
-func (s *snapshotRestoreSteps) validateData(ctx context.Context, args, pod *v1.Pod, data string) error {
-	stdout, _, err := kankube.Exec(s.kubeCli, args.Namespace, pod.Name, "", []string{"sh", "-c", "cat /data/out.txt"}, nil)
+func (s *snapshotRestoreSteps) ValidateData(ctx context.Context, pod *v1.Pod, data string) error {
+	podData, err := s.dataValidatorOps.FetchPodData(pod.Name, pod.Namespace)
 	if err != nil {
 		return err
 	}
-	if stdout != data {
-		return fmt.Errorf("string didn't match (%s , %s)", stdout, data)
+	if podData != data {
+		return fmt.Errorf("string didn't match (%s , %s)", podData, data)
 	}
 	return nil
 }
 
-func (s *snapshotRestoreSteps) snapshotApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, pvc *v1.PersistentVolumeClaim, snapshotName string) (*v1alpha1.VolumeSnapshot, error) {
+func (s *snapshotRestoreSteps) SnapshotApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, pvc *v1.PersistentVolumeClaim, snapshotName string) (*v1alpha1.VolumeSnapshot, error) {
 	snapshotter, err := s.snapshotCreateOps.NewSnapshotter()
 	if err != nil {
 		return nil, err
@@ -182,16 +210,18 @@ func (s *snapshotRestoreSteps) snapshotApplication(ctx context.Context, args *ty
 	if err != nil {
 		return nil, err
 	}
-	cfsArgs := &types.CreateFromSourceCheckArgs{
-		VolumeSnapshotClass: args.VolumeSnapshotClass,
-		SnapshotName:        snapshot.Name,
-		Namespace:           args.Namespace,
+	if !args.SkipCFSCheck {
+		cfsArgs := &types.CreateFromSourceCheckArgs{
+			VolumeSnapshotClass: args.VolumeSnapshotClass,
+			SnapshotName:        snapshot.Name,
+			Namespace:           args.Namespace,
+		}
+		err = s.snapshotCreateOps.CreateFromSourceCheck(ctx, snapshotter, cfsArgs)
 	}
-	err = s.snapshotCreateOps.CreateFromSourceCheck(ctx, snapshotter, cfsArgs)
 	return snapshot, err
 }
 
-func (s *snapshotRestoreSteps) restoreApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, snapshot *v1alpha1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
+func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, snapshot *v1alpha1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
 	snapshotAPIGroup := "snapshot.storage.k8s.io"
 	snapshotKind := "VolumeSnapshot"
 	dataSource := &v1.TypedLocalObjectReference{
@@ -226,6 +256,27 @@ func (s *snapshotRestoreSteps) restoreApplication(ctx context.Context, args *typ
 	return pod, pvc, err
 }
 
+func (s *snapshotRestoreSteps) Cleanup(ctx context.Context, results *types.CSISnapshotRestoreResults) {
+	if results == nil {
+		return
+	}
+	if results.OriginalPVC != nil {
+		_ = s.cleanerOps.DeletePVC(ctx, results.OriginalPVC.Name, results.OriginalPVC.Namespace)
+	}
+	if results.OriginalPod != nil {
+		_ = s.cleanerOps.DeletePod(ctx, results.OriginalPod.Name, results.OriginalPod.Namespace)
+	}
+	if results.ClonedPVC != nil {
+		_ = s.cleanerOps.DeletePVC(ctx, results.ClonedPVC.Name, results.ClonedPVC.Namespace)
+	}
+	if results.ClonedPod != nil {
+		_ = s.cleanerOps.DeletePod(ctx, results.ClonedPod.Name, results.ClonedPod.Namespace)
+	}
+	if results.Snapshot != nil {
+		_ = s.cleanerOps.DeleteSnapshot(ctx, results.Snapshot.Name, results.Snapshot.Namespace)
+	}
+}
+
 //go:generate mockgen -destination=mocks/mock_argument_validator.go -package=mocks . ArgumentValidator
 type ArgumentValidator interface {
 	ValidateNamespace(ctx context.Context, namespace string) error
@@ -238,16 +289,25 @@ type validateOperations struct {
 	dynCli  dynamic.Interface
 }
 
-func (o *validateOperations) validateNamespace(ctx context.Context, namespace string) error {
+func (o *validateOperations) ValidateNamespace(ctx context.Context, namespace string) error {
+	if o.kubeCli == nil {
+		return fmt.Errorf("kubeCli not initialized")
+	}
 	_, err := o.kubeCli.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
 	return err
 }
 
-func (o *validateOperations) validateStorageClass(ctx context.Context, storageClass string) (*sv1.StorageClass, error) {
+func (o *validateOperations) ValidateStorageClass(ctx context.Context, storageClass string) (*sv1.StorageClass, error) {
+	if o.kubeCli == nil {
+		return nil, fmt.Errorf("kubeCli not initialized")
+	}
 	return o.kubeCli.StorageV1().StorageClasses().Get(ctx, storageClass, metav1.GetOptions{})
 }
 
-func (o *validateOperations) validateVolumeSnapshotClass(ctx context.Context, volumeSnapshotClass string, groupVersion *metav1.GroupVersionForDiscovery) (*unstructured.Unstructured, error) {
+func (o *validateOperations) ValidateVolumeSnapshotClass(ctx context.Context, volumeSnapshotClass string, groupVersion *metav1.GroupVersionForDiscovery) (*unstructured.Unstructured, error) {
+	if o.dynCli == nil {
+		return nil, fmt.Errorf("dynCli not initialized")
+	}
 	VolSnapClassGVR := schema.GroupVersionResource{Group: SnapGroupName, Version: groupVersion.Version, Resource: VolumeSnapshotClassResourcePlural}
 	return o.dynCli.Resource(VolSnapClassGVR).Get(ctx, volumeSnapshotClass, metav1.GetOptions{})
 }
@@ -260,10 +320,13 @@ type ApplicationCreator interface {
 }
 
 type applicationCreate struct {
-	cli kubernetes.Interface
+	kubeCli kubernetes.Interface
 }
 
 func (c *applicationCreate) CreatePVC(ctx context.Context, args *types.CreatePVCArgs) (*v1.PersistentVolumeClaim, error) {
+	if c.kubeCli == nil {
+		return nil, fmt.Errorf("kubeCli not initialized")
+	}
 	if err := args.Validate(); err != nil {
 		return nil, err
 	}
@@ -294,7 +357,7 @@ func (c *applicationCreate) CreatePVC(ctx context.Context, args *types.CreatePVC
 		pvc.Spec.Resources.Requests[v1.ResourceStorage] = *args.RestoreSize
 	}
 
-	pvcRes, err := c.cli.CoreV1().PersistentVolumeClaims(args.Namespace).Create(ctx, pvc, metav1.CreateOptions{})
+	pvcRes, err := c.kubeCli.CoreV1().PersistentVolumeClaims(args.Namespace).Create(ctx, pvc, metav1.CreateOptions{})
 	if err != nil {
 		return pvc, err
 	}
@@ -303,6 +366,9 @@ func (c *applicationCreate) CreatePVC(ctx context.Context, args *types.CreatePVC
 }
 
 func (c *applicationCreate) CreatePod(ctx context.Context, args *types.CreatePodArgs) (*v1.Pod, error) {
+	if c.kubeCli == nil {
+		return nil, fmt.Errorf("kubeCli not initialized")
+	}
 	if err := args.Validate(); err != nil {
 		return nil, err
 	}
@@ -347,7 +413,7 @@ func (c *applicationCreate) CreatePod(ctx context.Context, args *types.CreatePod
 		}
 	}
 
-	podRes, err := c.cli.CoreV1().Pods(args.Namespace).Create(ctx, pod, metav1.CreateOptions{})
+	podRes, err := c.kubeCli.CoreV1().Pods(args.Namespace).Create(ctx, pod, metav1.CreateOptions{})
 	if err != nil {
 		return pod, err
 	}
@@ -355,7 +421,10 @@ func (c *applicationCreate) CreatePod(ctx context.Context, args *types.CreatePod
 }
 
 func (c *applicationCreate) WaitForPodReady(ctx context.Context, namespace string, podName string) error {
-	err := kankube.WaitForPodReady(ctx, c.cli, namespace, podName)
+	if c.kubeCli == nil {
+		return fmt.Errorf("kubeCli not initialized")
+	}
+	err := kankube.WaitForPodReady(ctx, c.kubeCli, namespace, podName)
 	return err
 }
 
@@ -372,6 +441,12 @@ type snapshotCreate struct {
 }
 
 func (c *snapshotCreate) NewSnapshotter() (kansnapshot.Snapshotter, error) {
+	if c.kubeCli == nil {
+		return nil, fmt.Errorf("kubeCli not initialized")
+	}
+	if c.dynCli == nil {
+		return nil, fmt.Errorf("dynCli not initialized")
+	}
 	return kansnapshot.NewSnapshotter(c.kubeCli, c.dynCli)
 }
 
@@ -394,6 +469,9 @@ func (c *snapshotCreate) CreateSnapshot(ctx context.Context, snapshotter kansnap
 }
 
 func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateFromSourceCheckArgs) error {
+	if c.dynCli == nil {
+		return fmt.Errorf("dynCli not initialized")
+	}
 	if snapshotter == nil || args == nil {
 		return fmt.Errorf("snapshotter or args are nil")
 	}
@@ -430,17 +508,53 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 	return nil
 }
 
+//go:generate mockgen -destination=mocks/mock_cleaner.go -package=mocks . Cleaner
+type Cleaner interface {
+	DeletePVC(ctx context.Context, pvcName string, namespace string) error
+	DeletePod(ctx context.Context, podName string, namespace string) error
+	DeleteSnapshot(ctx context.Context, snapshotName string, namespace string) error
+}
+
+type cleanse struct {
+	kubeCli kubernetes.Interface
+	dynCli  dynamic.Interface
+}
+
+func (c *cleanse) DeletePVC(ctx context.Context, pvcName string, namespace string) error {
+	if c.kubeCli == nil {
+		return fmt.Errorf("kubeCli not initialized")
+	}
+	return c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, pvcName, metav1.DeleteOptions{})
+}
+
+func (c *cleanse) DeletePod(ctx context.Context, podName string, namespace string) error {
+	if c.kubeCli == nil {
+		return fmt.Errorf("kubeCli not initialized")
+	}
+	return c.kubeCli.CoreV1().Pods(namespace).Delete(ctx, podName, metav1.DeleteOptions{})
+}
+
+func (c *cleanse) DeleteSnapshot(ctx context.Context, snapshotName string, namespace string) error {
+	if c.dynCli == nil {
+		return fmt.Errorf("dynCli not initialized")
+	}
+	return c.dynCli.Resource(v1alpha1.VolSnapGVR).Namespace(namespace).Delete(ctx, snapshotName, metav1.DeleteOptions{})
+}
+
 //go:generate mockgen -destination=mocks/mock_api_version_fetcher.go -package=mocks . ApiVersionFetcher
 type ApiVersionFetcher interface {
 	GetCSISnapshotGroupVersion() (*metav1.GroupVersionForDiscovery, error)
 }
 
 type apiVersionFetch struct {
-	cli kubernetes.Interface
+	kubeCli kubernetes.Interface
 }
 
-func (p *apiVersionFetch) getCSISnapshotGroupVersion() (*metav1.GroupVersionForDiscovery, error) {
-	groups, _, err := p.cli.Discovery().ServerGroupsAndResources()
+func (p *apiVersionFetch) GetCSISnapshotGroupVersion() (*metav1.GroupVersionForDiscovery, error) {
+	if p.kubeCli == nil {
+		return nil, fmt.Errorf("kubeCli not initialized")
+	}
+	groups, _, err := p.kubeCli.Discovery().ServerGroupsAndResources()
 	if err != nil {
 		return nil, err
 	}
@@ -450,6 +564,23 @@ func (p *apiVersionFetch) getCSISnapshotGroupVersion() (*metav1.GroupVersionForD
 		}
 	}
 	return nil, fmt.Errorf("Snapshot API group not found")
+}
+
+//go:generate mockgen -destination=mocks/mock_data_validator.go -package=mocks . DataValidator
+type DataValidator interface {
+	FetchPodData(podName string, podNamespace string) (string, error)
+}
+
+type validateData struct {
+	kubeCli kubernetes.Interface
+}
+
+func (p *validateData) FetchPodData(podName string, podNamespace string) (string, error) {
+	if p.kubeCli == nil {
+		return "", fmt.Errorf("kubeCli not initialized")
+	}
+	stdout, _, err := kankube.Exec(p.kubeCli, podNamespace, podName, "", []string{"sh", "-c", "cat /data/out.txt"}, nil)
+	return stdout, err
 }
 
 func getDriverNameFromUVSC(vsc unstructured.Unstructured, version string) string {

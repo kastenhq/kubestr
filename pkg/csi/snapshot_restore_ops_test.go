@@ -4,7 +4,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"testing"
 
 	kansnapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
 	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
@@ -17,16 +16,12 @@ import (
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
 	discoveryfake "k8s.io/client-go/discovery/fake"
+	"k8s.io/client-go/dynamic"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
+	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
 )
-
-func Test(t *testing.T) { TestingT(t) }
-
-type CSITestSuite struct{}
-
-var _ = Suite(&CSITestSuite{})
 
 func (s *CSITestSuite) TestGetDriverNameFromUVSC(c *C) {
 
@@ -85,11 +80,13 @@ func (s *CSITestSuite) TestGetDriverNameFromUVSC(c *C) {
 
 func (s *CSITestSuite) TestGetCSISnapshotGroupVersion(c *C) {
 	for _, tc := range []struct {
+		cli        kubernetes.Interface
 		resources  []*metav1.APIResourceList
 		errChecker Checker
 		gvChecker  Checker
 	}{
 		{
+			cli: fake.NewSimpleClientset(),
 			resources: []*metav1.APIResourceList{
 				{
 					GroupVersion: "/////",
@@ -99,6 +96,7 @@ func (s *CSITestSuite) TestGetCSISnapshotGroupVersion(c *C) {
 			gvChecker:  IsNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			resources: []*metav1.APIResourceList{
 				{
 					GroupVersion: "snapshot.storage.k8s.io/v1alpha1",
@@ -108,6 +106,7 @@ func (s *CSITestSuite) TestGetCSISnapshotGroupVersion(c *C) {
 			gvChecker:  NotNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			resources: []*metav1.APIResourceList{
 				{
 					GroupVersion: "notrbac.authorization.k8s.io/v1",
@@ -116,11 +115,19 @@ func (s *CSITestSuite) TestGetCSISnapshotGroupVersion(c *C) {
 			errChecker: NotNil,
 			gvChecker:  IsNil,
 		},
+		{
+			cli:        nil,
+			resources:  nil,
+			errChecker: NotNil,
+			gvChecker:  IsNil,
+		},
 	} {
-		cli := fake.NewSimpleClientset()
-		cli.Discovery().(*discoveryfake.FakeDiscovery).Resources = tc.resources
-		p := &apiVersionFetch{cli: cli}
-		gv, err := p.getCSISnapshotGroupVersion()
+		cli := tc.cli
+		if cli != nil {
+			cli.Discovery().(*discoveryfake.FakeDiscovery).Resources = tc.resources
+		}
+		p := &apiVersionFetch{kubeCli: cli}
+		gv, err := p.GetCSISnapshotGroupVersion()
 		c.Check(err, tc.errChecker)
 		c.Check(gv, tc.gvChecker)
 	}
@@ -131,7 +138,7 @@ func (s *CSITestSuite) TestValidateNamespace(c *C) {
 	ops := &validateOperations{
 		kubeCli: fake.NewSimpleClientset(),
 	}
-	err := ops.validateNamespace(ctx, "ns")
+	err := ops.ValidateNamespace(ctx, "ns")
 	c.Check(err, NotNil)
 
 	ops = &validateOperations{
@@ -141,8 +148,14 @@ func (s *CSITestSuite) TestValidateNamespace(c *C) {
 			},
 		}),
 	}
-	err = ops.validateNamespace(ctx, "ns")
+	err = ops.ValidateNamespace(ctx, "ns")
 	c.Check(err, IsNil)
+
+	ops = &validateOperations{
+		kubeCli: nil,
+	}
+	err = ops.ValidateNamespace(ctx, "ns")
+	c.Check(err, NotNil)
 }
 
 func (s *CSITestSuite) TestValidateStorageClass(c *C) {
@@ -150,7 +163,7 @@ func (s *CSITestSuite) TestValidateStorageClass(c *C) {
 	ops := &validateOperations{
 		kubeCli: fake.NewSimpleClientset(),
 	}
-	sc, err := ops.validateStorageClass(ctx, "sc")
+	sc, err := ops.ValidateStorageClass(ctx, "sc")
 	c.Check(err, NotNil)
 	c.Check(sc, IsNil)
 
@@ -161,9 +174,16 @@ func (s *CSITestSuite) TestValidateStorageClass(c *C) {
 			},
 		}),
 	}
-	sc, err = ops.validateStorageClass(ctx, "sc")
+	sc, err = ops.ValidateStorageClass(ctx, "sc")
 	c.Check(err, IsNil)
 	c.Check(sc, NotNil)
+
+	ops = &validateOperations{
+		kubeCli: nil,
+	}
+	sc, err = ops.ValidateStorageClass(ctx, "sc")
+	c.Check(err, NotNil)
+	c.Check(sc, IsNil)
 }
 
 func (s *CSITestSuite) TestValidateVolumeSnapshotClass(c *C) {
@@ -171,7 +191,7 @@ func (s *CSITestSuite) TestValidateVolumeSnapshotClass(c *C) {
 	ops := &validateOperations{
 		dynCli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 	}
-	uVSC, err := ops.validateVolumeSnapshotClass(ctx, "vsc", &metav1.GroupVersionForDiscovery{GroupVersion: alphaVersion})
+	uVSC, err := ops.ValidateVolumeSnapshotClass(ctx, "vsc", &metav1.GroupVersionForDiscovery{GroupVersion: alphaVersion})
 	c.Check(err, NotNil)
 	c.Check(uVSC, IsNil)
 
@@ -191,21 +211,30 @@ func (s *CSITestSuite) TestValidateVolumeSnapshotClass(c *C) {
 			},
 		),
 	}
-	uVSC, err = ops.validateVolumeSnapshotClass(ctx, "vsc", &metav1.GroupVersionForDiscovery{Version: v1alpha1.Version})
+	uVSC, err = ops.ValidateVolumeSnapshotClass(ctx, "vsc", &metav1.GroupVersionForDiscovery{Version: v1alpha1.Version})
 	c.Check(err, IsNil)
 	c.Check(uVSC, NotNil)
+
+	ops = &validateOperations{
+		dynCli: nil,
+	}
+	uVSC, err = ops.ValidateVolumeSnapshotClass(ctx, "vsc", &metav1.GroupVersionForDiscovery{Version: v1alpha1.Version})
+	c.Check(err, NotNil)
+	c.Check(uVSC, IsNil)
 }
 
 func (s *CSITestSuite) TestCreatePVC(c *C) {
 	ctx := context.Background()
 	resourceQuantity := resource.MustParse("1Gi")
 	for _, tc := range []struct {
+		cli         kubernetes.Interface
 		args        *types.CreatePVCArgs
 		failCreates bool
 		errChecker  Checker
 		pvcChecker  Checker
 	}{
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePVCArgs{
 				GenerateName: "genName",
 				StorageClass: "sc",
@@ -219,6 +248,7 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 			pvcChecker: NotNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePVCArgs{
 				GenerateName: "genName",
 				StorageClass: "sc",
@@ -231,6 +261,7 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 			pvcChecker: NotNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePVCArgs{
 				GenerateName: "genName",
 				StorageClass: "sc",
@@ -240,6 +271,7 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 			pvcChecker: NotNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePVCArgs{
 				GenerateName: "genName",
 				StorageClass: "sc",
@@ -250,6 +282,7 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 			pvcChecker:  NotNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePVCArgs{
 				GenerateName: "",
 				StorageClass: "sc",
@@ -259,6 +292,7 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 			pvcChecker: IsNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePVCArgs{
 				GenerateName: "something",
 				StorageClass: "",
@@ -268,6 +302,7 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 			pvcChecker: IsNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePVCArgs{
 				GenerateName: "Something",
 				StorageClass: "sc",
@@ -276,10 +311,16 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 			errChecker: NotNil,
 			pvcChecker: IsNil,
 		},
+		{
+			cli:        nil,
+			args:       &types.CreatePVCArgs{},
+			errChecker: NotNil,
+			pvcChecker: IsNil,
+		},
 	} {
-		creator := &applicationCreate{cli: fake.NewSimpleClientset()}
+		creator := &applicationCreate{kubeCli: tc.cli}
 		if tc.failCreates {
-			creator.cli.(*fake.Clientset).Fake.PrependReactor("create", "persistentvolumeclaims", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			creator.kubeCli.(*fake.Clientset).Fake.PrependReactor("create", "persistentvolumeclaims", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 				return true, nil, errors.New("Error creating object")
 			})
 		}
@@ -314,12 +355,14 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 func (s *CSITestSuite) TestCreatePod(c *C) {
 	ctx := context.Background()
 	for _, tc := range []struct {
+		cli         kubernetes.Interface
 		args        *types.CreatePodArgs
 		failCreates bool
 		errChecker  Checker
 		podChecker  Checker
 	}{
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName:   "name",
 				PVCName:        "pvcname",
@@ -332,6 +375,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: NotNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
 				PVCName:      "pvcname",
@@ -342,6 +386,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: NotNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
 				PVCName:      "pvcname",
@@ -353,6 +398,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker:  NotNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "",
 				PVCName:      "pvcname",
@@ -363,6 +409,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: IsNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
 				PVCName:      "",
@@ -373,6 +420,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: IsNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
 				PVCName:      "pvcname",
@@ -383,6 +431,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: IsNil,
 		},
 		{
+			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
 				PVCName:      "pvcname",
@@ -392,10 +441,16 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			errChecker: NotNil,
 			podChecker: IsNil,
 		},
+		{
+			cli:        nil,
+			args:       &types.CreatePodArgs{},
+			errChecker: NotNil,
+			podChecker: IsNil,
+		},
 	} {
-		creator := &applicationCreate{cli: fake.NewSimpleClientset()}
+		creator := &applicationCreate{kubeCli: tc.cli}
 		if tc.failCreates {
-			creator.cli.(*fake.Clientset).Fake.PrependReactor("create", "pods", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			creator.kubeCli.(*fake.Clientset).Fake.PrependReactor("create", "pods", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 				return true, nil, errors.New("Error creating object")
 			})
 		}
@@ -564,11 +619,13 @@ func (s *CSITestSuite) TestCreateSnapshot(c *C) {
 func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 	ctx := context.Background()
 	for _, tc := range []struct {
+		dyncli      dynamic.Interface
 		snapshotter kansnapshot.Snapshotter
 		args        *types.CreateFromSourceCheckArgs
 		errChecker  Checker
 	}{
 		{
+			dyncli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 			snapshotter: &fakeSnapshotter{
 				gsSrc: &kansnapshot.Source{
 					Handle: "handle",
@@ -583,6 +640,7 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 			errChecker: IsNil,
 		},
 		{
+			dyncli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 			snapshotter: &fakeSnapshotter{
 				gsSrc: &kansnapshot.Source{
 					Handle: "handle",
@@ -598,6 +656,7 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 			errChecker: NotNil,
 		},
 		{
+			dyncli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 			snapshotter: &fakeSnapshotter{
 				gsErr: fmt.Errorf("gs error"),
 			},
@@ -609,6 +668,7 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 			errChecker: NotNil,
 		},
 		{
+			dyncli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 			snapshotter: &fakeSnapshotter{
 				cvsErr: fmt.Errorf("cvs error"),
 			},
@@ -620,6 +680,7 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 			errChecker: NotNil,
 		},
 		{
+			dyncli:      fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 			snapshotter: &fakeSnapshotter{},
 			args: &types.CreateFromSourceCheckArgs{
 				VolumeSnapshotClass: "",
@@ -629,6 +690,7 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 			errChecker: NotNil,
 		},
 		{
+			dyncli:      fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 			snapshotter: &fakeSnapshotter{},
 			args: &types.CreateFromSourceCheckArgs{
 				VolumeSnapshotClass: "vsc",
@@ -638,6 +700,7 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 			errChecker: NotNil,
 		},
 		{
+			dyncli:      fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 			snapshotter: &fakeSnapshotter{},
 			args: &types.CreateFromSourceCheckArgs{
 				VolumeSnapshotClass: "vsc",
@@ -647,15 +710,21 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 			errChecker: NotNil,
 		},
 		{
+			dyncli:      fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 			snapshotter: &fakeSnapshotter{},
 			errChecker:  NotNil,
 		},
 		{
+			dyncli:     fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
+			errChecker: NotNil,
+		},
+		{
+			dyncli:     nil,
 			errChecker: NotNil,
 		},
 	} {
 		snapCreator := &snapshotCreate{
-			dynCli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
+			dynCli: tc.dyncli,
 		}
 		err := snapCreator.CreateFromSourceCheck(ctx, tc.snapshotter, tc.args)
 		c.Check(err, tc.errChecker)
@@ -708,4 +777,167 @@ func (f *fakeSnapshotter) CreateContentFromSource(ctx context.Context, source *k
 }
 func (f *fakeSnapshotter) WaitOnReadyToUse(ctx context.Context, snapshotName, namespace string) error {
 	return nil
+}
+
+func (s *CSITestSuite) TestDeletePVC(c *C) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		cli        kubernetes.Interface
+		pvcName    string
+		namespace  string
+		errChecker Checker
+	}{
+		{
+			cli:        fake.NewSimpleClientset(),
+			pvcName:    "pvc",
+			namespace:  "ns",
+			errChecker: NotNil,
+		},
+		{
+			cli: fake.NewSimpleClientset(&v1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pvc",
+					Namespace: "notns",
+				},
+			}),
+			pvcName:    "pvc",
+			namespace:  "ns",
+			errChecker: NotNil,
+		},
+		{
+			cli: fake.NewSimpleClientset(&v1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pvc",
+					Namespace: "ns",
+				},
+			}),
+			pvcName:    "pvc",
+			namespace:  "ns",
+			errChecker: IsNil,
+		},
+		{
+			cli:        nil,
+			pvcName:    "pvc",
+			namespace:  "ns",
+			errChecker: NotNil,
+		},
+	} {
+		cleaner := &cleanse{
+			kubeCli: tc.cli,
+		}
+		err := cleaner.DeletePVC(ctx, tc.pvcName, tc.namespace)
+		c.Check(err, tc.errChecker)
+	}
+}
+
+func (s *CSITestSuite) TestDeletePod(c *C) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		cli        kubernetes.Interface
+		podName    string
+		namespace  string
+		errChecker Checker
+	}{
+		{
+			cli:        fake.NewSimpleClientset(),
+			podName:    "pod",
+			namespace:  "ns",
+			errChecker: NotNil,
+		},
+		{
+			cli: fake.NewSimpleClientset(&v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "notns",
+				},
+			}),
+			podName:    "pod",
+			namespace:  "ns",
+			errChecker: NotNil,
+		},
+		{
+			cli: fake.NewSimpleClientset(&v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+				},
+			}),
+			podName:    "pod",
+			namespace:  "ns",
+			errChecker: IsNil,
+		},
+		{
+			cli:        nil,
+			podName:    "pod",
+			namespace:  "ns",
+			errChecker: NotNil,
+		},
+	} {
+		cleaner := &cleanse{
+			kubeCli: tc.cli,
+		}
+		err := cleaner.DeletePod(ctx, tc.podName, tc.namespace)
+		c.Check(err, tc.errChecker)
+	}
+}
+
+func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
+	ctx := context.Background()
+	for _, tc := range []struct {
+		cli          dynamic.Interface
+		snapshotName string
+		namespace    string
+		errChecker   Checker
+	}{
+		{
+			cli:          fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
+			snapshotName: "snap1",
+			namespace:    "ns",
+			errChecker:   NotNil,
+		},
+		{
+			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
+				&unstructured.Unstructured{
+					Object: map[string]interface{}{
+						"apiVersion": fmt.Sprintf("%s/%s", v1alpha1.GroupName, v1alpha1.Version),
+						"kind":       "VolumeSnapshot",
+						"metadata": map[string]interface{}{
+							"name":      "snap1",
+							"namespace": "notns",
+						},
+					},
+				}),
+			snapshotName: "pod",
+			namespace:    "ns",
+			errChecker:   NotNil,
+		},
+		{
+			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
+				&unstructured.Unstructured{
+					Object: map[string]interface{}{
+						"apiVersion": fmt.Sprintf("%s/%s", v1alpha1.GroupName, v1alpha1.Version),
+						"kind":       "VolumeSnapshot",
+						"metadata": map[string]interface{}{
+							"name":      "snap1",
+							"namespace": "ns",
+						},
+					},
+				}),
+			snapshotName: "snap1",
+			namespace:    "ns",
+			errChecker:   IsNil,
+		},
+		{
+			cli:          nil,
+			snapshotName: "pod",
+			namespace:    "ns",
+			errChecker:   NotNil,
+		},
+	} {
+		cleaner := &cleanse{
+			dynCli: tc.cli,
+		}
+		err := cleaner.DeleteSnapshot(ctx, tc.snapshotName, tc.namespace)
+		c.Check(err, tc.errChecker)
+	}
 }

@@ -187,10 +187,10 @@ func (s *CSITestSuite) TestValidateArgs(c *C) {
 			tc.prepare(&f)
 		}
 		stepper := &snapshotRestoreSteps{
-			validateOps:  f.validateOps,
-			versionFetch: f.versionOps,
+			validateOps:     f.validateOps,
+			versionFetchOps: f.versionOps,
 		}
-		err := stepper.validateArgs(ctx, tc.args)
+		err := stepper.ValidateArgs(ctx, tc.args)
 		c.Check(err, tc.errChecker)
 	}
 }
@@ -335,7 +335,7 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 		stepper := &snapshotRestoreSteps{
 			createAppOps: f.createAppOps,
 		}
-		pod, pvc, err := stepper.createApplication(ctx, tc.args, tc.genString)
+		pod, pvc, err := stepper.CreateApplication(ctx, tc.args, tc.genString)
 		c.Check(err, tc.errChecker)
 		c.Check(pod, tc.podChecker)
 		c.Check(pvc, tc.pvcChecker)
@@ -385,6 +385,36 @@ func (s *CSITestSuite) TestSnapshotApplication(c *C) {
 						SnapshotName:        "createdName",
 						Namespace:           "ns",
 					}).Return(nil),
+				)
+			},
+			errChecker:  IsNil,
+			snapChecker: NotNil,
+		},
+		{
+			args: &types.CSISnapshotRestoreArgs{
+				Namespace:           "ns",
+				VolumeSnapshotClass: "vsc",
+				SkipCFSCheck:        true,
+			},
+			pvc: &v1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "pvc1",
+				},
+			},
+			snapshotName: "snap1",
+			prepare: func(f *fields) {
+				gomock.InOrder(
+					f.snapshotOps.EXPECT().NewSnapshotter().Return(snapshotter, nil),
+					f.snapshotOps.EXPECT().CreateSnapshot(gomock.Any(), snapshotter, &types.CreateSnapshotArgs{
+						Namespace:           "ns",
+						PVCName:             "pvc1",
+						VolumeSnapshotClass: "vsc",
+						SnapshotName:        "snap1",
+					}).Return(&v1alpha1.VolumeSnapshot{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "createdName",
+						},
+					}, nil),
 				)
 			},
 			errChecker:  IsNil,
@@ -480,7 +510,7 @@ func (s *CSITestSuite) TestSnapshotApplication(c *C) {
 		stepper := &snapshotRestoreSteps{
 			snapshotCreateOps: f.snapshotOps,
 		}
-		snapshot, err := stepper.snapshotApplication(ctx, tc.args, tc.pvc, tc.snapshotName)
+		snapshot, err := stepper.SnapshotApplication(ctx, tc.args, tc.pvc, tc.snapshotName)
 		c.Check(err, tc.errChecker)
 		c.Check(snapshot, tc.snapChecker)
 	}
@@ -668,9 +698,153 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 		stepper := &snapshotRestoreSteps{
 			createAppOps: f.createAppOps,
 		}
-		pod, pvc, err := stepper.restoreApplication(ctx, tc.args, tc.snapshot)
+		pod, pvc, err := stepper.RestoreApplication(ctx, tc.args, tc.snapshot)
 		c.Check(err, tc.errChecker)
 		c.Check(pod, tc.podChecker)
 		c.Check(pvc, tc.pvcChecker)
+	}
+}
+
+func (s *CSITestSuite) TestCleanup(c *C) {
+	ctx := context.Background()
+	type fields struct {
+		cleanerOps *mocks.MockCleaner
+	}
+	for _, tc := range []struct {
+		results *types.CSISnapshotRestoreResults
+		prepare func(f *fields)
+	}{
+		{
+			results: nil,
+		},
+		{
+			results: &types.CSISnapshotRestoreResults{
+				OriginalPVC: &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pvc1",
+						Namespace: "ns",
+					},
+				},
+				OriginalPod: &v1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod1",
+						Namespace: "ns",
+					},
+				},
+				ClonedPVC: &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pvc2",
+						Namespace: "ns",
+					},
+				},
+				ClonedPod: &v1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod2",
+						Namespace: "ns",
+					},
+				},
+				Snapshot: &v1alpha1.VolumeSnapshot{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "snapshot",
+						Namespace: "ns",
+					},
+				},
+			},
+			prepare: func(f *fields) {
+				gomock.InOrder(
+					f.cleanerOps.EXPECT().DeletePVC(ctx, "pvc1", "ns").Return(nil),
+					f.cleanerOps.EXPECT().DeletePod(ctx, "pod1", "ns").Return(nil),
+					f.cleanerOps.EXPECT().DeletePVC(ctx, "pvc2", "ns").Return(nil),
+					f.cleanerOps.EXPECT().DeletePod(ctx, "pod2", "ns").Return(nil),
+					f.cleanerOps.EXPECT().DeleteSnapshot(ctx, "snapshot", "ns").Return(nil),
+				)
+			},
+		},
+	} {
+		ctrl := gomock.NewController(c)
+		defer ctrl.Finish()
+		f := fields{
+			cleanerOps: mocks.NewMockCleaner(ctrl),
+		}
+		if tc.prepare != nil {
+			tc.prepare(&f)
+		}
+		stepper := &snapshotRestoreSteps{
+			cleanerOps: f.cleanerOps,
+		}
+		stepper.Cleanup(ctx, tc.results)
+	}
+}
+
+func (s *CSITestSuite) TestValidateData(c *C) {
+	ctx := context.Background()
+	type fields struct {
+		validatorOps *mocks.MockDataValidator
+	}
+	for _, tc := range []struct {
+		prepare    func(f *fields)
+		pod        *v1.Pod
+		data       string
+		errChecker Checker
+	}{
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+				},
+			},
+			data: "somedata",
+			prepare: func(f *fields) {
+				gomock.InOrder(
+					f.validatorOps.EXPECT().FetchPodData("pod", "ns").Return("somedata", nil),
+				)
+			},
+			errChecker: IsNil,
+		},
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+				},
+			},
+			data: "somedata",
+			prepare: func(f *fields) {
+				gomock.InOrder(
+					f.validatorOps.EXPECT().FetchPodData("pod", "ns").Return("someotherdata", nil),
+				)
+			},
+			errChecker: NotNil,
+		},
+		{
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+				},
+			},
+			data: "somedata",
+			prepare: func(f *fields) {
+				gomock.InOrder(
+					f.validatorOps.EXPECT().FetchPodData("pod", "ns").Return("", fmt.Errorf("error")),
+				)
+			},
+			errChecker: NotNil,
+		},
+	} {
+		ctrl := gomock.NewController(c)
+		defer ctrl.Finish()
+		f := fields{
+			validatorOps: mocks.NewMockDataValidator(ctrl),
+		}
+		if tc.prepare != nil {
+			tc.prepare(&f)
+		}
+		stepper := &snapshotRestoreSteps{
+			dataValidatorOps: f.validatorOps,
+		}
+		err := stepper.ValidateData(ctx, tc.pod, tc.data)
+		c.Check(err, tc.errChecker)
 	}
 }

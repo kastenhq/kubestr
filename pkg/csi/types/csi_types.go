@@ -14,6 +14,8 @@ type CSISnapshotRestoreArgs struct {
 	Namespace           string
 	RunAsUser           int64
 	ContainerImage      string
+	Cleanup             bool
+	SkipCFSCheck        bool
 }
 
 func (a *CSISnapshotRestoreArgs) Validate() error {
