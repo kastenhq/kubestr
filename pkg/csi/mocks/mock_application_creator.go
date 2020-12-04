@@ -7,6 +7,7 @@ package mocks
 import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
+	types "github.com/kastenhq/kubestr/pkg/csi/types"
 	v1 "k8s.io/api/core/v1"
 	reflect "reflect"
 )
@@ -35,7 +36,7 @@ func (m *MockApplicationCreator) EXPECT() *MockApplicationCreatorMockRecorder {
 }
 
 // CreatePVC mocks base method
-func (m *MockApplicationCreator) CreatePVC(arg0 context.Context, arg1 interface{}) (*v1.PersistentVolumeClaim, error) {
+func (m *MockApplicationCreator) CreatePVC(arg0 context.Context, arg1 *types.CreatePVCArgs) (*v1.PersistentVolumeClaim, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreatePVC", arg0, arg1)
 	ret0, _ := ret[0].(*v1.PersistentVolumeClaim)
@@ -50,7 +51,7 @@ func (mr *MockApplicationCreatorMockRecorder) CreatePVC(arg0, arg1 interface{}) 
 }
 
 // CreatePod mocks base method
-func (m *MockApplicationCreator) CreatePod(arg0 context.Context, arg1 interface{}) (*v1.Pod, error) {
+func (m *MockApplicationCreator) CreatePod(arg0 context.Context, arg1 *types.CreatePodArgs) (*v1.Pod, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreatePod", arg0, arg1)
 	ret0, _ := ret[0].(*v1.Pod)
