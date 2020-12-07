@@ -152,7 +152,7 @@ func (v *Provisioner) Print() {
 	if len(v.StorageClasses) > 0 {
 		fmt.Println()
 		fmt.Println("    To perform a FIO test, run-")
-		fmt.Println("      ./kubestr fio -c <storage class>")
+		fmt.Println("      ./kubestr fio -s <storage class>")
 		fmt.Println("    Validate the results against our benchmarks at <website>. For more options try '-h'.")
 		switch {
 		case len(v.VolumeSnapshotClasses) == 0 && v.CSIDriver != nil && v.CSIDriver.SupportsSnapshots():
@@ -160,7 +160,8 @@ func (v *Provisioner) Print() {
 			fmt.Println("    This provisioner supports snapshots, however no Volume Snaphsot Classes were found.")
 		case len(v.VolumeSnapshotClasses) > 0:
 			fmt.Println()
-			fmt.Println("    (Coming soon) Test snapshot/restore functionality.")
+			fmt.Println("    To test CSI snapshot/restore functionality, run-")
+			fmt.Println("      ./kubestr csicheck -s <storage class> -v <volume snapshot class>")
 		}
 	}
 }

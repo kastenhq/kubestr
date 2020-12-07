@@ -524,7 +524,7 @@ func (s *FIOTestSuite) TestDeletePVC(c *C) {
 
 func (s *FIOTestSuite) TestCreatPod(c *C) {
 	ctx := context.Background()
-	for i, tc := range []struct {
+	for _, tc := range []struct {
 		pvcName       string
 		configMapName string
 		testFileName  string
@@ -610,7 +610,6 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 			errChecker:    NotNil,
 		},
 	} {
-		fmt.Println(i)
 		stepper := &fioStepper{
 			cli:      fake.NewSimpleClientset(),
 			podReady: &fakePodReadyChecker{prcErr: tc.podReadyErr},
