@@ -145,7 +145,7 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 	return &RunFIOResult{
 		Size:         args.Size,
 		StorageClass: sc,
-		FioConfig:    "",
+		FioConfig:    configMap.Data[testFileName],
 		Result:       fioOutput,
 	}, nil
 }
@@ -192,7 +192,7 @@ func (s *fioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.C
 		configMap.Data[filepath.Base(args.FIOJobFilepath)] = string(data)
 	case args.FIOJobName != "":
 		if _, ok := fioJobs[args.FIOJobName]; !ok {
-			return nil, fmt.Errorf("FIO job not found")
+			return nil, fmt.Errorf("FIO job not found- (%s)", args.FIOJobName)
 		}
 		configMap.Data[args.FIOJobName] = fioJobs[args.FIOJobName]
 	default:
