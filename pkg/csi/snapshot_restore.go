@@ -38,7 +38,7 @@ const (
 	createdByLabel            = "created-by-kubestr-csi"
 	DefaultPodImage           = "ghcr.io/kastenhq/kubestr:latest"
 	clonePrefix               = "kubestr-clone-"
-	snapshotPrefix            = "kuberstr-snapshot-"
+	snapshotPrefix            = "kubestr-snapshot-"
 )
 
 type SnapshotRestoreRunner struct {
@@ -89,7 +89,9 @@ func (r *SnapshotRestoreRunner) RunSnapshotRestoreHelper(ctx context.Context, ar
 	results.OriginalPod, results.OriginalPVC, err = r.srSteps.CreateApplication(ctx, args, data)
 
 	if err == nil {
-		fmt.Printf("  -> Created pod (%s) and pvc (%s)\n", results.OriginalPod.Name, results.OriginalPVC.Name)
+		if results.OriginalPod != nil && results.OriginalPVC != nil {
+			fmt.Printf("  -> Created pod (%s) and pvc (%s)\n", results.OriginalPod.Name, results.OriginalPVC.Name)
+		}
 		err = r.srSteps.ValidateData(ctx, results.OriginalPod, data)
 	}
 
@@ -100,13 +102,17 @@ func (r *SnapshotRestoreRunner) RunSnapshotRestoreHelper(ctx context.Context, ar
 	}
 
 	if err == nil {
-		fmt.Printf("  -> Created snapshot (%s)\n", results.Snapshot.Name)
+		if results.Snapshot != nil {
+			fmt.Printf("  -> Created snapshot (%s)\n", results.Snapshot.Name)
+		}
 		fmt.Println("Restoring application")
 		results.ClonedPod, results.ClonedPVC, err = r.srSteps.RestoreApplication(ctx, args, results.Snapshot)
 	}
 
 	if err == nil {
-		fmt.Printf("  -> Restored pod (%s) and pvc (%s)\n", results.ClonedPod.Name, results.ClonedPVC.Name)
+		if results.ClonedPod != nil && results.ClonedPVC != nil {
+			fmt.Printf("  -> Restored pod (%s) and pvc (%s)\n", results.ClonedPod.Name, results.ClonedPVC.Name)
+		}
 		err = r.srSteps.ValidateData(ctx, results.ClonedPod, data)
 	}
 
