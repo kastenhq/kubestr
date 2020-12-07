@@ -38,11 +38,11 @@ var (
 
 // NewKubestr initializes a new kubestr object to run preflight tests
 func NewKubestr() (*Kubestr, error) {
-	cli, err := getKubeCli()
+	cli, err := LoadKubeCli()
 	if err != nil {
 		return nil, err
 	}
-	dynCli, err := getDynCli()
+	dynCli, err := LoadDynCli()
 	if err != nil {
 		return nil, err
 	}
@@ -59,8 +59,8 @@ func NewKubestr() (*Kubestr, error) {
 	}, nil
 }
 
-// getDynCli loads the config and returns a dynamic CLI
-func getDynCli() (dynamic.Interface, error) {
+// LoadDynCli loads the config and returns a dynamic CLI
+func LoadDynCli() (dynamic.Interface, error) {
 	cfg, err := kube.LoadConfig()
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to load config for Dynamic client")
@@ -72,9 +72,9 @@ func getDynCli() (dynamic.Interface, error) {
 	return clientset, nil
 }
 
-// getKubeCli load the config and returns a kubernetes client
+// LoadKubeCli load the config and returns a kubernetes client
 // NewClient returns a k8 client configured by the kanister environment.
-func getKubeCli() (kubernetes.Interface, error) {
+func LoadKubeCli() (kubernetes.Interface, error) {
 	config, err := kube.LoadConfig()
 	if err != nil {
 		return nil, err
