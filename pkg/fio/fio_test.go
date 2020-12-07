@@ -610,7 +610,6 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 			errChecker:    NotNil,
 		},
 	} {
-		fmt.Println(i)
 		stepper := &fioStepper{
 			cli:      fake.NewSimpleClientset(),
 			podReady: &fakePodReadyChecker{prcErr: tc.podReadyErr},
