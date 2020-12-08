@@ -1,10 +1,9 @@
 # Kubestr
 
-Kubestr is a tool that qualifies the storage options present in a cluster.  
-In upcoming releases we plan to suport running an FIO test on the storage as well as testing the snapshotting capabilities of a storage provisioner.
+Kubestr is a collection of tools discover and validate the storage options present in a kubernetes cluster.  
 
 To run the tool -  
-`curl https://kastenhq.github.io/kubestr/scripts/run_kubestr.sh | bash`
+Download the latest release for [mac](https://github.com/kastenhq/kubestr/releases/download/0.3.2/kubestr-0.3.2-darwin-amd64.tar.gz), [windows](https://github.com/kastenhq/kubestr/releases/download/0.3.2/kubestr-0.3.2-windows-amd64.zip) or [linux](https://github.com/kastenhq/kubestr/releases/download/0.3.2/kubestr-0.3.2-linux-amd64.tar.gz and run `./kubestr`
 
 ## Developers
 
