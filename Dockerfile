@@ -23,7 +23,4 @@ RUN apk --no-cache add fio
 
 COPY --from=builder /dist/kubestr /
 
-COPY ./pkg/fio/fio.sh .
-RUN chmod +x ./fio.sh
-
 ENTRYPOINT ["/kubestr"]
