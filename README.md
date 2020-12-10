@@ -1,6 +1,8 @@
 # Kubestr
 
-## Discover your kubernetes storage options.
+Discover your kubernetes storage options.
+
+## What is it?
 
 Kubestr is a collection of tools to discover, validate and evaluate your kubernetes storage options.
 
