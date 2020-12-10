@@ -153,7 +153,6 @@ func (v *Provisioner) Print() {
 		fmt.Println()
 		fmt.Println("    To perform a FIO test, run-")
 		fmt.Println("      ./kubestr fio -s <storage class>")
-		fmt.Println("    Validate the results against our benchmarks at <website>. For more options try '-h'.")
 		switch {
 		case len(v.VolumeSnapshotClasses) == 0 && v.CSIDriver != nil && v.CSIDriver.SupportsSnapshots():
 			fmt.Println()
