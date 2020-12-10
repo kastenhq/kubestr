@@ -1,6 +1,6 @@
 # Kubestr
 
-Discover your kubernetes storage options.
+Explore your kubernetes storage options
 
 ## What is it?
 
