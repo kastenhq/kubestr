@@ -16,7 +16,7 @@ Kubestr can assist in the following ways-
 ## Using Kubestr
 ### To install the tool -  
 - Ensure that the kubernetes context is set and the cluster is accessible through your terminal. (Does [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) work?)
-- Download the latest release for [mac](https://github.com/kastenhq/kubestr/releases/download/0.3.2/kubestr-0.3.2-darwin-amd64.tar.gz), [windows](https://github.com/kastenhq/kubestr/releases/download/0.3.2/kubestr-0.3.2-windows-amd64.zip) or [linux](https://github.com/kastenhq/kubestr/releases/download/0.3.2/kubestr-0.3.2-linux-amd64.tar.gz). 
+- Download the latest release [here](https://github.com/kastenhq/kubestr/releases/latest). 
 - Unpack the tool and make it an executable `chmod +x kubestr`.
 
 ### To discover available storage options -
