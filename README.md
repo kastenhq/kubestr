@@ -24,6 +24,7 @@ Kubestr can assist in the following ways-
 
 ### To run an FIO test - 
 - Run `./kubestr fio -s <storage class>`
+- Additional options like `--size` and `--fiofile` can be specified.
 
 ### To check a CSI drivers snapshot and restore capabilities - 
 - Run `./kubestr csicheck -s <storage class> -v <volume snapshot class>`
