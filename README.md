@@ -11,7 +11,7 @@ Kubestr can assist in the following ways-
 - Validate if the storage options are configured correctly.
 - Evaluate the storage using common benchmarking tools like FIO.
 
-<!-- <script id="asciicast-7iJTbWKwdhPHNWYV00LIgx7gn" src="https://asciinema.org/a/7iJTbWKwdhPHNWYV00LIgx7gn.js" async></script> -->
+<script id="asciicast-7iJTbWKwdhPHNWYV00LIgx7gn" src="https://asciinema.org/a/7iJTbWKwdhPHNWYV00LIgx7gn.js" async></script>
 
 ## Using Kubestr
 ### To install the tool -  
