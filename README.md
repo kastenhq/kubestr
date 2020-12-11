@@ -13,6 +13,8 @@ Kubestr can assist in the following ways-
 
 [![asciicast](https://asciinema.org/a/7iJTbWKwdhPHNWYV00LIgx7gn.svg)](https://asciinema.org/a/7iJTbWKwdhPHNWYV00LIgx7gn?autoplay=1)
 
+<script id="asciicast-7iJTbWKwdhPHNWYV00LIgx7gn" src="https://asciinema.org/a/7iJTbWKwdhPHNWYV00LIgx7gn.js" async></script>
+
 ## Using Kubestr
 ### To install the tool -  
 - Ensure that the kubernetes context is set and the cluster is accessible through your terminal. (Does [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) work?)
