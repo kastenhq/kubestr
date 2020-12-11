@@ -13,7 +13,7 @@ Kubestr can assist in the following ways-
 - Validate if the storage options are configured correctly.
 - Evaluate the storage using common benchmarking tools like FIO.
 
-<script id="asciicast-7iJTbWKwdhPHNWYV00LIgx7gn" src="https://asciinema.org/a/7iJTbWKwdhPHNWYV00LIgx7gn.js" async></script>
+[![asciicast](https://asciinema.org/a/14.png)](https://asciinema.org/a/14?autoplay=1)
 
 ## Using Kubestr
 ### To install the tool -  
