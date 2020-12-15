@@ -42,6 +42,7 @@ const (
 	VolumeMountPath = "/dataset"
 	// CreatedByFIOLabel is the key that desrcibes the label used to mark configmaps
 	CreatedByFIOLabel = "createdbyfio"
+	DefaultPodImage   = "ghcr.io/kastenhq/kubestr:latest"
 )
 
 // FIO is an interface that represents FIO related commands
@@ -61,6 +62,7 @@ type RunFIOArgs struct {
 	Namespace      string
 	FIOJobFilepath string
 	FIOJobName     string
+	Image          string
 }
 
 func (a *RunFIOArgs) Validate() error {
@@ -128,7 +130,7 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 	}()
 	fmt.Println("PVC created", pvc.Name)
 
-	pod, err := f.fioSteps.createPod(ctx, pvc.Name, configMap.Name, testFileName, args.Namespace)
+	pod, err := f.fioSteps.createPod(ctx, pvc.Name, configMap.Name, testFileName, args.Namespace, args.Image)
 	defer func() {
 		_ = f.fioSteps.deletePod(context.TODO(), pod.Name, args.Namespace)
 	}()
@@ -156,7 +158,7 @@ type fioSteps interface {
 	loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.ConfigMap, error)
 	createPVC(ctx context.Context, storageclass, size, namespace string) (*v1.PersistentVolumeClaim, error)
 	deletePVC(ctx context.Context, pvcName, namespace string) error
-	createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string) (*v1.Pod, error)
+	createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string) (*v1.Pod, error)
 	deletePod(ctx context.Context, podName, namespace string) error
 	runFIOCommand(ctx context.Context, podName, containerName, testFileName, namespace string) (string, error)
 	deleteConfigMap(ctx context.Context, configMap *v1.ConfigMap, namespace string) error
@@ -230,10 +232,15 @@ func (s *fioStepper) deletePVC(ctx context.Context, pvcName, namespace string) e
 	return s.cli.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, pvcName, metav1.DeleteOptions{})
 }
 
-func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string) (*v1.Pod, error) {
+func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string) (*v1.Pod, error) {
 	if pvcName == "" || configMapName == "" || testFileName == "" {
 		return nil, fmt.Errorf("Create pod missing required arguments.")
 	}
+
+	if image == "" {
+		image = DefaultPodImage
+	}
+
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: PodGenerateName,
@@ -248,7 +255,7 @@ func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, test
 					{Name: "persistent-storage", MountPath: VolumeMountPath},
 					{Name: "config-map", MountPath: ConfigMapMountPath},
 				},
-				Image: "ghcr.io/kastenhq/kubestr:latest",
+				Image: image,
 			}},
 			Volumes: []v1.Volume{
 				{
