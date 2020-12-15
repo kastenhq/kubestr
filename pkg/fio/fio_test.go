@@ -320,7 +320,7 @@ func (f *fakeFioStepper) deletePVC(ctx context.Context, pvcName, namespace strin
 	f.steps = append(f.steps, "DPVC")
 	return f.dPVCErr
 }
-func (f *fakeFioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string) (*v1.Pod, error) {
+func (f *fakeFioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string) (*v1.Pod, error) {
 	f.steps = append(f.steps, "CPOD")
 	f.cPodExpCM = configMapName
 	f.cPodExpFN = testFileName
@@ -528,6 +528,7 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 		pvcName       string
 		configMapName string
 		testFileName  string
+		image         string
 		reactor       []k8stesting.Reactor
 		podReadyErr   error
 		errChecker    Checker
@@ -595,6 +596,7 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 			pvcName:       "pvc",
 			configMapName: "cm",
 			testFileName:  "",
+			image:         "someotherimage",
 			errChecker:    NotNil,
 		},
 		{
@@ -617,7 +619,7 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 		if tc.reactor != nil {
 			stepper.cli.(*fake.Clientset).Fake.ReactionChain = tc.reactor
 		}
-		pod, err := stepper.createPod(ctx, tc.pvcName, tc.configMapName, tc.testFileName, DefaultNS)
+		pod, err := stepper.createPod(ctx, tc.pvcName, tc.configMapName, tc.testFileName, DefaultNS, tc.image)
 		c.Check(err, tc.errChecker)
 		if err == nil {
 			c.Assert(pod.GenerateName, Equals, PodGenerateName)
@@ -638,6 +640,11 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 				{Name: "persistent-storage", MountPath: VolumeMountPath},
 				{Name: "config-map", MountPath: ConfigMapMountPath},
 			})
+			if tc.image == "" {
+				c.Assert(pod.Spec.Containers[0].Image, Equals, DefaultPodImage)
+			} else {
+				c.Assert(pod.Spec.Containers[0].Image, Equals, tc.image)
+			}
 		}
 	}
 }

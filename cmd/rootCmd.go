@@ -42,8 +42,9 @@ var (
 		},
 	}
 
-	storageClass string
-	namespace    string
+	storageClass   string
+	namespace      string
+	containerImage string
 
 	fioCheckerSize     string
 	fioCheckerFilePath string
@@ -55,13 +56,12 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			Fio(ctx, output, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath)
+			Fio(ctx, output, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath, containerImage)
 		},
 	}
 
 	csiCheckVolumeSnapshotClass string
 	csiCheckRunAsUser           int64
-	csiCheckContainerImage      string
 	csiCheckCleanup             bool
 	csiCheckSkipCFSCheck        bool
 	csiCheckCmd                 = &cobra.Command{
@@ -71,7 +71,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			CSICheck(ctx, output, namespace, storageClass, csiCheckVolumeSnapshotClass, csiCheckRunAsUser, csiCheckContainerImage, csiCheckCleanup, csiCheckSkipCFSCheck)
+			CSICheck(ctx, output, namespace, storageClass, csiCheckVolumeSnapshotClass, csiCheckRunAsUser, containerImage, csiCheckCleanup, csiCheckSkipCFSCheck)
 		},
 	}
 )
@@ -86,6 +86,7 @@ func init() {
 	fioCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace used to run FIO.")
 	fioCmd.Flags().StringVarP(&fioCheckerFilePath, "fiofile", "f", "", "The path to a an fio config file.")
 	fioCmd.Flags().StringVarP(&fioCheckerTestName, "testname", "t", "", "The Name of a predefined kubestr fio test. Options(default-fio)")
+	fioCmd.Flags().StringVarP(&containerImage, "image", "i", "", "The container image used to create a pod.")
 
 	rootCmd.AddCommand(csiCheckCmd)
 	csiCheckCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a Storageclass. (Required)")
@@ -93,7 +94,7 @@ func init() {
 	csiCheckCmd.Flags().StringVarP(&csiCheckVolumeSnapshotClass, "volumesnapshotclass", "v", "", "The name of a VolumeSnapshotClass. (Required)")
 	_ = csiCheckCmd.MarkFlagRequired("volumesnapshotclass")
 	csiCheckCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace used to run the check.")
-	csiCheckCmd.Flags().StringVarP(&csiCheckContainerImage, "image", "i", "", "The container image used to create a pod.")
+	csiCheckCmd.Flags().StringVarP(&containerImage, "image", "i", "", "The container image used to create a pod.")
 	csiCheckCmd.Flags().BoolVarP(&csiCheckCleanup, "cleanup", "c", true, "Clean up the objects created by tool")
 	csiCheckCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the CSI check using pods as a user (int)")
 	csiCheckCmd.Flags().BoolVarP(&csiCheckSkipCFSCheck, "skipCFScheck", "k", false, "Use this flag to skip validating the ability to clone a snapshot.")
@@ -145,7 +146,7 @@ func Baseline(ctx context.Context, output string) {
 }
 
 // Fio executes the FIO test.
-func Fio(ctx context.Context, output, storageclass, size, namespace, jobName, fioFilePath string) {
+func Fio(ctx context.Context, output, storageclass, size, namespace, jobName, fioFilePath string, containerImage string) {
 	cli, err := kubestr.LoadKubeCli()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -162,6 +163,7 @@ func Fio(ctx context.Context, output, storageclass, size, namespace, jobName, fi
 		Namespace:      namespace,
 		FIOJobName:     jobName,
 		FIOJobFilepath: fioFilePath,
+		Image:          containerImage,
 	}); err != nil {
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err.Error(), fioResult)
 	} else {
