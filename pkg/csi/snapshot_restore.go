@@ -499,13 +499,13 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 		return err
 	}
 	targetSnapClassName := clonePrefix + args.VolumeSnapshotClass
+	defer func() {
+		_ = c.dynCli.Resource(v1alpha1.VolSnapClassGVR).Delete(ctx, targetSnapClassName, metav1.DeleteOptions{})
+	}()
 	err := snapshotter.CloneVolumeSnapshotClass(args.VolumeSnapshotClass, targetSnapClassName, kansnapshot.DeletionPolicyRetain, nil)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to create a VolumeSnapshotClass to use to restore the snapshot")
 	}
-	defer func() {
-		_ = c.dynCli.Resource(v1alpha1.VolSnapClassGVR).Delete(ctx, targetSnapClassName, metav1.DeleteOptions{})
-	}()
 
 	snapSrc, err := snapshotter.GetSource(ctx, args.SnapshotName, args.Namespace)
 	if err != nil {
