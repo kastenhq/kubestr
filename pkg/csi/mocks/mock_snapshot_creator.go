@@ -10,6 +10,7 @@ import (
 	snapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
 	v1alpha1 "github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
 	types "github.com/kastenhq/kubestr/pkg/csi/types"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	reflect "reflect"
 )
 
@@ -37,17 +38,17 @@ func (m *MockSnapshotCreator) EXPECT() *MockSnapshotCreatorMockRecorder {
 }
 
 // CreateFromSourceCheck mocks base method
-func (m *MockSnapshotCreator) CreateFromSourceCheck(arg0 context.Context, arg1 snapshot.Snapshotter, arg2 *types.CreateFromSourceCheckArgs) error {
+func (m *MockSnapshotCreator) CreateFromSourceCheck(arg0 context.Context, arg1 snapshot.Snapshotter, arg2 *types.CreateFromSourceCheckArgs, arg3 *v1.GroupVersionForDiscovery) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateFromSourceCheck", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "CreateFromSourceCheck", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // CreateFromSourceCheck indicates an expected call of CreateFromSourceCheck
-func (mr *MockSnapshotCreatorMockRecorder) CreateFromSourceCheck(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockSnapshotCreatorMockRecorder) CreateFromSourceCheck(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateFromSourceCheck", reflect.TypeOf((*MockSnapshotCreator)(nil).CreateFromSourceCheck), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateFromSourceCheck", reflect.TypeOf((*MockSnapshotCreator)(nil).CreateFromSourceCheck), arg0, arg1, arg2, arg3)
 }
 
 // CreateSnapshot mocks base method

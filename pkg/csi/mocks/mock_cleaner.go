@@ -7,6 +7,7 @@ package mocks
 import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	reflect "reflect"
 )
 
@@ -62,15 +63,15 @@ func (mr *MockCleanerMockRecorder) DeletePod(arg0, arg1, arg2 interface{}) *gomo
 }
 
 // DeleteSnapshot mocks base method
-func (m *MockCleaner) DeleteSnapshot(arg0 context.Context, arg1, arg2 string) error {
+func (m *MockCleaner) DeleteSnapshot(arg0 context.Context, arg1, arg2 string, arg3 *v1.GroupVersionForDiscovery) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteSnapshot", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "DeleteSnapshot", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
 // DeleteSnapshot indicates an expected call of DeleteSnapshot
-func (mr *MockCleanerMockRecorder) DeleteSnapshot(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockCleanerMockRecorder) DeleteSnapshot(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSnapshot", reflect.TypeOf((*MockCleaner)(nil).DeleteSnapshot), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSnapshot", reflect.TypeOf((*MockCleaner)(nil).DeleteSnapshot), arg0, arg1, arg2, arg3)
 }

@@ -345,6 +345,10 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 func (s *CSITestSuite) TestSnapshotApplication(c *C) {
 	ctx := context.Background()
 	snapshotter := &fakeSnapshotter{name: "snapshotter"}
+	groupversion := &metav1.GroupVersionForDiscovery{
+		GroupVersion: "gv",
+		Version:      "v",
+	}
 	type fields struct {
 		snapshotOps *mocks.MockSnapshotCreator
 	}
@@ -384,7 +388,7 @@ func (s *CSITestSuite) TestSnapshotApplication(c *C) {
 						VolumeSnapshotClass: "vsc",
 						SnapshotName:        "createdName",
 						Namespace:           "ns",
-					}).Return(nil),
+					}, groupversion).Return(nil),
 				)
 			},
 			errChecker:  IsNil,
@@ -448,7 +452,7 @@ func (s *CSITestSuite) TestSnapshotApplication(c *C) {
 						VolumeSnapshotClass: "vsc",
 						SnapshotName:        "createdName",
 						Namespace:           "ns",
-					}).Return(fmt.Errorf("cfs error")),
+					}, groupversion).Return(fmt.Errorf("cfs error")),
 				)
 			},
 			errChecker:  NotNil,
@@ -508,7 +512,8 @@ func (s *CSITestSuite) TestSnapshotApplication(c *C) {
 			tc.prepare(&f)
 		}
 		stepper := &snapshotRestoreSteps{
-			snapshotCreateOps: f.snapshotOps,
+			snapshotCreateOps:    f.snapshotOps,
+			SnapshotGroupVersion: groupversion,
 		}
 		snapshot, err := stepper.SnapshotApplication(ctx, tc.args, tc.pvc, tc.snapshotName)
 		c.Check(err, tc.errChecker)
@@ -707,6 +712,10 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 
 func (s *CSITestSuite) TestCleanup(c *C) {
 	ctx := context.Background()
+	groupversion := &metav1.GroupVersionForDiscovery{
+		GroupVersion: "gv",
+		Version:      "v",
+	}
 	type fields struct {
 		cleanerOps *mocks.MockCleaner
 	}
@@ -756,7 +765,50 @@ func (s *CSITestSuite) TestCleanup(c *C) {
 					f.cleanerOps.EXPECT().DeletePod(ctx, "pod1", "ns").Return(nil),
 					f.cleanerOps.EXPECT().DeletePVC(ctx, "pvc2", "ns").Return(nil),
 					f.cleanerOps.EXPECT().DeletePod(ctx, "pod2", "ns").Return(nil),
-					f.cleanerOps.EXPECT().DeleteSnapshot(ctx, "snapshot", "ns").Return(nil),
+					f.cleanerOps.EXPECT().DeleteSnapshot(ctx, "snapshot", "ns", groupversion).Return(nil),
+				)
+			},
+		},
+		{
+			results: &types.CSISnapshotRestoreResults{
+				OriginalPVC: &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pvc1",
+						Namespace: "ns",
+					},
+				},
+				OriginalPod: &v1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod1",
+						Namespace: "ns",
+					},
+				},
+				ClonedPVC: &v1.PersistentVolumeClaim{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pvc2",
+						Namespace: "ns",
+					},
+				},
+				ClonedPod: &v1.Pod{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "pod2",
+						Namespace: "ns",
+					},
+				},
+				Snapshot: &v1alpha1.VolumeSnapshot{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "snapshot",
+						Namespace: "ns",
+					},
+				},
+			},
+			prepare: func(f *fields) {
+				gomock.InOrder(
+					f.cleanerOps.EXPECT().DeletePVC(ctx, "pvc1", "ns").Return(fmt.Errorf("err")),
+					f.cleanerOps.EXPECT().DeletePod(ctx, "pod1", "ns").Return(fmt.Errorf("err")),
+					f.cleanerOps.EXPECT().DeletePVC(ctx, "pvc2", "ns").Return(fmt.Errorf("err")),
+					f.cleanerOps.EXPECT().DeletePod(ctx, "pod2", "ns").Return(fmt.Errorf("err")),
+					f.cleanerOps.EXPECT().DeleteSnapshot(ctx, "snapshot", "ns", groupversion).Return(fmt.Errorf("err")),
 				)
 			},
 		},
@@ -770,7 +822,8 @@ func (s *CSITestSuite) TestCleanup(c *C) {
 			tc.prepare(&f)
 		}
 		stepper := &snapshotRestoreSteps{
-			cleanerOps: f.cleanerOps,
+			cleanerOps:           f.cleanerOps,
+			SnapshotGroupVersion: groupversion,
 		}
 		stepper.Cleanup(ctx, tc.results)
 	}
