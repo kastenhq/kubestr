@@ -521,7 +521,6 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 		return err
 	}
 	targetSnapClassName := clonePrefix + args.VolumeSnapshotClass
-
 	err := snapshotter.CloneVolumeSnapshotClass(args.VolumeSnapshotClass, targetSnapClassName, kansnapshot.DeletionPolicyRetain, nil)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to create a VolumeSnapshotClass to use to restore the snapshot")
