@@ -25,6 +25,8 @@ const (
 	SnapGroupName = "snapshot.storage.k8s.io"
 	// VolumeSnapshotClassResourcePlural  describes volume snapshot classses
 	VolumeSnapshotClassResourcePlural = "volumesnapshotclasses"
+	// VolumeSnapshotResourcePlural is "volumesnapshots"
+	VolumeSnapshotResourcePlural = "volumesnapshots"
 	// VolSnapClassAlphaDriverKey describes alpha driver key
 	VolSnapClassAlphaDriverKey = "snapshotter"
 	// VolSnapClassBetaDriverKey describes beta driver key
@@ -135,12 +137,13 @@ type SnapshotRestoreStepper interface {
 }
 
 type snapshotRestoreSteps struct {
-	validateOps       ArgumentValidator
-	versionFetchOps   ApiVersionFetcher
-	createAppOps      ApplicationCreator
-	dataValidatorOps  DataValidator
-	snapshotCreateOps SnapshotCreator
-	cleanerOps        Cleaner
+	validateOps          ArgumentValidator
+	versionFetchOps      ApiVersionFetcher
+	createAppOps         ApplicationCreator
+	dataValidatorOps     DataValidator
+	snapshotCreateOps    SnapshotCreator
+	cleanerOps           Cleaner
+	SnapshotGroupVersion *metav1.GroupVersionForDiscovery
 }
 
 func (s *snapshotRestoreSteps) ValidateArgs(ctx context.Context, args *types.CSISnapshotRestoreArgs) error {
@@ -159,6 +162,7 @@ func (s *snapshotRestoreSteps) ValidateArgs(ctx context.Context, args *types.CSI
 	if err != nil {
 		return errors.Wrap(err, "Failed to fetch groupVersion")
 	}
+	s.SnapshotGroupVersion = groupVersion
 
 	uVSC, err := s.validateOps.ValidateVolumeSnapshotClass(ctx, args.VolumeSnapshotClass, groupVersion)
 	if err != nil {
@@ -232,7 +236,7 @@ func (s *snapshotRestoreSteps) SnapshotApplication(ctx context.Context, args *ty
 			SnapshotName:        snapshot.Name,
 			Namespace:           args.Namespace,
 		}
-		if err = s.snapshotCreateOps.CreateFromSourceCheck(ctx, snapshotter, cfsArgs); err != nil {
+		if err = s.snapshotCreateOps.CreateFromSourceCheck(ctx, snapshotter, cfsArgs, s.SnapshotGroupVersion); err != nil {
 			return snapshot, errors.Wrap(err, "Failed to create duplicate snapshot from source. To skip check use '--skipcfs=true' option.")
 		}
 	}
@@ -281,19 +285,34 @@ func (s *snapshotRestoreSteps) Cleanup(ctx context.Context, results *types.CSISn
 		return
 	}
 	if results.OriginalPVC != nil {
-		_ = s.cleanerOps.DeletePVC(ctx, results.OriginalPVC.Name, results.OriginalPVC.Namespace)
+		err := s.cleanerOps.DeletePVC(ctx, results.OriginalPVC.Name, results.OriginalPVC.Namespace)
+		if err != nil {
+			fmt.Printf("Error deleteing PVC (%s) - (%v)\n", results.OriginalPVC.Name, err)
+		}
 	}
 	if results.OriginalPod != nil {
-		_ = s.cleanerOps.DeletePod(ctx, results.OriginalPod.Name, results.OriginalPod.Namespace)
+		err := s.cleanerOps.DeletePod(ctx, results.OriginalPod.Name, results.OriginalPod.Namespace)
+		if err != nil {
+			fmt.Printf("Error deleteing Pod (%s) - (%v)\n", results.OriginalPod.Name, err)
+		}
 	}
 	if results.ClonedPVC != nil {
-		_ = s.cleanerOps.DeletePVC(ctx, results.ClonedPVC.Name, results.ClonedPVC.Namespace)
+		err := s.cleanerOps.DeletePVC(ctx, results.ClonedPVC.Name, results.ClonedPVC.Namespace)
+		if err != nil {
+			fmt.Printf("Error deleteing PVC (%s) - (%v)\n", results.ClonedPVC.Name, err)
+		}
 	}
 	if results.ClonedPod != nil {
-		_ = s.cleanerOps.DeletePod(ctx, results.ClonedPod.Name, results.ClonedPod.Namespace)
+		err := s.cleanerOps.DeletePod(ctx, results.ClonedPod.Name, results.ClonedPod.Namespace)
+		if err != nil {
+			fmt.Printf("Error deleteing Pod (%s) - (%v)\n", results.ClonedPod.Name, err)
+		}
 	}
 	if results.Snapshot != nil {
-		_ = s.cleanerOps.DeleteSnapshot(ctx, results.Snapshot.Name, results.Snapshot.Namespace)
+		err := s.cleanerOps.DeleteSnapshot(ctx, results.Snapshot.Name, results.Snapshot.Namespace, s.SnapshotGroupVersion)
+		if err != nil {
+			fmt.Printf("Error deleteing Snapshot (%s) - (%v)\n", results.Snapshot.Name, err)
+		}
 	}
 }
 
@@ -452,7 +471,7 @@ func (c *applicationCreate) WaitForPodReady(ctx context.Context, namespace strin
 type SnapshotCreator interface {
 	NewSnapshotter() (kansnapshot.Snapshotter, error)
 	CreateSnapshot(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateSnapshotArgs) (*v1alpha1.VolumeSnapshot, error)
-	CreateFromSourceCheck(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateFromSourceCheckArgs) error
+	CreateFromSourceCheck(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateFromSourceCheckArgs, SnapshotGroupVersion *metav1.GroupVersionForDiscovery) error
 }
 
 type snapshotCreate struct {
@@ -488,9 +507,12 @@ func (c *snapshotCreate) CreateSnapshot(ctx context.Context, snapshotter kansnap
 	return snap, nil
 }
 
-func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateFromSourceCheckArgs) error {
+func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateFromSourceCheckArgs, SnapshotGroupVersion *metav1.GroupVersionForDiscovery) error {
 	if c.dynCli == nil {
 		return fmt.Errorf("dynCli not initialized")
+	}
+	if SnapshotGroupVersion == nil || SnapshotGroupVersion.Version == "" {
+		return fmt.Errorf("snapshot group version not provided")
 	}
 	if snapshotter == nil || args == nil {
 		return fmt.Errorf("snapshotter or args are nil")
@@ -499,13 +521,17 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 		return err
 	}
 	targetSnapClassName := clonePrefix + args.VolumeSnapshotClass
-	defer func() {
-		_ = c.dynCli.Resource(v1alpha1.VolSnapClassGVR).Delete(ctx, targetSnapClassName, metav1.DeleteOptions{})
-	}()
 	err := snapshotter.CloneVolumeSnapshotClass(args.VolumeSnapshotClass, targetSnapClassName, kansnapshot.DeletionPolicyRetain, nil)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to create a VolumeSnapshotClass to use to restore the snapshot")
 	}
+	defer func() {
+		VolSnapClassGVR := schema.GroupVersionResource{Group: SnapGroupName, Version: SnapshotGroupVersion.Version, Resource: VolumeSnapshotClassResourcePlural}
+		err := c.dynCli.Resource(VolSnapClassGVR).Delete(ctx, targetSnapClassName, metav1.DeleteOptions{})
+		if err != nil {
+			fmt.Printf("Delete VSC Error (%s) - (%v)\n", targetSnapClassName, err)
+		}
+	}()
 
 	snapSrc, err := snapshotter.GetSource(ctx, args.SnapshotName, args.Namespace)
 	if err != nil {
@@ -532,7 +558,7 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 type Cleaner interface {
 	DeletePVC(ctx context.Context, pvcName string, namespace string) error
 	DeletePod(ctx context.Context, podName string, namespace string) error
-	DeleteSnapshot(ctx context.Context, snapshotName string, namespace string) error
+	DeleteSnapshot(ctx context.Context, snapshotName string, namespace string, SnapshotGroupVersion *metav1.GroupVersionForDiscovery) error
 }
 
 type cleanse struct {
@@ -554,11 +580,15 @@ func (c *cleanse) DeletePod(ctx context.Context, podName string, namespace strin
 	return c.kubeCli.CoreV1().Pods(namespace).Delete(ctx, podName, metav1.DeleteOptions{})
 }
 
-func (c *cleanse) DeleteSnapshot(ctx context.Context, snapshotName string, namespace string) error {
+func (c *cleanse) DeleteSnapshot(ctx context.Context, snapshotName string, namespace string, SnapshotGroupVersion *metav1.GroupVersionForDiscovery) error {
 	if c.dynCli == nil {
 		return fmt.Errorf("dynCli not initialized")
 	}
-	return c.dynCli.Resource(v1alpha1.VolSnapGVR).Namespace(namespace).Delete(ctx, snapshotName, metav1.DeleteOptions{})
+	if SnapshotGroupVersion == nil || SnapshotGroupVersion.Version == "" {
+		return fmt.Errorf("snapshot group version not provided")
+	}
+	VolSnapGVR := schema.GroupVersionResource{Group: SnapGroupName, Version: SnapshotGroupVersion.Version, Resource: VolumeSnapshotResourcePlural}
+	return c.dynCli.Resource(VolSnapGVR).Namespace(namespace).Delete(ctx, snapshotName, metav1.DeleteOptions{})
 }
 
 //go:generate mockgen -destination=mocks/mock_api_version_fetcher.go -package=mocks . ApiVersionFetcher

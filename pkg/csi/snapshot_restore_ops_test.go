@@ -7,6 +7,7 @@ import (
 
 	kansnapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
 	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
+	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1beta1"
 	"github.com/kastenhq/kubestr/pkg/csi/types"
 	. "gopkg.in/check.v1"
 	v1 "k8s.io/api/core/v1"
@@ -618,11 +619,13 @@ func (s *CSITestSuite) TestCreateSnapshot(c *C) {
 
 func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 	ctx := context.Background()
+	gv := &metav1.GroupVersionForDiscovery{Version: v1alpha1.Version}
 	for _, tc := range []struct {
-		dyncli      dynamic.Interface
-		snapshotter kansnapshot.Snapshotter
-		args        *types.CreateFromSourceCheckArgs
-		errChecker  Checker
+		dyncli       dynamic.Interface
+		snapshotter  kansnapshot.Snapshotter
+		args         *types.CreateFromSourceCheckArgs
+		groupVersion *metav1.GroupVersionForDiscovery
+		errChecker   Checker
 	}{
 		{
 			dyncli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
@@ -637,7 +640,8 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 				SnapshotName:        "snapshot",
 				Namespace:           "ns",
 			},
-			errChecker: IsNil,
+			groupVersion: gv,
+			errChecker:   IsNil,
 		},
 		{
 			dyncli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
@@ -653,7 +657,8 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 				SnapshotName:        "snapshot",
 				Namespace:           "ns",
 			},
-			errChecker: NotNil,
+			groupVersion: gv,
+			errChecker:   NotNil,
 		},
 		{
 			dyncli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
@@ -665,7 +670,8 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 				SnapshotName:        "snapshot",
 				Namespace:           "ns",
 			},
-			errChecker: NotNil,
+			groupVersion: gv,
+			errChecker:   NotNil,
 		},
 		{
 			dyncli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
@@ -677,7 +683,8 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 				SnapshotName:        "snapshot",
 				Namespace:           "ns",
 			},
-			errChecker: NotNil,
+			groupVersion: gv,
+			errChecker:   NotNil,
 		},
 		{
 			dyncli:      fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
@@ -687,7 +694,8 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 				SnapshotName:        "snapshot",
 				Namespace:           "ns",
 			},
-			errChecker: NotNil,
+			groupVersion: gv,
+			errChecker:   NotNil,
 		},
 		{
 			dyncli:      fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
@@ -697,7 +705,8 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 				SnapshotName:        "",
 				Namespace:           "ns",
 			},
-			errChecker: NotNil,
+			groupVersion: gv,
+			errChecker:   NotNil,
 		},
 		{
 			dyncli:      fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
@@ -707,16 +716,24 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 				SnapshotName:        "snapshot",
 				Namespace:           "",
 			},
-			errChecker: NotNil,
+			groupVersion: gv,
+			errChecker:   NotNil,
 		},
 		{
-			dyncli:      fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
-			snapshotter: &fakeSnapshotter{},
-			errChecker:  NotNil,
+			dyncli:       fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
+			snapshotter:  &fakeSnapshotter{},
+			groupVersion: gv,
+			errChecker:   NotNil,
 		},
 		{
-			dyncli:     fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
-			errChecker: NotNil,
+			dyncli:       fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
+			groupVersion: gv,
+			errChecker:   NotNil,
+		},
+		{
+			dyncli:       fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
+			groupVersion: nil,
+			errChecker:   NotNil,
 		},
 		{
 			dyncli:     nil,
@@ -726,7 +743,7 @@ func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 		snapCreator := &snapshotCreate{
 			dynCli: tc.dyncli,
 		}
-		err := snapCreator.CreateFromSourceCheck(ctx, tc.snapshotter, tc.args)
+		err := snapCreator.CreateFromSourceCheck(ctx, tc.snapshotter, tc.args, tc.groupVersion)
 		c.Check(err, tc.errChecker)
 	}
 }
@@ -887,13 +904,17 @@ func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
 		cli          dynamic.Interface
 		snapshotName string
 		namespace    string
+		groupVersion *metav1.GroupVersionForDiscovery
 		errChecker   Checker
 	}{
 		{
 			cli:          fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 			snapshotName: "snap1",
 			namespace:    "ns",
-			errChecker:   NotNil,
+			groupVersion: &metav1.GroupVersionForDiscovery{
+				Version: v1alpha1.Version,
+			},
+			errChecker: NotNil,
 		},
 		{
 			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
@@ -910,6 +931,9 @@ func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
 			snapshotName: "pod",
 			namespace:    "ns",
 			errChecker:   NotNil,
+			groupVersion: &metav1.GroupVersionForDiscovery{
+				Version: v1alpha1.Version,
+			},
 		},
 		{
 			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
@@ -926,6 +950,34 @@ func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
 			snapshotName: "snap1",
 			namespace:    "ns",
 			errChecker:   IsNil,
+			groupVersion: &metav1.GroupVersionForDiscovery{
+				Version: v1alpha1.Version,
+			},
+		},
+		{
+			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
+				&unstructured.Unstructured{
+					Object: map[string]interface{}{
+						"apiVersion": fmt.Sprintf("%s/%s", v1beta1.GroupName, v1beta1.Version),
+						"kind":       "VolumeSnapshot",
+						"metadata": map[string]interface{}{
+							"name":      "snap1",
+							"namespace": "ns",
+						},
+					},
+				}),
+			snapshotName: "snap1",
+			namespace:    "ns",
+			errChecker:   NotNil,
+			groupVersion: &metav1.GroupVersionForDiscovery{
+				Version: v1alpha1.Version,
+			},
+		},
+		{
+			cli:          fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
+			snapshotName: "pod",
+			namespace:    "ns",
+			errChecker:   NotNil,
 		},
 		{
 			cli:          nil,
@@ -937,7 +989,7 @@ func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
 		cleaner := &cleanse{
 			dynCli: tc.cli,
 		}
-		err := cleaner.DeleteSnapshot(ctx, tc.snapshotName, tc.namespace)
+		err := cleaner.DeleteSnapshot(ctx, tc.snapshotName, tc.namespace, tc.groupVersion)
 		c.Check(err, tc.errChecker)
 	}
 }
