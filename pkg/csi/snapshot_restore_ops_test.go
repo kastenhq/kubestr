@@ -73,6 +73,31 @@ func (s *CSITestSuite) TestGetDriverNameFromUVSC(c *C) {
 			version: common.SnapshotBetaVersion,
 			expOut:  "",
 		},
+		{
+			vsc: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					common.VolSnapClassStableDriverKey: "p2",
+				},
+			},
+			version: common.SnapshotStableVersion,
+			expOut:  "p2",
+		},
+		{
+			vsc: unstructured.Unstructured{
+				Object: map[string]interface{}{},
+			},
+			version: common.SnapshotStableVersion,
+			expOut:  "",
+		},
+		{
+			vsc: unstructured.Unstructured{
+				Object: map[string]interface{}{
+					common.VolSnapClassStableDriverKey: map[string]string{},
+				},
+			},
+			version: common.SnapshotStableVersion,
+			expOut:  "",
+		},
 	} {
 		driverName := getDriverNameFromUVSC(tc.vsc, tc.version)
 		c.Assert(driverName, Equals, tc.expOut)
