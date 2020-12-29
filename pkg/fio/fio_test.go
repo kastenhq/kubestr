@@ -7,6 +7,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/pkg/errors"
 	. "gopkg.in/check.v1"
 	v1 "k8s.io/api/core/v1"
@@ -641,7 +642,7 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 				{Name: "config-map", MountPath: ConfigMapMountPath},
 			})
 			if tc.image == "" {
-				c.Assert(pod.Spec.Containers[0].Image, Equals, DefaultPodImage)
+				c.Assert(pod.Spec.Containers[0].Image, Equals, common.DefaultPodImage)
 			} else {
 				c.Assert(pod.Spec.Containers[0].Image, Equals, tc.image)
 			}

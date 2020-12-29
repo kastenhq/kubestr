@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	kankube "github.com/kanisterio/kanister/pkg/kube"
+	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	sv1 "k8s.io/api/storage/v1"
@@ -22,7 +23,7 @@ const (
 	PodNamespaceEnvKey = "POD_NAMESPACE"
 	// DefaultFIOJob describes the default FIO job
 	DefaultFIOJob = "default-fio"
-	// KubestrFIOJob describes the default FIO job
+	// KubestrFIOJobGenName describes the generate name
 	KubestrFIOJobGenName = "kubestr-fio"
 	// ConfigMapJobKey is the default fio job key
 	ConfigMapJobKey = "fiojob"
@@ -42,7 +43,6 @@ const (
 	VolumeMountPath = "/dataset"
 	// CreatedByFIOLabel is the key that desrcibes the label used to mark configmaps
 	CreatedByFIOLabel = "createdbyfio"
-	DefaultPodImage   = "ghcr.io/kastenhq/kubestr:latest"
 )
 
 // FIO is an interface that represents FIO related commands
@@ -238,7 +238,7 @@ func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, test
 	}
 
 	if image == "" {
-		image = DefaultPodImage
+		image = common.DefaultPodImage
 	}
 
 	pod := &v1.Pod{

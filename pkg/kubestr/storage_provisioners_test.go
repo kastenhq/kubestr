@@ -325,3 +325,28 @@ func (s *ProvisionerTestSuite) TestGetDriverNameFromUVSC(c *C) {
 		c.Assert(out, Equals, tc.out)
 	}
 }
+
+// func (s *ProvisionerTestSuite) TestGetDriverStats(c *C) {
+// 	var snapshotCount int
+// 	var expansionCount int
+// 	var cloningCount int
+// 	featureMap := make(map[string]struct{})
+// 	for _, driver := range CSIDriverList {
+// 		if strings.Contains("Snapshot", driver.Features) {
+// 			snapshotCount++
+// 		}
+// 		if strings.Contains("Expansion", driver.Features) {
+// 			expansionCount++
+// 		}
+// 		if strings.Contains("Cloning", driver.Features) {
+// 			cloningCount++
+// 		}
+// 		featureMap[driver.Features] = struct{}{}
+// 	}
+// 	c.Log("totalcsidrivers: ", len(CSIDriverList))
+// 	c.Log("snapshotCount: ", snapshotCount)
+// 	c.Log("expansionCount: ", expansionCount)
+// 	c.Log("cloningCount: ", cloningCount)
+// 	c.Log("unique combinations: ", len(featureMap))
+// 	c.Assert(true, Equals, false)
+// }

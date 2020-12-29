@@ -8,6 +8,7 @@ import (
 	kankube "github.com/kanisterio/kanister/pkg/kube"
 	kansnapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
 	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
+	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/kastenhq/kubestr/pkg/csi/types"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
@@ -21,26 +22,13 @@ import (
 )
 
 const (
-	// SnapGroupName describes the snapshot group name
-	SnapGroupName = "snapshot.storage.k8s.io"
-	// VolumeSnapshotClassResourcePlural  describes volume snapshot classses
-	VolumeSnapshotClassResourcePlural = "volumesnapshotclasses"
-	// VolumeSnapshotResourcePlural is "volumesnapshots"
-	VolumeSnapshotResourcePlural = "volumesnapshots"
-	// VolSnapClassAlphaDriverKey describes alpha driver key
-	VolSnapClassAlphaDriverKey = "snapshotter"
-	// VolSnapClassBetaDriverKey describes beta driver key
-	VolSnapClassBetaDriverKey = "driver"
-	alphaVersion              = "snapshot.storage.k8s.io/v1alpha1"
-	betaVersion               = "snapshot.storage.k8s.io/v1beta1"
-	originalPVCGenerateName   = "kubestr-csi-original-pvc"
-	originalPodGenerateName   = "kubestr-csi-original-pod"
-	clonedPVCGenerateName     = "kubestr-csi-cloned-pvc"
-	clonedPodGenerateName     = "kubestr-csi-cloned-pod"
-	createdByLabel            = "created-by-kubestr-csi"
-	DefaultPodImage           = "ghcr.io/kastenhq/kubestr:latest"
-	clonePrefix               = "kubestr-clone-"
-	snapshotPrefix            = "kubestr-snapshot-"
+	originalPVCGenerateName = "kubestr-csi-original-pvc"
+	originalPodGenerateName = "kubestr-csi-original-pod"
+	clonedPVCGenerateName   = "kubestr-csi-cloned-pvc"
+	clonedPodGenerateName   = "kubestr-csi-cloned-pod"
+	createdByLabel          = "created-by-kubestr-csi"
+	clonePrefix             = "kubestr-clone-"
+	snapshotPrefix          = "kubestr-snapshot-"
 )
 
 type SnapshotRestoreRunner struct {
@@ -347,7 +335,7 @@ func (o *validateOperations) ValidateVolumeSnapshotClass(ctx context.Context, vo
 	if o.dynCli == nil {
 		return nil, fmt.Errorf("dynCli not initialized")
 	}
-	VolSnapClassGVR := schema.GroupVersionResource{Group: SnapGroupName, Version: groupVersion.Version, Resource: VolumeSnapshotClassResourcePlural}
+	VolSnapClassGVR := schema.GroupVersionResource{Group: common.SnapGroupName, Version: groupVersion.Version, Resource: common.VolumeSnapshotClassResourcePlural}
 	return o.dynCli.Resource(VolSnapClassGVR).Get(ctx, volumeSnapshotClass, metav1.GetOptions{})
 }
 
@@ -412,7 +400,7 @@ func (c *applicationCreate) CreatePod(ctx context.Context, args *types.CreatePod
 		return nil, err
 	}
 	if args.ContainerImage == "" {
-		args.ContainerImage = DefaultPodImage
+		args.ContainerImage = common.DefaultPodImage
 	}
 
 	pod := &v1.Pod{
@@ -526,7 +514,7 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 		return errors.Wrapf(err, "Failed to create a VolumeSnapshotClass to use to restore the snapshot")
 	}
 	defer func() {
-		VolSnapClassGVR := schema.GroupVersionResource{Group: SnapGroupName, Version: SnapshotGroupVersion.Version, Resource: VolumeSnapshotClassResourcePlural}
+		VolSnapClassGVR := schema.GroupVersionResource{Group: common.SnapGroupName, Version: SnapshotGroupVersion.Version, Resource: common.VolumeSnapshotClassResourcePlural}
 		err := c.dynCli.Resource(VolSnapClassGVR).Delete(ctx, targetSnapClassName, metav1.DeleteOptions{})
 		if err != nil {
 			fmt.Printf("Delete VSC Error (%s) - (%v)\n", targetSnapClassName, err)
@@ -587,7 +575,7 @@ func (c *cleanse) DeleteSnapshot(ctx context.Context, snapshotName string, names
 	if SnapshotGroupVersion == nil || SnapshotGroupVersion.Version == "" {
 		return fmt.Errorf("snapshot group version not provided")
 	}
-	VolSnapGVR := schema.GroupVersionResource{Group: SnapGroupName, Version: SnapshotGroupVersion.Version, Resource: VolumeSnapshotResourcePlural}
+	VolSnapGVR := schema.GroupVersionResource{Group: common.SnapGroupName, Version: SnapshotGroupVersion.Version, Resource: common.VolumeSnapshotResourcePlural}
 	return c.dynCli.Resource(VolSnapGVR).Namespace(namespace).Delete(ctx, snapshotName, metav1.DeleteOptions{})
 }
 
@@ -609,7 +597,7 @@ func (p *apiVersionFetch) GetCSISnapshotGroupVersion() (*metav1.GroupVersionForD
 		return nil, err
 	}
 	for _, group := range groups {
-		if group.Name == SnapGroupName {
+		if group.Name == common.SnapGroupName {
 			return &group.PreferredVersion, nil
 		}
 	}
@@ -637,14 +625,18 @@ func getDriverNameFromUVSC(vsc unstructured.Unstructured, version string) string
 	var driverName interface{}
 	var ok bool
 	switch version {
-	case alphaVersion:
-		driverName, ok = vsc.Object[VolSnapClassAlphaDriverKey]
+	case common.SnapshotAlphaVersion:
+		driverName, ok = vsc.Object[common.VolSnapClassAlphaDriverKey]
 		if !ok {
 			return ""
 		}
-
-	case betaVersion:
-		driverName, ok = vsc.Object[VolSnapClassBetaDriverKey]
+	case common.SnapshotBetaVersion:
+		driverName, ok = vsc.Object[common.VolSnapClassBetaDriverKey]
+		if !ok {
+			return ""
+		}
+	case common.SnapshotStableVersion:
+		driverName, ok = vsc.Object[common.VolSnapClassStableDriverKey]
 		if !ok {
 			return ""
 		}

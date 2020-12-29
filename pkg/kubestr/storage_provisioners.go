@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	kanvolume "github.com/kanisterio/kanister/pkg/kube/volume"
+	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	sv1 "k8s.io/api/storage/v1"
@@ -20,16 +21,6 @@ import (
 )
 
 const (
-	// SnapGroupName describes the snapshot group name
-	SnapGroupName = "snapshot.storage.k8s.io"
-	// VolumeSnapshotClassResourcePlural  describes volume snapshot classses
-	VolumeSnapshotClassResourcePlural = "volumesnapshotclasses"
-	alphaVersion                      = "snapshot.storage.k8s.io/v1alpha1"
-	betaVersion                       = "snapshot.storage.k8s.io/v1beta1"
-	// VolSnapClassAlphaDriverKey describes alpha driver key
-	VolSnapClassAlphaDriverKey = "snapshotter"
-	// VolSnapClassBetaDriverKey describes beta driver key
-	VolSnapClassBetaDriverKey = "driver"
 	// APIVersionKey describes the APIVersion key
 	APIVersionKey = "apiVersion"
 	// FeatureGateTestPVCName is the name of the pvc created by the feature gate
@@ -284,14 +275,20 @@ func (p *Kubestr) validateVolumeSnapshotClass(vsc unstructured.Unstructured, gro
 		Raw:  vsc,
 	}
 	switch groupVersion {
-	case alphaVersion:
-		_, ok := vsc.Object[VolSnapClassAlphaDriverKey]
+	case common.SnapshotAlphaVersion:
+		_, ok := vsc.Object[common.VolSnapClassAlphaDriverKey]
 		if !ok {
 			retVSC.StatusList = append(retVSC.StatusList,
 				makeStatus(StatusError, fmt.Sprintf("VolumeSnapshotClass (%s) missing 'snapshotter' field", vsc.GetName()), nil))
 		}
-	case betaVersion:
-		_, ok := vsc.Object[VolSnapClassBetaDriverKey]
+	case common.SnapshotBetaVersion:
+		_, ok := vsc.Object[common.VolSnapClassBetaDriverKey]
+		if !ok {
+			retVSC.StatusList = append(retVSC.StatusList,
+				makeStatus(StatusError, fmt.Sprintf("VolumeSnapshotClass (%s) missing 'driver' field", vsc.GetName()), nil))
+		}
+	case common.SnapshotStableVersion:
+		_, ok := vsc.Object[common.VolSnapClassStableDriverKey]
 		if !ok {
 			retVSC.StatusList = append(retVSC.StatusList,
 				makeStatus(StatusError, fmt.Sprintf("VolumeSnapshotClass (%s) missing 'driver' field", vsc.GetName()), nil))
@@ -325,7 +322,7 @@ func (p *Kubestr) loadStorageClasses(ctx context.Context) (*sv1.StorageClassList
 
 func (p *Kubestr) loadVolumeSnapshotClasses(ctx context.Context, version string) (*unstructured.UnstructuredList, error) {
 	if p.volumeSnapshotClassList == nil {
-		VolSnapClassGVR := schema.GroupVersionResource{Group: SnapGroupName, Version: version, Resource: VolumeSnapshotClassResourcePlural}
+		VolSnapClassGVR := schema.GroupVersionResource{Group: common.SnapGroupName, Version: version, Resource: common.VolumeSnapshotClassResourcePlural}
 		us, err := p.dynCli.Resource(VolSnapClassGVR).List(ctx, metav1.ListOptions{})
 		if err != nil {
 			return nil, err
@@ -340,14 +337,18 @@ func (p *Kubestr) getDriverNameFromUVSC(vsc unstructured.Unstructured, version s
 	var driverName interface{}
 	var ok bool
 	switch version {
-	case alphaVersion:
-		driverName, ok = vsc.Object[VolSnapClassAlphaDriverKey]
+	case common.SnapshotAlphaVersion:
+		driverName, ok = vsc.Object[common.VolSnapClassAlphaDriverKey]
 		if !ok {
 			return ""
 		}
-
-	case betaVersion:
-		driverName, ok = vsc.Object[VolSnapClassBetaDriverKey]
+	case common.SnapshotBetaVersion:
+		driverName, ok = vsc.Object[common.VolSnapClassBetaDriverKey]
+		if !ok {
+			return ""
+		}
+	case common.SnapshotStableVersion:
+		driverName, ok = vsc.Object[common.VolSnapClassStableDriverKey]
 		if !ok {
 			return ""
 		}
@@ -366,7 +367,7 @@ func (p *Kubestr) getCSIGroupVersion() *metav1.GroupVersionForDiscovery {
 		return nil
 	}
 	for _, group := range groups {
-		if group.Name == SnapGroupName {
+		if group.Name == common.SnapGroupName {
 			return &group.PreferredVersion
 		}
 	}
