@@ -8,6 +8,7 @@ import (
 	kansnapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
 	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
 	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1beta1"
+	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/kastenhq/kubestr/pkg/csi/types"
 	. "gopkg.in/check.v1"
 	v1 "k8s.io/api/core/v1"
@@ -34,42 +35,42 @@ func (s *CSITestSuite) TestGetDriverNameFromUVSC(c *C) {
 		{
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{
-					VolSnapClassAlphaDriverKey: "p2",
+					common.VolSnapClassAlphaDriverKey: "p2",
 				},
 			},
-			version: alphaVersion,
+			version: common.SnapshotAlphaVersion,
 			expOut:  "p2",
 		},
 		{
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{},
 			},
-			version: alphaVersion,
+			version: common.SnapshotAlphaVersion,
 			expOut:  "",
 		},
 		{
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{
-					VolSnapClassBetaDriverKey: "p2",
+					common.VolSnapClassBetaDriverKey: "p2",
 				},
 			},
-			version: betaVersion,
+			version: common.SnapshotBetaVersion,
 			expOut:  "p2",
 		},
 		{
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{},
 			},
-			version: betaVersion,
+			version: common.SnapshotBetaVersion,
 			expOut:  "",
 		},
 		{
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{
-					VolSnapClassBetaDriverKey: map[string]string{},
+					common.VolSnapClassBetaDriverKey: map[string]string{},
 				},
 			},
-			version: betaVersion,
+			version: common.SnapshotBetaVersion,
 			expOut:  "",
 		},
 	} {
@@ -192,7 +193,7 @@ func (s *CSITestSuite) TestValidateVolumeSnapshotClass(c *C) {
 	ops := &validateOperations{
 		dynCli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 	}
-	uVSC, err := ops.ValidateVolumeSnapshotClass(ctx, "vsc", &metav1.GroupVersionForDiscovery{GroupVersion: alphaVersion})
+	uVSC, err := ops.ValidateVolumeSnapshotClass(ctx, "vsc", &metav1.GroupVersionForDiscovery{GroupVersion: common.SnapshotAlphaVersion})
 	c.Check(err, NotNil)
 	c.Check(uVSC, IsNil)
 
@@ -480,7 +481,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 				}},
 			})
 			if tc.args.ContainerImage == "" {
-				c.Assert(pod.Spec.Containers[0].Image, Equals, DefaultPodImage)
+				c.Assert(pod.Spec.Containers[0].Image, Equals, common.DefaultPodImage)
 			} else {
 				c.Assert(pod.Spec.Containers[0].Image, Equals, tc.args.ContainerImage)
 			}

@@ -6,6 +6,7 @@ import (
 
 	"github.com/golang/mock/gomock"
 	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
+	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/kastenhq/kubestr/pkg/csi/mocks"
 	"github.com/kastenhq/kubestr/pkg/csi/types"
 	. "gopkg.in/check.v1"
@@ -42,13 +43,13 @@ func (s *CSITestSuite) TestValidateArgs(c *C) {
 						}, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
-							GroupVersion: alphaVersion,
+							GroupVersion: common.SnapshotAlphaVersion,
 						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), "vsc", &metav1.GroupVersionForDiscovery{
-						GroupVersion: alphaVersion,
+						GroupVersion: common.SnapshotAlphaVersion,
 					}).Return(&unstructured.Unstructured{
 						Object: map[string]interface{}{
-							VolSnapClassAlphaDriverKey: "p1",
+							common.VolSnapClassAlphaDriverKey: "p1",
 						},
 					}, nil),
 				)
@@ -70,13 +71,13 @@ func (s *CSITestSuite) TestValidateArgs(c *C) {
 						}, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
-							GroupVersion: alphaVersion,
+							GroupVersion: common.SnapshotAlphaVersion,
 						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), "vsc", &metav1.GroupVersionForDiscovery{
-						GroupVersion: alphaVersion,
+						GroupVersion: common.SnapshotAlphaVersion,
 					}).Return(&unstructured.Unstructured{
 						Object: map[string]interface{}{
-							VolSnapClassAlphaDriverKey: "p2",
+							common.VolSnapClassAlphaDriverKey: "p2",
 						},
 					}, nil),
 				)
@@ -98,10 +99,10 @@ func (s *CSITestSuite) TestValidateArgs(c *C) {
 						}, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
-							GroupVersion: alphaVersion,
+							GroupVersion: common.SnapshotAlphaVersion,
 						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), "vsc", &metav1.GroupVersionForDiscovery{
-						GroupVersion: alphaVersion,
+						GroupVersion: common.SnapshotAlphaVersion,
 					}).Return(nil, fmt.Errorf("vsc error")),
 				)
 			},
