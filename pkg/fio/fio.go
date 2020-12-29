@@ -23,7 +23,7 @@ const (
 	PodNamespaceEnvKey = "POD_NAMESPACE"
 	// DefaultFIOJob describes the default FIO job
 	DefaultFIOJob = "default-fio"
-	// KubestrFIOJob describes the default FIO job
+	// KubestrFIOJobGenName describes the generate name
 	KubestrFIOJobGenName = "kubestr-fio"
 	// ConfigMapJobKey is the default fio job key
 	ConfigMapJobKey = "fiojob"
