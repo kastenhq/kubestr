@@ -7,9 +7,9 @@ import (
 
 	kankube "github.com/kanisterio/kanister/pkg/kube"
 	kansnapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
-	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
 	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/kastenhq/kubestr/pkg/csi/types"
+	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	"github.com/pkg/errors"
 	v1 "k8s.io/api/core/v1"
 	sv1 "k8s.io/api/storage/v1"
@@ -119,8 +119,8 @@ type SnapshotRestoreStepper interface {
 	ValidateArgs(ctx context.Context, args *types.CSISnapshotRestoreArgs) error
 	CreateApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, data string) (*v1.Pod, *v1.PersistentVolumeClaim, error)
 	ValidateData(ctx context.Context, pod *v1.Pod, data string) error
-	SnapshotApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, pvc *v1.PersistentVolumeClaim, snapshotName string) (*v1alpha1.VolumeSnapshot, error)
-	RestoreApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, snapshot *v1alpha1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error)
+	SnapshotApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, pvc *v1.PersistentVolumeClaim, snapshotName string) (*snapv1.VolumeSnapshot, error)
+	RestoreApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, snapshot *snapv1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error)
 	Cleanup(ctx context.Context, results *types.CSISnapshotRestoreResults)
 }
 
@@ -203,7 +203,7 @@ func (s *snapshotRestoreSteps) ValidateData(ctx context.Context, pod *v1.Pod, da
 	return nil
 }
 
-func (s *snapshotRestoreSteps) SnapshotApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, pvc *v1.PersistentVolumeClaim, snapshotName string) (*v1alpha1.VolumeSnapshot, error) {
+func (s *snapshotRestoreSteps) SnapshotApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, pvc *v1.PersistentVolumeClaim, snapshotName string) (*snapv1.VolumeSnapshot, error) {
 	snapshotter, err := s.snapshotCreateOps.NewSnapshotter()
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to load snapshotter")
@@ -231,7 +231,7 @@ func (s *snapshotRestoreSteps) SnapshotApplication(ctx context.Context, args *ty
 	return snapshot, nil
 }
 
-func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, snapshot *v1alpha1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
+func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, snapshot *snapv1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
 	snapshotAPIGroup := "snapshot.storage.k8s.io"
 	snapshotKind := "VolumeSnapshot"
 	dataSource := &v1.TypedLocalObjectReference{
@@ -458,7 +458,7 @@ func (c *applicationCreate) WaitForPodReady(ctx context.Context, namespace strin
 //go:generate mockgen -destination=mocks/mock_snapshot_creator.go -package=mocks . SnapshotCreator
 type SnapshotCreator interface {
 	NewSnapshotter() (kansnapshot.Snapshotter, error)
-	CreateSnapshot(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateSnapshotArgs) (*v1alpha1.VolumeSnapshot, error)
+	CreateSnapshot(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateSnapshotArgs) (*snapv1.VolumeSnapshot, error)
 	CreateFromSourceCheck(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateFromSourceCheckArgs, SnapshotGroupVersion *metav1.GroupVersionForDiscovery) error
 }
 
@@ -477,7 +477,7 @@ func (c *snapshotCreate) NewSnapshotter() (kansnapshot.Snapshotter, error) {
 	return kansnapshot.NewSnapshotter(c.kubeCli, c.dynCli)
 }
 
-func (c *snapshotCreate) CreateSnapshot(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateSnapshotArgs) (*v1alpha1.VolumeSnapshot, error) {
+func (c *snapshotCreate) CreateSnapshot(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateSnapshotArgs) (*snapv1.VolumeSnapshot, error) {
 	if snapshotter == nil || args == nil {
 		return nil, fmt.Errorf("snapshotter or args are empty")
 	}
