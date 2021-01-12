@@ -13,7 +13,7 @@ require (
 	github.com/imdario/mergo v0.3.9 // indirect
 	github.com/jarcoal/httpmock v1.0.5 // indirect
 	github.com/jpillora/backoff v0.0.0-20180909062703-3050d21c67d7 // indirect
-	github.com/kanisterio/kanister v0.0.0-20201231122807-208a3765993b
+	github.com/kanisterio/kanister v0.0.0-20210112095936-bf04d6102c72
 	github.com/kr/text v0.2.0 // indirect
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.0.0
 	github.com/mitchellh/mapstructure v1.3.1 // indirect
@@ -23,13 +23,12 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.7.0 // indirect
 	github.com/spf13/cobra v1.0.0
-	golang.org/x/sys v0.0.0-20201013081832-0aaa2718063a // indirect
 	golang.org/x/tools v0.0.0-20200804011535-6c149bb5ef0d // indirect
 	google.golang.org/genproto v0.0.0-20200527145253-8367513e4ece // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f
 	gopkg.in/yaml.v2 v2.3.0 // indirect
 	honnef.co/go/tools v0.0.1-2020.1.5 // indirect
-	k8s.io/api v0.19.0
-	k8s.io/apimachinery v0.19.0
-	k8s.io/client-go v0.19.0
+	k8s.io/api v0.19.5
+	k8s.io/apimachinery v0.19.5
+	k8s.io/client-go v0.19.5
 )
