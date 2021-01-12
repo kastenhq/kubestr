@@ -7,8 +7,8 @@ package mocks
 import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
-	v1alpha1 "github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
 	types "github.com/kastenhq/kubestr/pkg/csi/types"
+	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
 	reflect "reflect"
 )
@@ -65,7 +65,7 @@ func (mr *MockSnapshotRestoreStepperMockRecorder) CreateApplication(arg0, arg1, 
 }
 
 // RestoreApplication mocks base method
-func (m *MockSnapshotRestoreStepper) RestoreApplication(arg0 context.Context, arg1 *types.CSISnapshotRestoreArgs, arg2 *v1alpha1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
+func (m *MockSnapshotRestoreStepper) RestoreApplication(arg0 context.Context, arg1 *types.CSISnapshotRestoreArgs, arg2 *snapv1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RestoreApplication", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*v1.Pod)
@@ -81,10 +81,10 @@ func (mr *MockSnapshotRestoreStepperMockRecorder) RestoreApplication(arg0, arg1,
 }
 
 // SnapshotApplication mocks base method
-func (m *MockSnapshotRestoreStepper) SnapshotApplication(arg0 context.Context, arg1 *types.CSISnapshotRestoreArgs, arg2 *v1.PersistentVolumeClaim, arg3 string) (*v1alpha1.VolumeSnapshot, error) {
+func (m *MockSnapshotRestoreStepper) SnapshotApplication(arg0 context.Context, arg1 *types.CSISnapshotRestoreArgs, arg2 *v1.PersistentVolumeClaim, arg3 string) (*snapv1.VolumeSnapshot, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SnapshotApplication", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*v1alpha1.VolumeSnapshot)
+	ret0, _ := ret[0].(*snapv1.VolumeSnapshot)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

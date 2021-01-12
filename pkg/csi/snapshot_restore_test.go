@@ -6,9 +6,9 @@ import (
 	"testing"
 
 	"github.com/golang/mock/gomock"
-	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
 	"github.com/kastenhq/kubestr/pkg/csi/mocks"
 	"github.com/kastenhq/kubestr/pkg/csi/types"
+	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	. "gopkg.in/check.v1"
 	v1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -76,7 +76,7 @@ func (s *CSITestSuite) TestRunSnapshotRestoreHelper(c *C) {
 							},
 						}, gomock.Any(),
 					).Return(
-						&v1alpha1.VolumeSnapshot{
+						&snapv1.VolumeSnapshot{
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "snapshot",
 							},
@@ -84,7 +84,7 @@ func (s *CSITestSuite) TestRunSnapshotRestoreHelper(c *C) {
 						nil,
 					),
 					f.stepperOps.EXPECT().RestoreApplication(gomock.Any(), gomock.Any(),
-						&v1alpha1.VolumeSnapshot{
+						&snapv1.VolumeSnapshot{
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "snapshot",
 							},
@@ -138,7 +138,7 @@ func (s *CSITestSuite) TestRunSnapshotRestoreHelper(c *C) {
 						Namespace: "ns",
 					},
 				},
-				Snapshot: &v1alpha1.VolumeSnapshot{
+				Snapshot: &snapv1.VolumeSnapshot{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "snapshot",
 					},
@@ -259,7 +259,7 @@ func (s *CSITestSuite) TestRunSnapshotRestoreHelper(c *C) {
 					f.stepperOps.EXPECT().CreateApplication(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, nil),
 					f.stepperOps.EXPECT().ValidateData(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil),
 					f.stepperOps.EXPECT().SnapshotApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(
-						&v1alpha1.VolumeSnapshot{
+						&snapv1.VolumeSnapshot{
 							ObjectMeta: metav1.ObjectMeta{
 								Name: "snapshot",
 							},
@@ -269,7 +269,7 @@ func (s *CSITestSuite) TestRunSnapshotRestoreHelper(c *C) {
 				)
 			},
 			result: &types.CSISnapshotRestoreResults{
-				Snapshot: &v1alpha1.VolumeSnapshot{
+				Snapshot: &snapv1.VolumeSnapshot{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "snapshot",
 					},
