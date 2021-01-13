@@ -10,6 +10,7 @@ import (
 	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1beta1"
 	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/kastenhq/kubestr/pkg/csi/types"
+	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	. "gopkg.in/check.v1"
 	v1 "k8s.io/api/core/v1"
 	sv1 "k8s.io/api/storage/v1"
@@ -136,6 +137,26 @@ func (s *CSITestSuite) TestGetCSISnapshotGroupVersion(c *C) {
 			cli: fake.NewSimpleClientset(),
 			resources: []*metav1.APIResourceList{
 				{
+					GroupVersion: "snapshot.storage.k8s.io/v1beta1",
+				},
+			},
+			errChecker: IsNil,
+			gvChecker:  NotNil,
+		},
+		{
+			cli: fake.NewSimpleClientset(),
+			resources: []*metav1.APIResourceList{
+				{
+					GroupVersion: "snapshot.storage.k8s.io/v1",
+				},
+			},
+			errChecker: IsNil,
+			gvChecker:  NotNil,
+		},
+		{
+			cli: fake.NewSimpleClientset(),
+			resources: []*metav1.APIResourceList{
+				{
 					GroupVersion: "notrbac.authorization.k8s.io/v1",
 				},
 			},
@@ -215,39 +236,98 @@ func (s *CSITestSuite) TestValidateStorageClass(c *C) {
 
 func (s *CSITestSuite) TestValidateVolumeSnapshotClass(c *C) {
 	ctx := context.Background()
-	ops := &validateOperations{
-		dynCli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
-	}
-	uVSC, err := ops.ValidateVolumeSnapshotClass(ctx, "vsc", &metav1.GroupVersionForDiscovery{GroupVersion: common.SnapshotAlphaVersion})
-	c.Check(err, NotNil)
-	c.Check(uVSC, IsNil)
-
-	ops = &validateOperations{
-		dynCli: fakedynamic.NewSimpleDynamicClient(
-			runtime.NewScheme(),
-			&unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"apiVersion": fmt.Sprintf("%s/%s", v1alpha1.GroupName, v1alpha1.Version),
-					"kind":       "VolumeSnapshotClass",
-					"metadata": map[string]interface{}{
-						"name": "vsc",
-					},
-					"snapshotter":    "somesnapshotter",
-					"deletionPolicy": "Delete",
-				},
+	for _, tc := range []struct {
+		ops          *validateOperations
+		groupVersion string
+		version      string
+		errChecker   Checker
+		uVCSChecker  Checker
+	}{
+		{
+			ops: &validateOperations{
+				dynCli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 			},
-		),
+			groupVersion: common.SnapshotAlphaVersion,
+			errChecker:   NotNil,
+			uVCSChecker:  IsNil,
+		},
+		{
+			ops: &validateOperations{
+				dynCli: fakedynamic.NewSimpleDynamicClient(
+					runtime.NewScheme(),
+					&unstructured.Unstructured{
+						Object: map[string]interface{}{
+							"apiVersion": fmt.Sprintf("%s/%s", v1alpha1.GroupName, v1alpha1.Version),
+							"kind":       "VolumeSnapshotClass",
+							"metadata": map[string]interface{}{
+								"name": "vsc",
+							},
+							"snapshotter":    "somesnapshotter",
+							"deletionPolicy": "Delete",
+						},
+					},
+				),
+			},
+			version:     v1alpha1.Version,
+			errChecker:  IsNil,
+			uVCSChecker: NotNil,
+		},
+		{
+			ops: &validateOperations{
+				dynCli: nil,
+			},
+			version:     v1alpha1.Version,
+			errChecker:  NotNil,
+			uVCSChecker: IsNil,
+		},
+		{
+			ops: &validateOperations{
+				dynCli: fakedynamic.NewSimpleDynamicClient(
+					runtime.NewScheme(),
+					&unstructured.Unstructured{
+						Object: map[string]interface{}{
+							"apiVersion": fmt.Sprintf("%s/%s", v1beta1.GroupName, v1beta1.Version),
+							"kind":       "VolumeSnapshotClass",
+							"metadata": map[string]interface{}{
+								"name": "vsc",
+							},
+							"driver":         "somesnapshotter",
+							"deletionPolicy": "Delete",
+						},
+					},
+				),
+			},
+			version:     v1beta1.Version,
+			errChecker:  IsNil,
+			uVCSChecker: NotNil,
+		},
+		{
+			ops: &validateOperations{
+				dynCli: fakedynamic.NewSimpleDynamicClient(
+					runtime.NewScheme(),
+					&unstructured.Unstructured{
+						Object: map[string]interface{}{
+							"apiVersion": fmt.Sprintf("%s/%s", kansnapshot.GroupName, kansnapshot.Version),
+							"kind":       "VolumeSnapshotClass",
+							"metadata": map[string]interface{}{
+								"name": "vsc",
+							},
+							"driver":         "somesnapshotter",
+							"deletionPolicy": "Delete",
+						},
+					},
+				),
+			},
+			groupVersion: common.SnapshotStableVersion,
+			version:      kansnapshot.Version,
+			errChecker:   IsNil,
+			uVCSChecker:  NotNil,
+		},
+	} {
+		uVSC, err := tc.ops.ValidateVolumeSnapshotClass(ctx, "vsc", &metav1.GroupVersionForDiscovery{GroupVersion: tc.groupVersion, Version: tc.version})
+		c.Check(err, tc.errChecker)
+		c.Check(uVSC, tc.uVCSChecker)
 	}
-	uVSC, err = ops.ValidateVolumeSnapshotClass(ctx, "vsc", &metav1.GroupVersionForDiscovery{Version: v1alpha1.Version})
-	c.Check(err, IsNil)
-	c.Check(uVSC, NotNil)
-
-	ops = &validateOperations{
-		dynCli: nil,
-	}
-	uVSC, err = ops.ValidateVolumeSnapshotClass(ctx, "vsc", &metav1.GroupVersionForDiscovery{Version: v1alpha1.Version})
-	c.Check(err, NotNil)
-	c.Check(uVSC, IsNil)
 }
 
 func (s *CSITestSuite) TestCreatePVC(c *C) {
@@ -533,7 +613,7 @@ func (s *CSITestSuite) TestCreateSnapshot(c *C) {
 	}{
 		{
 			snapshotter: &fakeSnapshotter{
-				getSnap: &v1alpha1.VolumeSnapshot{
+				getSnap: &snapv1.VolumeSnapshot{
 					ObjectMeta: metav1.ObjectMeta{
 						Name: "createdName",
 					},
@@ -779,7 +859,7 @@ type fakeSnapshotter struct {
 
 	createErr error
 
-	getSnap *v1alpha1.VolumeSnapshot
+	getSnap *snapv1.VolumeSnapshot
 	getErr  error
 
 	cvsErr error
@@ -799,10 +879,10 @@ func (f *fakeSnapshotter) CloneVolumeSnapshotClass(sourceClassName, targetClassN
 func (f *fakeSnapshotter) Create(ctx context.Context, name, namespace, pvcName string, snapshotClass *string, waitForReady bool) error {
 	return f.createErr
 }
-func (f *fakeSnapshotter) Get(ctx context.Context, name, namespace string) (*v1alpha1.VolumeSnapshot, error) {
+func (f *fakeSnapshotter) Get(ctx context.Context, name, namespace string) (*snapv1.VolumeSnapshot, error) {
 	return f.getSnap, f.getErr
 }
-func (f *fakeSnapshotter) Delete(ctx context.Context, name, namespace string) (*v1alpha1.VolumeSnapshot, error) {
+func (f *fakeSnapshotter) Delete(ctx context.Context, name, namespace string) (*snapv1.VolumeSnapshot, error) {
 	return nil, nil
 }
 func (f *fakeSnapshotter) DeleteContent(ctx context.Context, name string) error { return nil }
@@ -997,6 +1077,63 @@ func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
 			errChecker:   NotNil,
 			groupVersion: &metav1.GroupVersionForDiscovery{
 				Version: v1alpha1.Version,
+			},
+		},
+		{
+			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
+				&unstructured.Unstructured{
+					Object: map[string]interface{}{
+						"apiVersion": fmt.Sprintf("%s/%s", v1beta1.GroupName, v1beta1.Version),
+						"kind":       "VolumeSnapshot",
+						"metadata": map[string]interface{}{
+							"name":      "snap1",
+							"namespace": "ns",
+						},
+					},
+				}),
+			snapshotName: "snap1",
+			namespace:    "ns",
+			errChecker:   IsNil,
+			groupVersion: &metav1.GroupVersionForDiscovery{
+				Version: v1beta1.Version,
+			},
+		},
+		{
+			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
+				&unstructured.Unstructured{
+					Object: map[string]interface{}{
+						"apiVersion": fmt.Sprintf("%s/%s", kansnapshot.GroupName, kansnapshot.Version),
+						"kind":       "VolumeSnapshot",
+						"metadata": map[string]interface{}{
+							"name":      "snap1",
+							"namespace": "ns",
+						},
+					},
+				}),
+			snapshotName: "snap1",
+			namespace:    "ns",
+			errChecker:   NotNil,
+			groupVersion: &metav1.GroupVersionForDiscovery{
+				Version: v1alpha1.Version,
+			},
+		},
+		{
+			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
+				&unstructured.Unstructured{
+					Object: map[string]interface{}{
+						"apiVersion": fmt.Sprintf("%s/%s", kansnapshot.GroupName, kansnapshot.Version),
+						"kind":       "VolumeSnapshot",
+						"metadata": map[string]interface{}{
+							"name":      "snap1",
+							"namespace": "ns",
+						},
+					},
+				}),
+			snapshotName: "snap1",
+			namespace:    "ns",
+			errChecker:   IsNil,
+			groupVersion: &metav1.GroupVersionForDiscovery{
+				Version: kansnapshot.Version,
 			},
 		},
 		{

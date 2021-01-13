@@ -5,10 +5,10 @@ import (
 	"fmt"
 
 	"github.com/golang/mock/gomock"
-	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
 	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/kastenhq/kubestr/pkg/csi/mocks"
 	"github.com/kastenhq/kubestr/pkg/csi/types"
+	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	. "gopkg.in/check.v1"
 	v1 "k8s.io/api/core/v1"
 	sv1 "k8s.io/api/storage/v1"
@@ -380,7 +380,7 @@ func (s *CSITestSuite) TestSnapshotApplication(c *C) {
 						PVCName:             "pvc1",
 						VolumeSnapshotClass: "vsc",
 						SnapshotName:        "snap1",
-					}).Return(&v1alpha1.VolumeSnapshot{
+					}).Return(&snapv1.VolumeSnapshot{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "createdName",
 						},
@@ -415,7 +415,7 @@ func (s *CSITestSuite) TestSnapshotApplication(c *C) {
 						PVCName:             "pvc1",
 						VolumeSnapshotClass: "vsc",
 						SnapshotName:        "snap1",
-					}).Return(&v1alpha1.VolumeSnapshot{
+					}).Return(&snapv1.VolumeSnapshot{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "createdName",
 						},
@@ -444,7 +444,7 @@ func (s *CSITestSuite) TestSnapshotApplication(c *C) {
 						PVCName:             "pvc1",
 						VolumeSnapshotClass: "vsc",
 						SnapshotName:        "snap1",
-					}).Return(&v1alpha1.VolumeSnapshot{
+					}).Return(&snapv1.VolumeSnapshot{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "createdName",
 						},
@@ -531,7 +531,7 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 	}
 	for _, tc := range []struct {
 		args       *types.CSISnapshotRestoreArgs
-		snapshot   *v1alpha1.VolumeSnapshot
+		snapshot   *snapv1.VolumeSnapshot
 		prepare    func(f *fields)
 		errChecker Checker
 		podChecker Checker
@@ -544,11 +544,11 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 				RunAsUser:      100,
 				ContainerImage: "image",
 			},
-			snapshot: &v1alpha1.VolumeSnapshot{
+			snapshot: &snapv1.VolumeSnapshot{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "snap1",
 				},
-				Status: v1alpha1.VolumeSnapshotStatus{
+				Status: &snapv1.VolumeSnapshotStatus{
 					RestoreSize: &resourceQuantity,
 				},
 			},
@@ -595,11 +595,11 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 				RunAsUser:      100,
 				ContainerImage: "image",
 			},
-			snapshot: &v1alpha1.VolumeSnapshot{
+			snapshot: &snapv1.VolumeSnapshot{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "snap1",
 				},
-				Status: v1alpha1.VolumeSnapshotStatus{
+				Status: &snapv1.VolumeSnapshotStatus{
 					RestoreSize: &resourceQuantity,
 				},
 			},
@@ -646,11 +646,11 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 				RunAsUser:      100,
 				ContainerImage: "image",
 			},
-			snapshot: &v1alpha1.VolumeSnapshot{
+			snapshot: &snapv1.VolumeSnapshot{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "snap1",
 				},
-				Status: v1alpha1.VolumeSnapshotStatus{
+				Status: &snapv1.VolumeSnapshotStatus{
 					RestoreSize: &resourceQuantity,
 				},
 			},
@@ -675,11 +675,11 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 				RunAsUser:      100,
 				ContainerImage: "image",
 			},
-			snapshot: &v1alpha1.VolumeSnapshot{
+			snapshot: &snapv1.VolumeSnapshot{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "snap1",
 				},
-				Status: v1alpha1.VolumeSnapshotStatus{
+				Status: &snapv1.VolumeSnapshotStatus{
 					RestoreSize: &resourceQuantity,
 				},
 			},
@@ -753,7 +753,7 @@ func (s *CSITestSuite) TestCleanup(c *C) {
 						Namespace: "ns",
 					},
 				},
-				Snapshot: &v1alpha1.VolumeSnapshot{
+				Snapshot: &snapv1.VolumeSnapshot{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "snapshot",
 						Namespace: "ns",
@@ -796,7 +796,7 @@ func (s *CSITestSuite) TestCleanup(c *C) {
 						Namespace: "ns",
 					},
 				},
-				Snapshot: &v1alpha1.VolumeSnapshot{
+				Snapshot: &snapv1.VolumeSnapshot{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "snapshot",
 						Namespace: "ns",

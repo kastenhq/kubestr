@@ -8,8 +8,8 @@ import (
 	context "context"
 	gomock "github.com/golang/mock/gomock"
 	snapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
-	v1alpha1 "github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
 	types "github.com/kastenhq/kubestr/pkg/csi/types"
+	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	reflect "reflect"
 )
@@ -52,10 +52,10 @@ func (mr *MockSnapshotCreatorMockRecorder) CreateFromSourceCheck(arg0, arg1, arg
 }
 
 // CreateSnapshot mocks base method
-func (m *MockSnapshotCreator) CreateSnapshot(arg0 context.Context, arg1 snapshot.Snapshotter, arg2 *types.CreateSnapshotArgs) (*v1alpha1.VolumeSnapshot, error) {
+func (m *MockSnapshotCreator) CreateSnapshot(arg0 context.Context, arg1 snapshot.Snapshotter, arg2 *types.CreateSnapshotArgs) (*snapv1.VolumeSnapshot, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateSnapshot", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*v1alpha1.VolumeSnapshot)
+	ret0, _ := ret[0].(*snapv1.VolumeSnapshot)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }

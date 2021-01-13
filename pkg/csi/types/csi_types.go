@@ -3,7 +3,7 @@ package types
 import (
 	"fmt"
 
-	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
+	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 )
@@ -28,7 +28,7 @@ func (a *CSISnapshotRestoreArgs) Validate() error {
 type CSISnapshotRestoreResults struct {
 	OriginalPVC *v1.PersistentVolumeClaim
 	OriginalPod *v1.Pod
-	Snapshot    *v1alpha1.VolumeSnapshot
+	Snapshot    *snapv1.VolumeSnapshot
 	ClonedPVC   *v1.PersistentVolumeClaim
 	ClonedPod   *v1.Pod
 }
