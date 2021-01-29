@@ -295,7 +295,7 @@ type fakeFioStepper struct {
 
 	dPodErr error
 
-	rFIOout string
+	rFIOout FioResult
 	rFIOErr error
 }
 
@@ -332,7 +332,7 @@ func (f *fakeFioStepper) deletePod(ctx context.Context, podName, namespace strin
 	f.steps = append(f.steps, "DPOD")
 	return f.dPodErr
 }
-func (f *fakeFioStepper) runFIOCommand(ctx context.Context, podName, containerName, testFileName, namespace string) (string, error) {
+func (f *fakeFioStepper) runFIOCommand(ctx context.Context, podName, containerName, testFileName, namespace string) (FioResult, error) {
 	f.steps = append(f.steps, "RFIOC")
 	return f.rFIOout, f.rFIOErr
 }

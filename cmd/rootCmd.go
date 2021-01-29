@@ -167,7 +167,7 @@ func Fio(ctx context.Context, output, storageclass, size, namespace, jobName, fi
 	}); err != nil {
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err.Error(), fioResult)
 	} else {
-		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("\n%s\n", fioResult.Result), fioResult)
+		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("\n%s", fioResult.Result.Print()), fioResult)
 	}
 
 	if output == "json" {
