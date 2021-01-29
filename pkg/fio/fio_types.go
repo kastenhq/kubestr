@@ -19,7 +19,7 @@ func (f FioResult) Print() string {
 	for _, job := range f.Jobs {
 		res += fmt.Sprintf("%s\n", job.Print())
 	}
-	res += fmt.Sprint("Disk stats (read/write):\n")
+	res += "Disk stats (read/write):\n"
 	for _, du := range f.DiskUtil {
 		res += fmt.Sprintf("%s\n", du.Print())
 	}
