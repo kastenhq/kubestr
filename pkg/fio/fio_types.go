@@ -171,11 +171,12 @@ type FioDiskUtil struct {
 	Util        float32 `json:"util,omitempty"`
 }
 
-func (d FioDiskUtil) Print() {
+func (d FioDiskUtil) Print() string {
 	//Disk stats (read/write):
 	//rbd4: ios=30022/11982, merge=0/313, ticks=1028675/1022768, in_queue=2063740, util=99.67%
 	var du string
 	du += fmt.Sprintf("Disk stats (read/write):\n")
 	du += fmt.Sprintf("%s: ios=%d/%d merge=%d/%d ticks=%d/%d in_queue=%d, util=%f%%", d.Name, d.ReadIos,
 		d.WriteIos, d.ReadMerges, d.WriteMerges, d.ReadTicks, d.WriteTicks, d.InQueue, d.Util)
+	return du
 }
