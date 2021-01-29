@@ -15,10 +15,15 @@ type FioResult struct {
 func (f FioResult) Print() string {
 	var res string
 	res += fmt.Sprintf("FIO version - %s\n", f.FioVersion)
-	res += fmt.Sprintf("Global options - %s\n", f.GlobalOptions.Print())
+	res += fmt.Sprintf("Global options - %s\n\n", f.GlobalOptions.Print())
 	for _, job := range f.Jobs {
 		res += fmt.Sprintf("%s\n", job.Print())
 	}
+	res += fmt.Sprintf("Disk stats (read/write):\n")
+	for _, du := range f.DiskUtil {
+		res += fmt.Sprintf("%s\n", du.Print())
+	}
+
 	return res
 }
 
@@ -66,12 +71,12 @@ type FioJobs struct {
 
 func (j FioJobs) Print() string {
 	var job string
-	job += fmt.Sprintf("%s: %s\n", j.JobName, j.JobOptions.Print())
+	job += fmt.Sprintf("%s\n", j.JobOptions.Print())
 	if j.Read.Iops != 0 || j.Read.BW != 0 {
-		job += fmt.Sprintf("    read: %s\n", j.Read.Print())
+		job += fmt.Sprintf("read:\n%s\n", j.Read.Print())
 	}
 	if j.Write.Iops != 0 || j.Write.BW != 0 {
-		job += fmt.Sprintf("    write: %s\n", j.Write.Print())
+		job += fmt.Sprintf("write:\n%s\n", j.Write.Print())
 	}
 	return job
 }
@@ -87,7 +92,7 @@ type FioJobOptions struct {
 }
 
 func (o FioJobOptions) Print() string {
-	return fmt.Sprintf("jobName=%s blocksize=%s filesize=%s iodepth=%s rw=%s", o.Name, o.BS, o.Size, o.IoDepth, o.RW)
+	return fmt.Sprintf("JobName: %s\n  blocksize=%s filesize=%s iodepth=%s rw=%s", o.Name, o.BS, o.Size, o.IoDepth, o.RW)
 }
 
 type FioStats struct {
@@ -118,9 +123,9 @@ type FioStats struct {
 
 func (s FioStats) Print() string {
 	var stats string
-	stats += fmt.Sprintf("IOPS=%f BW(KiB/s)=%d\n", s.Iops, s.BW)
-	stats += fmt.Sprintf("iops: min=%d max=%d avg=%f\n", s.IopsMin, s.IopsMax, s.IopsMean)
-	stats += fmt.Sprintf("bw(KiB/s): min=%d max=%d avg=%f", s.BwMin, s.BwMax, s.BwMean)
+	stats += fmt.Sprintf("  IOPS=%f BW(KiB/s)=%d\n", s.Iops, s.BW)
+	stats += fmt.Sprintf("  iops: min=%d max=%d avg=%f\n", s.IopsMin, s.IopsMax, s.IopsMean)
+	stats += fmt.Sprintf("  bw(KiB/s): min=%d max=%d avg=%f", s.BwMin, s.BwMax, s.BwMean)
 	return stats
 }
 
@@ -175,8 +180,7 @@ func (d FioDiskUtil) Print() string {
 	//Disk stats (read/write):
 	//rbd4: ios=30022/11982, merge=0/313, ticks=1028675/1022768, in_queue=2063740, util=99.67%
 	var du string
-	du += fmt.Sprintf("Disk stats (read/write):\n")
-	du += fmt.Sprintf("%s: ios=%d/%d merge=%d/%d ticks=%d/%d in_queue=%d, util=%f%%", d.Name, d.ReadIos,
+	du += fmt.Sprintf("  %s: ios=%d/%d merge=%d/%d ticks=%d/%d in_queue=%d, util=%f%%", d.Name, d.ReadIos,
 		d.WriteIos, d.ReadMerges, d.WriteMerges, d.ReadTicks, d.WriteTicks, d.InQueue, d.Util)
 	return du
 }
