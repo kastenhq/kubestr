@@ -141,7 +141,6 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 		return nil, errors.Wrap(err, "Failed to create POD")
 	}
 	fmt.Println("Pod created", pod.Name)
-
 	fmt.Printf("Running FIO test (%s) on StorageClass (%s) with a PVC of Size (%s)\n", testFileName, args.StorageClass, args.Size)
 	fioOutput, err := f.fioSteps.runFIOCommand(ctx, pod.Name, ContainerName, testFileName, args.Namespace)
 	if err != nil {
