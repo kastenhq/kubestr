@@ -2,6 +2,7 @@ package fio
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -295,7 +296,7 @@ type fakeFioStepper struct {
 
 	dPodErr error
 
-	rFIOout string
+	rFIOout FioResult
 	rFIOErr error
 }
 
@@ -332,7 +333,7 @@ func (f *fakeFioStepper) deletePod(ctx context.Context, podName, namespace strin
 	f.steps = append(f.steps, "DPOD")
 	return f.dPodErr
 }
-func (f *fakeFioStepper) runFIOCommand(ctx context.Context, podName, containerName, testFileName, namespace string) (string, error) {
+func (f *fakeFioStepper) runFIOCommand(ctx context.Context, podName, containerName, testFileName, namespace string) (FioResult, error) {
 	f.steps = append(f.steps, "RFIOC")
 	return f.rFIOout, f.rFIOErr
 }
@@ -693,6 +694,10 @@ func (s *FIOTestSuite) TestFioTestFileName(c *C) {
 }
 
 func (s *FIOTestSuite) TestRunFioCommand(c *C) {
+	var parsedout FioResult
+	err := json.Unmarshal([]byte(parsableFioOutput), &parsedout)
+	c.Assert(err, IsNil)
+
 	ctx := context.Background()
 	for _, tc := range []struct {
 		executor      *fakeKubeExecutor
@@ -700,28 +705,55 @@ func (s *FIOTestSuite) TestRunFioCommand(c *C) {
 		podName       string
 		containerName string
 		testFileName  string
+		out           FioResult
 	}{
 		{
 			executor: &fakeKubeExecutor{
 				keErr:    nil,
 				keStrErr: "",
-				keStdOut: "success",
+				keStdOut: parsableFioOutput,
 			},
 			errChecker:    IsNil,
 			podName:       "pod",
 			containerName: "container",
 			testFileName:  "tfName",
+			out:           parsedout,
 		},
 		{
 			executor: &fakeKubeExecutor{
-				keErr:    fmt.Errorf("kubeexec err"),
+				keErr:    nil,
 				keStrErr: "",
-				keStdOut: "success",
+				keStdOut: "unparsable string",
 			},
 			errChecker:    NotNil,
 			podName:       "pod",
 			containerName: "container",
 			testFileName:  "tfName",
+			out:           FioResult{},
+		},
+		{
+			executor: &fakeKubeExecutor{
+				keErr:    fmt.Errorf("kubeexec err"),
+				keStrErr: "",
+				keStdOut: "unparsable string",
+			},
+			errChecker:    NotNil,
+			podName:       "pod",
+			containerName: "container",
+			testFileName:  "tfName",
+			out:           FioResult{},
+		},
+		{
+			executor: &fakeKubeExecutor{
+				keErr:    nil,
+				keStrErr: "execution error",
+				keStdOut: "unparsable string",
+			},
+			errChecker:    NotNil,
+			podName:       "pod",
+			containerName: "container",
+			testFileName:  "tfName",
+			out:           FioResult{},
 		},
 	} {
 		stepper := &fioStepper{
@@ -729,10 +761,10 @@ func (s *FIOTestSuite) TestRunFioCommand(c *C) {
 		}
 		out, err := stepper.runFIOCommand(ctx, tc.podName, tc.containerName, tc.testFileName, DefaultNS)
 		c.Check(err, tc.errChecker)
-		c.Assert(out, Equals, tc.executor.keStdOut)
+		c.Assert(out, DeepEquals, tc.out)
 		c.Assert(tc.executor.keInPodName, Equals, tc.podName)
 		c.Assert(tc.executor.keInContainerName, Equals, tc.containerName)
-		c.Assert(len(tc.executor.keInCommand), Equals, 4)
+		c.Assert(len(tc.executor.keInCommand), Equals, 5)
 		c.Assert(tc.executor.keInCommand[0], Equals, "fio")
 		c.Assert(tc.executor.keInCommand[1], Equals, "--directory")
 		c.Assert(tc.executor.keInCommand[2], Equals, VolumeMountPath)

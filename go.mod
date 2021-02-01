@@ -7,6 +7,7 @@ replace github.com/graymeta/stow => github.com/kastenhq/stow v0.1.2-kasten
 require (
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/aws/aws-sdk-go v1.31.6 // indirect
+	github.com/briandowns/spinner v1.12.0
 	github.com/golang/mock v1.4.4
 	github.com/google/go-cmp v0.4.1 // indirect
 	github.com/hashicorp/golang-lru v0.5.3 // indirect
