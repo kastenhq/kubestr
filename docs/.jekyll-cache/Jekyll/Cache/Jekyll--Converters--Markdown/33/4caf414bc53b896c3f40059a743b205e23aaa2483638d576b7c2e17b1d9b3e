@@ -1,0 +1,48 @@
+I"¢
+<h1 id="kubestr">Kubestr</h1>
+
+<h2 id="what-is-it">What is it?</h2>
+
+<p>Kubestr is a collection of tools to discover, validate and evaluate your kubernetes storage options.</p>
+
+<p>As adoption of kubernetes grows so have the persistent storage offerings that are available to users. The introduction of <a href="https://kubernetes.io/blog/2019/01/15/container-storage-interface-ga/">CSI</a>(Container Storage Interface) has enabled storage providers to develop drivers with ease. In fact there are around a 100 different CSI drivers available today. Along with the existing in-tree providers, these options can make choosing the right storage difficult.</p>
+
+<p>Kubestr can assist in the following ways-</p>
+<ul>
+  <li>Identify the various storage options present in a cluster.</li>
+  <li>Validate if the storage options are configured correctly.</li>
+  <li>Evaluate the storage using common benchmarking tools like FIO.</li>
+</ul>
+
+<script id="asciicast-7iJTbWKwdhPHNWYV00LIgx7gn" src="https://asciinema.org/a/7iJTbWKwdhPHNWYV00LIgx7gn.js" async=""></script>
+
+<h2 id="using-kubestr">Using Kubestr</h2>
+<h3 id="to-install-the-tool--">To install the tool -</h3>
+<ul>
+  <li>Ensure that the kubernetes context is set and the cluster is accessible through your terminal. (Does <a href="https://kubernetes.io/docs/tasks/tools/install-kubectl/">kubectl</a> work?)</li>
+  <li>Download the latest release <a href="https://github.com/kastenhq/kubestr/releases/latest">here</a>.</li>
+  <li>Unpack the tool and make it an executable <code class="language-plaintext highlighter-rouge">chmod +x kubestr</code>.</li>
+</ul>
+
+<h3 id="to-discover-available-storage-options--">To discover available storage options -</h3>
+<ul>
+  <li>Run <code class="language-plaintext highlighter-rouge">./kubestr</code></li>
+</ul>
+
+<h3 id="to-run-an-fio-test--">To run an FIO test -</h3>
+<ul>
+  <li>Run <code class="language-plaintext highlighter-rouge">./kubestr fio -s &lt;storage class&gt;</code></li>
+  <li>Additional options like <code class="language-plaintext highlighter-rouge">--size</code> and <code class="language-plaintext highlighter-rouge">--fiofile</code> can be specified.</li>
+  <li>For more information visit our <a href="https://github.com/kastenhq/kubestr/blob/master/FIO.md">fio</a> page.</li>
+</ul>
+
+<h3 id="to-check-a-csi-drivers-snapshot-and-restore-capabilities--">To check a CSI drivers snapshot and restore capabilities -</h3>
+<ul>
+  <li>Run <code class="language-plaintext highlighter-rouge">./kubestr csicheck -s &lt;storage class&gt; -v &lt;volume snapshot class&gt;</code></li>
+</ul>
+
+<h2 id="roadmap">Roadmap</h2>
+<ul>
+  <li>In the future we plan to allow users to post their FIO results and compare to others.</li>
+</ul>
+:ET
