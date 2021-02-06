@@ -1,10 +1,3 @@
----
-layout: home
-title: Kubestr
-description: Explore your kubernetes forage options
-permalink: /
----
-
 # Kubestr
 
 ## What is it?
