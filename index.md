@@ -1,3 +1,10 @@
+---
+layout: home
+title: Kubestr
+description: Explore your kubernetes storage options
+permalink: /
+---
+
 # Kubestr
 
 ## What is it?
