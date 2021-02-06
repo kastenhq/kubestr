@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Kubestr
-description: Explore your kubernetes storage options
+description: Explore your kubernetes forage options
 permalink: /
 ---
 
