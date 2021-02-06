@@ -1,7 +1,8 @@
 ---
 layout: home
 title: Kubestr 
-subtitle: Explore your kubernetes storage options 
+subtitle: Explore your kubernetes storage options
+baseurl: "kubestr.io" 
 ---
 
 # Kubestr
