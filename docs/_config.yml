@@ -9,7 +9,7 @@
 title: Kubestr
 
 # Your name to show in the footer
-author: Sirish Bathina
+author: Kasten by Veeam
 
 # --- List of links in the navigation bar --- #
 
@@ -35,9 +35,9 @@ round-avatar: true
 # Select the social network links that you want to show in the footer.
 # Uncomment the links you want to show and add your information to each one.
 social-network-links:
-  email: "sirish.bathina@veeam.com"
-  github: bathina2 
-  twitter: sirishbathina
+  email: "info@kasten.io"
+#  github: bathina2 
+  twitter: kastenhq 
 
 # If you want to show a link to an RSS in the footer, add the site description here.
 # If you don't want to show an RSS link, remove the following line.
@@ -48,7 +48,7 @@ social-network-links:
 share-links-active:
   twitter: true
   email: true
-  github: true
+  github: false
 # How to display the link to your website in the footer
 # Remove this if you don't want a link in the footer
 url-pretty: "kubestr.io"
