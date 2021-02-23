@@ -876,7 +876,7 @@ func (f *fakeSnapshotter) GetVolumeSnapshotClass(annotationKey, annotationValue,
 func (f *fakeSnapshotter) CloneVolumeSnapshotClass(sourceClassName, targetClassName, newDeletionPolicy string, excludeAnnotations []string) error {
 	return f.cvsErr
 }
-func (f *fakeSnapshotter) Create(ctx context.Context, name, namespace, pvcName string, snapshotClass *string, waitForReady bool) error {
+func (f *fakeSnapshotter) Create(ctx context.Context, name, namespace, pvcName string, snapshotClass *string, waitForReady bool, labels map[string]string) error {
 	return f.createErr
 }
 func (f *fakeSnapshotter) Get(ctx context.Context, name, namespace string) (*snapv1.VolumeSnapshot, error) {
@@ -900,6 +900,10 @@ func (f *fakeSnapshotter) CreateContentFromSource(ctx context.Context, source *k
 }
 func (f *fakeSnapshotter) WaitOnReadyToUse(ctx context.Context, snapshotName, namespace string) error {
 	return nil
+}
+
+func (f *fakeSnapshotter) List(ctx context.Context, namespace string, labels map[string]string) (*snapv1.VolumeSnapshotList, error) {
+	return nil, nil
 }
 
 func (s *CSITestSuite) TestDeletePVC(c *C) {
