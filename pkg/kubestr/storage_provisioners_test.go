@@ -11,6 +11,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	version "k8s.io/apimachinery/pkg/version"
 	discoveryfake "k8s.io/client-go/discovery/fake"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
@@ -204,7 +205,9 @@ func (s *ProvisionerTestSuite) TestLoadStorageClassesAndProvisioners(c *C) {
 
 func (s *ProvisionerTestSuite) TestLoadVolumeSnaphsotClasses(c *C) {
 	ctx := context.Background()
-	p := &Kubestr{dynCli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(), &unstructured.Unstructured{
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{Group: "snapshot.storage.k8s.io", Version: "v1alpha1", Kind: "VolumeSnapshotClassList"}, &unstructured.UnstructuredList{})
+	p := &Kubestr{dynCli: fakedynamic.NewSimpleDynamicClient(scheme, &unstructured.Unstructured{
 		Object: map[string]interface{}{
 			"apiVersion": fmt.Sprintf("%s/%s", v1alpha1.GroupName, v1alpha1.Version),
 			"kind":       "VolumeSnapshotClass",
