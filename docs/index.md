@@ -1,7 +1,7 @@
 ---
 layout: home
 title: Kubestr 
-subtitle: Explore your kubernetes storage options
+subtitle: Explore your Kubernetes storage options
 baseurl: "kubestr.io" 
 ---
 
@@ -11,7 +11,7 @@ baseurl: "kubestr.io"
 
 Kubestr is a collection of tools to discover, validate and evaluate your kubernetes storage options.
 
-As adoption of kubernetes grows so have the persistent storage offerings that are available to users. The introduction of [CSI](https://kubernetes.io/blog/2019/01/15/container-storage-interface-ga/)(Container Storage Interface) has enabled storage providers to develop drivers with ease. In fact there are around a 100 different CSI drivers available today. Along with the existing in-tree providers, these options can make choosing the right storage difficult.
+As adoption of Kubernetes grows so have the persistent storage offerings that are available to users. The introduction of [CSI](https://kubernetes.io/blog/2019/01/15/container-storage-interface-ga/)(Container Storage Interface) has enabled storage providers to develop drivers with ease. In fact there are around a 100 different CSI drivers available today. Along with the existing in-tree providers, these options can make choosing the right storage difficult.
 
 Kubestr can assist in the following ways-
 - Identify the various storage options present in a cluster.
@@ -22,7 +22,7 @@ Kubestr can assist in the following ways-
 
 ## Using Kubestr
 ### To install the tool -  
-- Ensure that the kubernetes context is set and the cluster is accessible through your terminal. (Does [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) work?)
+- Ensure that the Kubernetes context is set and the cluster is accessible through your terminal. (Does [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) work?)
 - Download the latest release [here](https://github.com/kastenhq/kubestr/releases/latest). 
 - Unpack the tool and make it an executable `chmod +x kubestr`.
 
