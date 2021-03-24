@@ -28,7 +28,7 @@ const Logo = `
   | ' <| |_| | _ \ _|\__ \ | | |   /
   |_|\_\\___/|___/___|___/ |_| |_|_\
 
-Explore your kuberntes storage options
+Explore your kubernetes storage options
 **************************************
 `
 
