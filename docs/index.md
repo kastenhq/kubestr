@@ -11,7 +11,7 @@ baseurl: "kubestr.io"
 
 Kubestr is a collection of tools to discover, validate and evaluate your kubernetes storage options.
 
-As adoption of Kubernetes grows so have the persistent storage offerings that are available to users. The introduction of [CSI](https://kubernetes.io/blog/2019/01/15/container-storage-interface-ga/)(Container Storage Interface) has enabled storage providers to develop drivers with ease. In fact there are around a 100 different CSI drivers available today. Along with the existing in-tree providers, these options can make choosing the right storage difficult.
+As adoption of Kubernetes grows so have the persistent storage offerings that are available to users. The introduction of [CSI](https://kubernetes.io/blog/2019/01/15/container-storage-interface-ga/) (Container Storage Interface) has enabled storage providers to develop drivers with ease. In fact there are around a 100 different CSI drivers available today. Along with the existing in-tree providers, these options can make choosing the right storage difficult.
 
 Kubestr can assist in the following ways-
 - Identify the various storage options present in a cluster.
@@ -39,3 +39,7 @@ Kubestr can assist in the following ways-
 
 ## Roadmap
 - In the future we plan to allow users to post their FIO results and compare to others.
+
+## Contributing
+- Forking and contributing to this project are very welcome. Please visit our github page [here](https://github.com/kastenhq/kubestr).
+
