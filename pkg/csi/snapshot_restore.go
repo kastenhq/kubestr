@@ -486,7 +486,7 @@ func (c *snapshotCreate) CreateSnapshot(ctx context.Context, snapshotter kansnap
 	}
 	err := snapshotter.Create(ctx, args.SnapshotName, args.Namespace, args.PVCName, &args.VolumeSnapshotClass, true, nil)
 	if err != nil {
-		return nil, errors.Wrapf(err, "CSI Driver failed to create snapshot for PVC (%s) in Namspace (%s)", args.PVCName, args.Namespace)
+		return nil, errors.Wrapf(err, "CSI Driver failed to create snapshot for PVC (%s) in Namespace (%s)", args.PVCName, args.Namespace)
 	}
 	snap, err := snapshotter.Get(ctx, args.SnapshotName, args.Namespace)
 	if err != nil {
