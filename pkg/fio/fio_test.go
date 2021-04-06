@@ -194,7 +194,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "CPOD", "DPOD", "DPVC", "DCM"},
+			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "CPOD", "DPVC", "DCM"},
 		},
 		{ // create PVC error
 			cli: fake.NewSimpleClientset(),
