@@ -31,7 +31,8 @@ while read p; do
   if [[ $p == [* ]]; then
     IFS='|'
     read -a fields <<< "$p"
-    if [[ ${#fields[@]} -ne 8 ]]; then
+    if [[ ${#fields[@]} -lt 7 ]]; then
+      echo skipping "${fields[0]}"
       continue
     fi
 
@@ -42,7 +43,10 @@ while read p; do
     persistence=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[4]})
     access_modes=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[5]}| sed 's/"//g')
     dynamic_provisioning=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[6]})
-    features=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[7]})
+
+    if [[ ${#fields[@]} -ge 8 ]]; then
+      features=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[7]})
+    fi
 
     cleanse_str "${driver_name}"
     driver_name="${CLEANSED_STR}"
