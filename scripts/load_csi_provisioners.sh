@@ -1,4 +1,9 @@
 #!/usr/bin/env bash
+
+set -o errexit
+set -o nounset
+set -o pipefail
+
 current_directory=$(dirname "$0")
 curl https://raw.githubusercontent.com/kubernetes-csi/docs/master/book/src/drivers.md -o ${current_directory}/../extra/csi-drivers
 
@@ -14,10 +19,13 @@ EOT
 
 echo "var CSIDriverList = []*CSIDriver{" >> ${current_directory}/../extra/csi-drivers-temp.go
 while read p; do
-  if [[ $p == [* ]];
-  then
+  if [[ $p == [* ]]; then
     IFS='|'
     read -a fields <<< "$p"
+    if [[ ${#fields[@]} -ne 8 ]]; then
+      continue
+    fi
+
     name_url=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[0]})
     driver_name=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[1]} | sed 's/`//g')
     versions=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[2]})
