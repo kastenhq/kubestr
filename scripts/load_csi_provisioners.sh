@@ -4,6 +4,15 @@ set -o errexit
 set -o nounset
 set -o pipefail
 
+CLEANSED_STR=""
+cleanse_str() {
+  case "$1" in
+    "org.democratic-csi.[X]") CLEANSED_STR="org.democratic-csi" ;;
+    "[x].ember-csi.io") CLEANSED_STR="ember-csi.io" ;;
+    *) CLEANSED_STR="$1"
+  esac
+}
+
 current_directory=$(dirname "$0")
 curl https://raw.githubusercontent.com/kubernetes-csi/docs/master/book/src/drivers.md -o ${current_directory}/../extra/csi-drivers
 
@@ -34,6 +43,10 @@ while read p; do
     access_modes=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[5]}| sed 's/"//g')
     dynamic_provisioning=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[6]})
     features=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[7]})
+
+    cleanse_str "${driver_name}"
+    driver_name="${CLEANSED_STR}"
+
     echo "{NameUrl: \"$name_url\", DriverName: \"$driver_name\", Versions: \"$versions\", Description: \"$description\", Persistence: \"$persistence\", AccessModes: \"$access_modes\", DynamicProvisioning: \"$dynamic_provisioning\", Features: \"$features\"}," >> ${current_directory}/../extra/csi-drivers-temp.go
   fi
 done <${current_directory}/../extra/csi-drivers
