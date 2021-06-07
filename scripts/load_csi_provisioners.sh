@@ -14,6 +14,7 @@ cleanse_str() {
 }
 
 current_directory=$(dirname "$0")
+# The Driver information is scraped from the `Production Drivers` table on this page
 curl https://raw.githubusercontent.com/kubernetes-csi/docs/master/book/src/drivers.md -o ${current_directory}/../extra/csi-drivers
 
 cat <<EOT >> ${current_directory}/../extra/csi-drivers-temp.go
@@ -25,13 +26,16 @@ package kubestr
 
 EOT
 
+# The `Production Drivers` table has 8 columns as of now,
+# with the last column of `Other Features` skipped for quite a few of the drivers.
+MIN_COLS_PROD_DRIVERS=7
 
 echo "var CSIDriverList = []*CSIDriver{" >> ${current_directory}/../extra/csi-drivers-temp.go
 while read p; do
   if [[ $p == [* ]]; then
     IFS='|'
     read -a fields <<< "$p"
-    if [[ ${#fields[@]} -lt 7 ]]; then
+    if [[ ${#fields[@]} -lt $MIN_COLS_PROD_DRIVERS ]]; then
       echo skipping "${fields[0]}"
       continue
     fi
@@ -44,7 +48,7 @@ while read p; do
     access_modes=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[5]}| sed 's/"//g')
     dynamic_provisioning=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[6]})
 
-    if [[ ${#fields[@]} -ge 8 ]]; then
+    if [[ ${#fields[@]} -gt $MIN_COLS_PROD_DRIVERS ]]; then
       features=$(sed -e 's/^[[:space:]]*//' -e 's/[[:space:]]*$//' <<<${fields[7]})
     fi
 
