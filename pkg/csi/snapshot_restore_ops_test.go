@@ -870,10 +870,10 @@ type fakeSnapshotter struct {
 	cfsErr error
 }
 
-func (f *fakeSnapshotter) GetVolumeSnapshotClass(annotationKey, annotationValue, storageClassName string) (string, error) {
+func (f *fakeSnapshotter) GetVolumeSnapshotClass(ctx context.Context, annotationKey, annotationValue, storageClassName string) (string, error) {
 	return "", nil
 }
-func (f *fakeSnapshotter) CloneVolumeSnapshotClass(sourceClassName, targetClassName, newDeletionPolicy string, excludeAnnotations []string) error {
+func (f *fakeSnapshotter) CloneVolumeSnapshotClass(ctx context.Context, sourceClassName, targetClassName, newDeletionPolicy string, excludeAnnotations []string) error {
 	return f.cvsErr
 }
 func (f *fakeSnapshotter) Create(ctx context.Context, name, namespace, pvcName string, snapshotClass *string, waitForReady bool, labels map[string]string) error {

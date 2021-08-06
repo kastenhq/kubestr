@@ -5,19 +5,25 @@ go 1.14
 replace github.com/graymeta/stow => github.com/kastenhq/stow v0.1.2-kasten
 
 require (
+	bazil.org/fuse v0.0.0-20200117225306-7b5117fecadc // indirect
+	contrib.go.opencensus.io/resource v0.1.1 // indirect
 	github.com/Azure/azure-amqp-common-go/v2 v2.1.0 // indirect
 	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/armon/consul-api v0.0.0-20180202201655-eb2c6b5be1b6 // indirect
 	github.com/briandowns/spinner v1.12.0
 	github.com/coreos/bbolt v1.3.3 // indirect
 	github.com/eapache/go-resiliency v1.2.0 // indirect
+	github.com/elazarl/go-bindata-assetfs v1.0.0 // indirect
 	github.com/go-openapi/validate v0.19.5 // indirect
-	github.com/golang/mock v1.4.4
+	github.com/godbus/dbus v4.1.0+incompatible // indirect
+	github.com/golang/mock v1.6.0
+	github.com/gomodule/redigo v2.0.0+incompatible // indirect
+	github.com/googleapis/gax-go v2.0.2+incompatible // indirect
 	github.com/gopherjs/gopherjs v0.0.0-20190328170749-bb2674552d8f // indirect
-	github.com/hashicorp/go-hclog v0.9.2 // indirect
+	github.com/gorilla/rpc v1.2.0 // indirect
 	github.com/inconshreveable/go-update v0.0.0-20160112193335-8152e7eb6ccf // indirect
 	github.com/jarcoal/httpmock v1.0.5 // indirect
-	github.com/kanisterio/kanister v0.0.0-20210223000054-31e45569f543
+	github.com/kanisterio/kanister v0.0.0-20210805190523-86f566052e0e
 	github.com/kr/text v0.2.0 // indirect
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.0.0
 	github.com/minio/hdfs/v3 v3.0.1 // indirect
@@ -32,14 +38,14 @@ require (
 	github.com/onsi/ginkgo v1.12.0 // indirect
 	github.com/onsi/gomega v1.9.0 // indirect
 	github.com/pkg/errors v0.9.1
-	github.com/rcrowley/go-metrics v0.0.0-20190704165056-9c2d0518ed81 // indirect
-	github.com/sirupsen/logrus v1.7.0 // indirect
+	github.com/shirou/gopsutil v2.20.9+incompatible // indirect
 	github.com/spf13/cobra v1.1.1
-	github.com/ugorji/go v1.1.5-pre // indirect
 	github.com/xordataexchange/crypt v0.0.3-0.20170626215501-b2862e3d0a77 // indirect
-	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f
+	go.etcd.io/etcd/v3 v3.3.0-rc.0.0.20200707003333-58bb8ae09f8e // indirect
+	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	gopkg.in/cheggaaa/pb.v1 v1.0.28 // indirect
-	honnef.co/go/tools v0.0.1-2020.1.5 // indirect
+	gopkg.in/ldap.v3 v3.0.3 // indirect
+	gopkg.in/olivere/elastic.v5 v5.0.86 // indirect
 	k8s.io/api v0.20.1
 	k8s.io/apimachinery v0.20.1
 	k8s.io/client-go v0.20.1
