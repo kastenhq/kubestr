@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/kastenhq/kubestr/pkg/csi"
@@ -29,6 +30,7 @@ import (
 
 var (
 	output  string
+	outfile string
 	rootCmd = &cobra.Command{
 		Use:   "kubestr",
 		Short: "A tool to validate kubernetes storage",
@@ -56,7 +58,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			Fio(ctx, output, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath, containerImage)
+			Fio(ctx, output, outfile, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath, containerImage)
 		},
 	}
 
@@ -71,13 +73,14 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			CSICheck(ctx, output, namespace, storageClass, csiCheckVolumeSnapshotClass, csiCheckRunAsUser, containerImage, csiCheckCleanup, csiCheckSkipCFSCheck)
+			CSICheck(ctx, output, outfile, namespace, storageClass, csiCheckVolumeSnapshotClass, csiCheckRunAsUser, containerImage, csiCheckCleanup, csiCheckSkipCFSCheck)
 		},
 	}
 )
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "", "Options(json)")
+	rootCmd.PersistentFlags().StringVarP(&outfile, "outfile", "e", "", "The file where test results will be written")
 
 	rootCmd.AddCommand(fioCmd)
 	fioCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a Storageclass. (Required)")
@@ -145,8 +148,23 @@ func Baseline(ctx context.Context, output string) {
 	}
 }
 
+func PrintAndJsonOutput(result *kubestr.TestOutput, output string, outfile string) {
+	if output == "json" {
+		jsonRes, _ := json.MarshalIndent(result, "", "    ")
+		if len(outfile) > 0 {
+			err := os.WriteFile(outfile, jsonRes, 0666)
+			if err != nil {
+				return
+			}
+		} else {
+			fmt.Println(string(jsonRes))
+		}
+		return
+	}
+}
+
 // Fio executes the FIO test.
-func Fio(ctx context.Context, output, storageclass, size, namespace, jobName, fioFilePath string, containerImage string) {
+func Fio(ctx context.Context, output, outfile, storageclass, size, namespace, jobName, fioFilePath string, containerImage string) {
 	cli, err := kubestr.LoadKubeCli()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -170,15 +188,11 @@ func Fio(ctx context.Context, output, storageclass, size, namespace, jobName, fi
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("\n%s", fioResult.Result.Print()), fioResult)
 	}
 
-	if output == "json" {
-		jsonRes, _ := json.MarshalIndent(result, "", "    ")
-		fmt.Println(string(jsonRes))
-		return
-	}
+	PrintAndJsonOutput(result, output, outfile)
 	result.Print()
 }
 
-func CSICheck(ctx context.Context, output,
+func CSICheck(ctx context.Context, output, outfile,
 	namespace string,
 	storageclass string,
 	volumesnapshotclass string,
@@ -218,10 +232,6 @@ func CSICheck(ctx context.Context, output,
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, "CSI application successfully snapshotted and restored.", csiCheckResult)
 	}
 
-	if output == "json" {
-		jsonRes, _ := json.MarshalIndent(result, "", "    ")
-		fmt.Println(string(jsonRes))
-		return
-	}
+	PrintAndJsonOutput(result, output, outfile)
 	result.Print()
 }
