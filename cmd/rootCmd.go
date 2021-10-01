@@ -37,10 +37,10 @@ var (
 		Long: `kubestr is a tool that will scan your k8s cluster
 		and validate that the storage systems in place as well as run
 		performance tests.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			Baseline(ctx, output)
+			return Baseline(ctx, output)
 		},
 	}
 
@@ -55,10 +55,10 @@ var (
 		Use:   "fio",
 		Short: "Runs an fio test",
 		Long:  `Run an fio test`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			Fio(ctx, output, outfile, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath, containerImage)
+			return Fio(ctx, output, outfile, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath, containerImage)
 		},
 	}
 
@@ -70,10 +70,10 @@ var (
 		Use:   "csicheck",
 		Short: "Runs the CSI snapshot restore check",
 		Long:  "Validates a CSI provisioners ability to take a snapshot of an application and restore it",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			CSICheck(ctx, output, outfile, namespace, storageClass, csiCheckVolumeSnapshotClass, csiCheckRunAsUser, containerImage, csiCheckCleanup, csiCheckSkipCFSCheck)
+			return CSICheck(ctx, output, outfile, namespace, storageClass, csiCheckVolumeSnapshotClass, csiCheckRunAsUser, containerImage, csiCheckCleanup, csiCheckSkipCFSCheck)
 		},
 	}
 )
@@ -109,11 +109,11 @@ func Execute() error {
 }
 
 // Baseline executes the baseline check
-func Baseline(ctx context.Context, output string) {
+func Baseline(ctx context.Context, output string) error {
 	p, err := kubestr.NewKubestr()
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		return err
 	}
 	fmt.Print(kubestr.Logo)
 	result := p.KubernetesChecks()
@@ -129,7 +129,7 @@ func Baseline(ctx context.Context, output string) {
 	provisionerList, err := p.ValidateProvisioners(ctx)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		return err
 	}
 
 	fmt.Println("Available Storage Provisioners:")
@@ -140,6 +140,7 @@ func Baseline(ctx context.Context, output string) {
 		fmt.Println()
 		time.Sleep(500 * time.Millisecond)
 	}
+	return err
 }
 
 func PrintAndJsonOutput(result []*kubestr.TestOutput, output string, outfile string) {
@@ -158,32 +159,34 @@ func PrintAndJsonOutput(result []*kubestr.TestOutput, output string, outfile str
 }
 
 // Fio executes the FIO test.
-func Fio(ctx context.Context, output, outfile, storageclass, size, namespace, jobName, fioFilePath string, containerImage string) {
+func Fio(ctx context.Context, output, outfile, storageclass, size, namespace, jobName, fioFilePath string, containerImage string) error {
 	cli, err := kubestr.LoadKubeCli()
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		return err
 	}
 	fioRunner := &fio.FIOrunner{
 		Cli: cli,
 	}
 	testName := "FIO test results"
 	var result *kubestr.TestOutput
-	if fioResult, err := fioRunner.RunFio(ctx, &fio.RunFIOArgs{
+	if fioResult, err_ := fioRunner.RunFio(ctx, &fio.RunFIOArgs{
 		StorageClass:   storageclass,
 		Size:           size,
 		Namespace:      namespace,
 		FIOJobName:     jobName,
 		FIOJobFilepath: fioFilePath,
 		Image:          containerImage,
-	}); err != nil {
-		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err.Error(), fioResult)
+	}); err_ != nil {
+		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err_.Error(), fioResult)
+		err = err_
 	} else {
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("\n%s", fioResult.Result.Print()), fioResult)
 	}
 	var result_ = []*kubestr.TestOutput{result}
 	PrintAndJsonOutput(result_, output, outfile)
 	result.Print()
+	return err
 }
 
 func CSICheck(ctx context.Context, output, outfile,
@@ -194,24 +197,24 @@ func CSICheck(ctx context.Context, output, outfile,
 	containerImage string,
 	cleanup bool,
 	skipCFScheck bool,
-) {
+) error {
 	testName := "CSI checker test"
 	kubecli, err := kubestr.LoadKubeCli()
 	if err != nil {
 		fmt.Printf("Failed to load kubeCLi (%s)", err.Error())
-		return
+		return err
 	}
 	dyncli, err := kubestr.LoadDynCli()
 	if err != nil {
 		fmt.Printf("Failed to load kubeCLi (%s)", err.Error())
-		return
+		return err
 	}
 	csiCheckRunner := &csi.SnapshotRestoreRunner{
 		KubeCli: kubecli,
 		DynCli:  dyncli,
 	}
 	var result *kubestr.TestOutput
-	csiCheckResult, err := csiCheckRunner.RunSnapshotRestore(ctx, &csitypes.CSISnapshotRestoreArgs{
+	csiCheckResult, err_ := csiCheckRunner.RunSnapshotRestore(ctx, &csitypes.CSISnapshotRestoreArgs{
 		StorageClass:        storageclass,
 		VolumeSnapshotClass: volumesnapshotclass,
 		Namespace:           namespace,
@@ -220,8 +223,9 @@ func CSICheck(ctx context.Context, output, outfile,
 		Cleanup:             cleanup,
 		SkipCFSCheck:        skipCFScheck,
 	})
-	if err != nil {
-		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err.Error(), csiCheckResult)
+	if err_ != nil {
+		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err_.Error(), csiCheckResult)
+		err = err_
 	} else {
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, "CSI application successfully snapshotted and restored.", csiCheckResult)
 	}
@@ -229,4 +233,5 @@ func CSICheck(ctx context.Context, output, outfile,
 	var result_ = []*kubestr.TestOutput{result}
 	PrintAndJsonOutput(result_, output, outfile)
 	result.Print()
+	return err
 }
