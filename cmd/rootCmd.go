@@ -117,11 +117,9 @@ func Baseline(ctx context.Context, output string) {
 	}
 	fmt.Print(kubestr.Logo)
 	result := p.KubernetesChecks()
-	if output == "json" {
-		jsonRes, _ := json.MarshalIndent(result, "", "    ")
-		fmt.Println(string(jsonRes))
-		return
-	}
+
+	PrintAndJsonOutput(result, output, outfile)
+
 	for _, retval := range result {
 		retval.Print()
 		fmt.Println()
@@ -133,11 +131,7 @@ func Baseline(ctx context.Context, output string) {
 		fmt.Println(err.Error())
 		return
 	}
-	if output == "json" {
-		jsonRes, _ := json.MarshalIndent(result, "", "    ")
-		fmt.Println(string(jsonRes))
-		return
-	}
+
 	fmt.Println("Available Storage Provisioners:")
 	fmt.Println()
 	time.Sleep(500 * time.Millisecond) // Added to introduce lag.
@@ -148,7 +142,7 @@ func Baseline(ctx context.Context, output string) {
 	}
 }
 
-func PrintAndJsonOutput(result *kubestr.TestOutput, output string, outfile string) {
+func PrintAndJsonOutput(result []*kubestr.TestOutput, output string, outfile string) {
 	if output == "json" {
 		jsonRes, _ := json.MarshalIndent(result, "", "    ")
 		if len(outfile) > 0 {
@@ -187,8 +181,8 @@ func Fio(ctx context.Context, output, outfile, storageclass, size, namespace, jo
 	} else {
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("\n%s", fioResult.Result.Print()), fioResult)
 	}
-
-	PrintAndJsonOutput(result, output, outfile)
+	var result_ = []*kubestr.TestOutput{result}
+	PrintAndJsonOutput(result_, output, outfile)
 	result.Print()
 }
 
@@ -232,6 +226,7 @@ func CSICheck(ctx context.Context, output, outfile,
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, "CSI application successfully snapshotted and restored.", csiCheckResult)
 	}
 
-	PrintAndJsonOutput(result, output, outfile)
+	var result_ = []*kubestr.TestOutput{result}
+	PrintAndJsonOutput(result_, output, outfile)
 	result.Print()
 }
