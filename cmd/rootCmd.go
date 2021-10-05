@@ -37,6 +37,7 @@ var (
 		Long: `kubestr is a tool that will scan your k8s cluster
 		and validate that the storage systems in place as well as run
 		performance tests.`,
+		SilenceUsage: true,
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
@@ -118,7 +119,9 @@ func Baseline(ctx context.Context, output string) error {
 	fmt.Print(kubestr.Logo)
 	result := p.KubernetesChecks()
 
-	PrintAndJsonOutput(result, output, outfile)
+	if PrintAndJsonOutput(result, output, outfile) {
+		return err
+	}
 
 	for _, retval := range result {
 		retval.Print()
@@ -143,19 +146,20 @@ func Baseline(ctx context.Context, output string) error {
 	return err
 }
 
-func PrintAndJsonOutput(result []*kubestr.TestOutput, output string, outfile string) {
+func PrintAndJsonOutput(result []*kubestr.TestOutput, output string, outfile string) bool {
 	if output == "json" {
 		jsonRes, _ := json.MarshalIndent(result, "", "    ")
 		if len(outfile) > 0 {
 			err := os.WriteFile(outfile, jsonRes, 0666)
 			if err != nil {
-				return
+				return true
 			}
 		} else {
 			fmt.Println(string(jsonRes))
 		}
-		return
+		return true
 	}
+	return false
 }
 
 // Fio executes the FIO test.
@@ -184,8 +188,9 @@ func Fio(ctx context.Context, output, outfile, storageclass, size, namespace, jo
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("\n%s", fioResult.Result.Print()), fioResult)
 	}
 	var result_ = []*kubestr.TestOutput{result}
-	PrintAndJsonOutput(result_, output, outfile)
-	result.Print()
+	if !PrintAndJsonOutput(result_, output, outfile) {
+		result.Print()
+	}
 	return err
 }
 
@@ -231,7 +236,8 @@ func CSICheck(ctx context.Context, output, outfile,
 	}
 
 	var result_ = []*kubestr.TestOutput{result}
-	PrintAndJsonOutput(result_, output, outfile)
-	result.Print()
+	if !PrintAndJsonOutput(result_, output, outfile) {
+		result.Print()
+	}
 	return err
 }
