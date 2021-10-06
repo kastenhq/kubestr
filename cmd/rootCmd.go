@@ -154,7 +154,8 @@ func PrintAndJsonOutput(result []*kubestr.TestOutput, output string, outfile str
 		if len(outfile) > 0 {
 			err := os.WriteFile(outfile, jsonRes, 0666)
 			if err != nil {
-				return true
+				fmt.Println("Error writing output:", err.Error())
+				os.Exit(2)
 			}
 		} else {
 			fmt.Println(string(jsonRes))
