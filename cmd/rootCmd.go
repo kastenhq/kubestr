@@ -86,7 +86,7 @@ func init() {
 	rootCmd.AddCommand(fioCmd)
 	fioCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a Storageclass. (Required)")
 	_ = fioCmd.MarkFlagRequired("storageclass")
-	fioCmd.Flags().StringVarP(&fioCheckerSize, "size", "z", fio.DefaultPVCSize, "The size of the volume used to run FIO.")
+	fioCmd.Flags().StringVarP(&fioCheckerSize, "size", "z", fio.DefaultPVCSize, "The size of the volume used to run FIO. Note that the FIO job definition is not scaled accordingly.")
 	fioCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace used to run FIO.")
 	fioCmd.Flags().StringVarP(&fioCheckerFilePath, "fiofile", "f", "", "The path to a an fio config file.")
 	fioCmd.Flags().StringVarP(&fioCheckerTestName, "testname", "t", "", "The Name of a predefined kubestr fio test. Options(default-fio)")
@@ -146,6 +146,8 @@ func Baseline(ctx context.Context, output string) error {
 	return err
 }
 
+// PrintAndJsonOutput Print JSON output to stdout and to file if arguments say so
+// Returns whether something was printed out or not
 func PrintAndJsonOutput(result []*kubestr.TestOutput, output string, outfile string) bool {
 	if output == "json" {
 		jsonRes, _ := json.MarshalIndent(result, "", "    ")
