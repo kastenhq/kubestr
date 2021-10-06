@@ -147,7 +147,7 @@ func Baseline(ctx context.Context, output string) error {
 }
 
 // PrintAndJsonOutput Print JSON output to stdout and to file if arguments say so
-// Returns whether something was printed out or not
+// Returns whether we have generated output or JSON
 func PrintAndJsonOutput(result []*kubestr.TestOutput, output string, outfile string) bool {
 	if output == "json" {
 		jsonRes, _ := json.MarshalIndent(result, "", "    ")
@@ -176,21 +176,21 @@ func Fio(ctx context.Context, output, outfile, storageclass, size, namespace, jo
 	}
 	testName := "FIO test results"
 	var result *kubestr.TestOutput
-	if fioResult, err_ := fioRunner.RunFio(ctx, &fio.RunFIOArgs{
+	fioResult, err := fioRunner.RunFio(ctx, &fio.RunFIOArgs{
 		StorageClass:   storageclass,
 		Size:           size,
 		Namespace:      namespace,
 		FIOJobName:     jobName,
 		FIOJobFilepath: fioFilePath,
 		Image:          containerImage,
-	}); err_ != nil {
-		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err_.Error(), fioResult)
-		err = err_
+	})
+	if err != nil {
+		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err.Error(), fioResult)
 	} else {
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("\n%s", fioResult.Result.Print()), fioResult)
 	}
-	var result_ = []*kubestr.TestOutput{result}
-	if !PrintAndJsonOutput(result_, output, outfile) {
+	var wrappedResult = []*kubestr.TestOutput{result}
+	if !PrintAndJsonOutput(wrappedResult, output, outfile) {
 		result.Print()
 	}
 	return err
@@ -221,7 +221,7 @@ func CSICheck(ctx context.Context, output, outfile,
 		DynCli:  dyncli,
 	}
 	var result *kubestr.TestOutput
-	csiCheckResult, err_ := csiCheckRunner.RunSnapshotRestore(ctx, &csitypes.CSISnapshotRestoreArgs{
+	csiCheckResult, err := csiCheckRunner.RunSnapshotRestore(ctx, &csitypes.CSISnapshotRestoreArgs{
 		StorageClass:        storageclass,
 		VolumeSnapshotClass: volumesnapshotclass,
 		Namespace:           namespace,
@@ -230,15 +230,14 @@ func CSICheck(ctx context.Context, output, outfile,
 		Cleanup:             cleanup,
 		SkipCFSCheck:        skipCFScheck,
 	})
-	if err_ != nil {
-		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err_.Error(), csiCheckResult)
-		err = err_
+	if err != nil {
+		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err.Error(), csiCheckResult)
 	} else {
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, "CSI application successfully snapshotted and restored.", csiCheckResult)
 	}
 
-	var result_ = []*kubestr.TestOutput{result}
-	if !PrintAndJsonOutput(result_, output, outfile) {
+	var wrappedResult = []*kubestr.TestOutput{result}
+	if !PrintAndJsonOutput(wrappedResult, output, outfile) {
 		result.Print()
 	}
 	return err
