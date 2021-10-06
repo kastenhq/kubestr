@@ -1,11 +1,13 @@
 package types
 
 import (
+	"bytes"
 	"fmt"
 
 	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/client-go/rest"
 )
 
 type CSISnapshotRestoreArgs struct {
@@ -52,13 +54,15 @@ type CreatePodArgs struct {
 	GenerateName   string
 	PVCName        string
 	Namespace      string
-	Cmd            string
 	RunAsUser      int64
 	ContainerImage string
+	Command        []string
+	ContainerArgs  []string
+	MountPath      string
 }
 
 func (c *CreatePodArgs) Validate() error {
-	if c.GenerateName == "" || c.PVCName == "" || c.Namespace == "" || c.Cmd == "" {
+	if c.GenerateName == "" || c.PVCName == "" || c.Namespace == "" {
 		return fmt.Errorf("Invalid CreatePodArgs (%v)", c)
 	}
 	return nil
@@ -89,4 +93,37 @@ func (c *CreateFromSourceCheckArgs) Validate() error {
 		return fmt.Errorf("Invalid CreateFromSourceCheckArgs (%v)", c)
 	}
 	return nil
+}
+
+type PVCBrowseArgs struct {
+	PVCName             string
+	Namespace           string
+	VolumeSnapshotClass string
+	RunAsUser           int64
+	LocalPort           int
+}
+
+func (p *PVCBrowseArgs) Validate() error {
+	if p.PVCName == "" || p.Namespace == "" || p.VolumeSnapshotClass == "" {
+		return fmt.Errorf("Invalid PVCInspectorArgs (%v)", p)
+	}
+	return nil
+}
+
+type PortForwardAPodRequest struct {
+	// RestConfig is the kubernetes config
+	RestConfig *rest.Config
+	// Pod is the selected pod for this port forwarding
+	Pod *v1.Pod
+	// LocalPort is the local port that will be selected to expose the PodPort
+	LocalPort int
+	// PodPort is the target port for the pod
+	PodPort int
+	// Steams configures where to write or read input from
+	OutStream    bytes.Buffer
+	ErrOutStream bytes.Buffer
+	// StopCh is the channel used to manage the port forward lifecycle
+	StopCh <-chan struct{}
+	// ReadyCh communicates when the tunnel is ready to receive traffic
+	ReadyCh chan struct{}
 }

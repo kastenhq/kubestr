@@ -232,9 +232,11 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 						GenerateName:   originalPodGenerateName,
 						PVCName:        "pvc1",
 						Namespace:      "ns",
-						Cmd:            "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null",
+						Command:        []string{"/bin/sh"},
+						ContainerArgs:  []string{"-c", "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null"},
 						RunAsUser:      100,
 						ContainerImage: "image",
+						MountPath:      "/data",
 					}).Return(&v1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "pod1",
@@ -270,9 +272,11 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 						GenerateName:   originalPodGenerateName,
 						PVCName:        "pvc1",
 						Namespace:      "ns",
-						Cmd:            "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null",
+						Command:        []string{"/bin/sh"},
+						ContainerArgs:  []string{"-c", "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null"},
 						RunAsUser:      100,
 						ContainerImage: "image",
+						MountPath:      "/data",
 					}).Return(&v1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "pod1",
@@ -573,7 +577,9 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 						GenerateName:   clonedPodGenerateName,
 						PVCName:        "pvc1",
 						Namespace:      "ns",
-						Cmd:            "tail -f /dev/null",
+						Command:        []string{"/bin/sh"},
+						ContainerArgs:  []string{"-c", "tail -f /dev/null"},
+						MountPath:      "/data",
 						RunAsUser:      100,
 						ContainerImage: "image",
 					}).Return(&v1.Pod{
@@ -624,7 +630,9 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 						GenerateName:   clonedPodGenerateName,
 						PVCName:        "pvc1",
 						Namespace:      "ns",
-						Cmd:            "tail -f /dev/null",
+						Command:        []string{"/bin/sh"},
+						ContainerArgs:  []string{"-c", "tail -f /dev/null"},
+						MountPath:      "/data",
 						RunAsUser:      100,
 						ContainerImage: "image",
 					}).Return(&v1.Pod{

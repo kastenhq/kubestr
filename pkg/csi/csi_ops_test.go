@@ -474,7 +474,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 				GenerateName:   "name",
 				PVCName:        "pvcname",
 				Namespace:      "ns",
-				Cmd:            "somecommand",
+				Command:        []string{"somecommand"},
 				RunAsUser:      1000,
 				ContainerImage: "containerimage",
 			},
@@ -487,7 +487,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 				GenerateName: "name",
 				PVCName:      "pvcname",
 				Namespace:    "ns",
-				Cmd:          "somecommand",
+				Command:      []string{"somecommand"},
 			},
 			errChecker: IsNil,
 			podChecker: NotNil,
@@ -498,7 +498,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 				GenerateName: "name",
 				PVCName:      "pvcname",
 				Namespace:    "ns",
-				Cmd:          "somecommand",
+				Command:      []string{"somecommand"},
 			},
 			failCreates: true,
 			errChecker:  NotNil,
@@ -510,7 +510,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 				GenerateName: "",
 				PVCName:      "pvcname",
 				Namespace:    "ns",
-				Cmd:          "somecommand",
+				Command:      []string{"somecommand"},
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
@@ -521,7 +521,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 				GenerateName: "name",
 				PVCName:      "",
 				Namespace:    "ns",
-				Cmd:          "somecommand",
+				Command:      []string{"somecommand"},
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
@@ -532,7 +532,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 				GenerateName: "name",
 				PVCName:      "pvcname",
 				Namespace:    "",
-				Cmd:          "somecommand",
+				Command:      []string{"somecommand"},
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
@@ -543,10 +543,10 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 				GenerateName: "name",
 				PVCName:      "pvcname",
 				Namespace:    "ns",
-				Cmd:          "",
+				Command:      []string{"somecommand"},
 			},
-			errChecker: NotNil,
-			podChecker: IsNil,
+			errChecker: IsNil,
+			podChecker: NotNil,
 		},
 		{
 			cli:        nil,
@@ -571,11 +571,11 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			c.Assert(pod.Namespace, Equals, tc.args.Namespace)
 			c.Assert(len(pod.Spec.Containers), Equals, 1)
 			c.Assert(pod.Spec.Containers[0].Name, Equals, tc.args.GenerateName)
-			c.Assert(pod.Spec.Containers[0].Command, DeepEquals, []string{"/bin/sh"})
-			c.Assert(pod.Spec.Containers[0].Args, DeepEquals, []string{"-c", tc.args.Cmd})
+			c.Assert(pod.Spec.Containers[0].Command, DeepEquals, tc.args.Command)
+			c.Assert(pod.Spec.Containers[0].Args, DeepEquals, tc.args.ContainerArgs)
 			c.Assert(pod.Spec.Containers[0].VolumeMounts, DeepEquals, []v1.VolumeMount{{
 				Name:      "persistent-storage",
-				MountPath: "/data",
+				MountPath: tc.args.MountPath,
 			}})
 			c.Assert(pod.Spec.Volumes, DeepEquals, []v1.Volume{{
 				Name: "persistent-storage",

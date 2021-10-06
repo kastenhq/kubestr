@@ -6,96 +6,97 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	types "github.com/kastenhq/kubestr/pkg/csi/types"
-	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
-	v1 "k8s.io/api/core/v1"
-	reflect "reflect"
+	v1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
+	v10 "k8s.io/api/core/v1"
 )
 
-// MockSnapshotRestoreStepper is a mock of SnapshotRestoreStepper interface
+// MockSnapshotRestoreStepper is a mock of SnapshotRestoreStepper interface.
 type MockSnapshotRestoreStepper struct {
 	ctrl     *gomock.Controller
 	recorder *MockSnapshotRestoreStepperMockRecorder
 }
 
-// MockSnapshotRestoreStepperMockRecorder is the mock recorder for MockSnapshotRestoreStepper
+// MockSnapshotRestoreStepperMockRecorder is the mock recorder for MockSnapshotRestoreStepper.
 type MockSnapshotRestoreStepperMockRecorder struct {
 	mock *MockSnapshotRestoreStepper
 }
 
-// NewMockSnapshotRestoreStepper creates a new mock instance
+// NewMockSnapshotRestoreStepper creates a new mock instance.
 func NewMockSnapshotRestoreStepper(ctrl *gomock.Controller) *MockSnapshotRestoreStepper {
 	mock := &MockSnapshotRestoreStepper{ctrl: ctrl}
 	mock.recorder = &MockSnapshotRestoreStepperMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockSnapshotRestoreStepper) EXPECT() *MockSnapshotRestoreStepperMockRecorder {
 	return m.recorder
 }
 
-// Cleanup mocks base method
+// Cleanup mocks base method.
 func (m *MockSnapshotRestoreStepper) Cleanup(arg0 context.Context, arg1 *types.CSISnapshotRestoreResults) {
 	m.ctrl.T.Helper()
 	m.ctrl.Call(m, "Cleanup", arg0, arg1)
 }
 
-// Cleanup indicates an expected call of Cleanup
+// Cleanup indicates an expected call of Cleanup.
 func (mr *MockSnapshotRestoreStepperMockRecorder) Cleanup(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockSnapshotRestoreStepper)(nil).Cleanup), arg0, arg1)
 }
 
-// CreateApplication mocks base method
-func (m *MockSnapshotRestoreStepper) CreateApplication(arg0 context.Context, arg1 *types.CSISnapshotRestoreArgs, arg2 string) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
+// CreateApplication mocks base method.
+func (m *MockSnapshotRestoreStepper) CreateApplication(arg0 context.Context, arg1 *types.CSISnapshotRestoreArgs, arg2 string) (*v10.Pod, *v10.PersistentVolumeClaim, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateApplication", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*v1.Pod)
-	ret1, _ := ret[1].(*v1.PersistentVolumeClaim)
+	ret0, _ := ret[0].(*v10.Pod)
+	ret1, _ := ret[1].(*v10.PersistentVolumeClaim)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-// CreateApplication indicates an expected call of CreateApplication
+// CreateApplication indicates an expected call of CreateApplication.
 func (mr *MockSnapshotRestoreStepperMockRecorder) CreateApplication(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateApplication", reflect.TypeOf((*MockSnapshotRestoreStepper)(nil).CreateApplication), arg0, arg1, arg2)
 }
 
-// RestoreApplication mocks base method
-func (m *MockSnapshotRestoreStepper) RestoreApplication(arg0 context.Context, arg1 *types.CSISnapshotRestoreArgs, arg2 *snapv1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
+// RestoreApplication mocks base method.
+func (m *MockSnapshotRestoreStepper) RestoreApplication(arg0 context.Context, arg1 *types.CSISnapshotRestoreArgs, arg2 *v1.VolumeSnapshot) (*v10.Pod, *v10.PersistentVolumeClaim, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "RestoreApplication", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*v1.Pod)
-	ret1, _ := ret[1].(*v1.PersistentVolumeClaim)
+	ret0, _ := ret[0].(*v10.Pod)
+	ret1, _ := ret[1].(*v10.PersistentVolumeClaim)
 	ret2, _ := ret[2].(error)
 	return ret0, ret1, ret2
 }
 
-// RestoreApplication indicates an expected call of RestoreApplication
+// RestoreApplication indicates an expected call of RestoreApplication.
 func (mr *MockSnapshotRestoreStepperMockRecorder) RestoreApplication(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "RestoreApplication", reflect.TypeOf((*MockSnapshotRestoreStepper)(nil).RestoreApplication), arg0, arg1, arg2)
 }
 
-// SnapshotApplication mocks base method
-func (m *MockSnapshotRestoreStepper) SnapshotApplication(arg0 context.Context, arg1 *types.CSISnapshotRestoreArgs, arg2 *v1.PersistentVolumeClaim, arg3 string) (*snapv1.VolumeSnapshot, error) {
+// SnapshotApplication mocks base method.
+func (m *MockSnapshotRestoreStepper) SnapshotApplication(arg0 context.Context, arg1 *types.CSISnapshotRestoreArgs, arg2 *v10.PersistentVolumeClaim, arg3 string) (*v1.VolumeSnapshot, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "SnapshotApplication", arg0, arg1, arg2, arg3)
-	ret0, _ := ret[0].(*snapv1.VolumeSnapshot)
+	ret0, _ := ret[0].(*v1.VolumeSnapshot)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// SnapshotApplication indicates an expected call of SnapshotApplication
+// SnapshotApplication indicates an expected call of SnapshotApplication.
 func (mr *MockSnapshotRestoreStepperMockRecorder) SnapshotApplication(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "SnapshotApplication", reflect.TypeOf((*MockSnapshotRestoreStepper)(nil).SnapshotApplication), arg0, arg1, arg2, arg3)
 }
 
-// ValidateArgs mocks base method
+// ValidateArgs mocks base method.
 func (m *MockSnapshotRestoreStepper) ValidateArgs(arg0 context.Context, arg1 *types.CSISnapshotRestoreArgs) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateArgs", arg0, arg1)
@@ -103,21 +104,21 @@ func (m *MockSnapshotRestoreStepper) ValidateArgs(arg0 context.Context, arg1 *ty
 	return ret0
 }
 
-// ValidateArgs indicates an expected call of ValidateArgs
+// ValidateArgs indicates an expected call of ValidateArgs.
 func (mr *MockSnapshotRestoreStepperMockRecorder) ValidateArgs(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateArgs", reflect.TypeOf((*MockSnapshotRestoreStepper)(nil).ValidateArgs), arg0, arg1)
 }
 
-// ValidateData mocks base method
-func (m *MockSnapshotRestoreStepper) ValidateData(arg0 context.Context, arg1 *v1.Pod, arg2 string) error {
+// ValidateData mocks base method.
+func (m *MockSnapshotRestoreStepper) ValidateData(arg0 context.Context, arg1 *v10.Pod, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateData", arg0, arg1, arg2)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// ValidateData indicates an expected call of ValidateData
+// ValidateData indicates an expected call of ValidateData.
 func (mr *MockSnapshotRestoreStepperMockRecorder) ValidateData(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateData", reflect.TypeOf((*MockSnapshotRestoreStepper)(nil).ValidateData), arg0, arg1, arg2)
