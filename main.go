@@ -18,10 +18,13 @@ package main
 
 import (
 	"github.com/kastenhq/kubestr/cmd"
+	"os"
 )
 
 func main() {
-	_ = Execute()
+	if err := Execute(); err != nil {
+		os.Exit(1)
+	}
 }
 
 // Execute executes the main command
