@@ -170,10 +170,9 @@ func (s *snapshotRestoreSteps) CreateApplication(ctx context.Context, args *type
 		return nil, nil, errors.Wrap(err, "Failed to create PVC")
 	}
 	podArgs := &types.CreatePodArgs{
-		GenerateName: originalPodGenerateName,
-		PVCName:      pvc.Name,
-		Namespace:    args.Namespace,
-		//Cmd:            fmt.Sprintf("echo '%s' >> /data/out.txt; sync; tail -f /dev/null", genString),
+		GenerateName:   originalPodGenerateName,
+		PVCName:        pvc.Name,
+		Namespace:      args.Namespace,
 		RunAsUser:      args.RunAsUser,
 		ContainerImage: args.ContainerImage,
 		Command:        []string{"/bin/sh"},
@@ -249,10 +248,9 @@ func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *typ
 		return nil, nil, errors.Wrap(err, "Failed to restore PVC")
 	}
 	podArgs := &types.CreatePodArgs{
-		GenerateName: clonedPodGenerateName,
-		PVCName:      pvc.Name,
-		Namespace:    args.Namespace,
-		//Cmd:            "tail -f /dev/null",
+		GenerateName:   clonedPodGenerateName,
+		PVCName:        pvc.Name,
+		Namespace:      args.Namespace,
 		RunAsUser:      args.RunAsUser,
 		ContainerImage: args.ContainerImage,
 		Command:        []string{"/bin/sh"},

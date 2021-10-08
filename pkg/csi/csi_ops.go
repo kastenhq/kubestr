@@ -251,7 +251,7 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 	targetSnapClassName := clonePrefix + args.VolumeSnapshotClass
 	err := snapshotter.CloneVolumeSnapshotClass(ctx, args.VolumeSnapshotClass, targetSnapClassName, kansnapshot.DeletionPolicyRetain, nil)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to create a VolumeSnapshotClass to use to restore the snapshot")
+		return errors.Wrapf(err, "Failed to clone a VolumeSnapshotClass to use to restore the snapshot")
 	}
 	defer func() {
 		VolSnapClassGVR := schema.GroupVersionResource{Group: common.SnapGroupName, Version: SnapshotGroupVersion.Version, Resource: common.VolumeSnapshotClassResourcePlural}

@@ -213,12 +213,12 @@ func CSICheck(ctx context.Context, output,
 	testName := "CSI checker test"
 	kubecli, err := kubestr.LoadKubeCli()
 	if err != nil {
-		fmt.Printf("Failed to load kubeCLi (%s)", err.Error())
+		fmt.Printf("Failed to load kubeCli (%s)", err.Error())
 		return
 	}
 	dyncli, err := kubestr.LoadDynCli()
 	if err != nil {
-		fmt.Printf("Failed to load kubeCLi (%s)", err.Error())
+		fmt.Printf("Failed to load dynCLi (%s)", err.Error())
 		return
 	}
 	csiCheckRunner := &csi.SnapshotRestoreRunner{
@@ -258,12 +258,12 @@ func CsiPvcBrowse(ctx context.Context,
 ) {
 	kubecli, err := kubestr.LoadKubeCli()
 	if err != nil {
-		fmt.Printf("Failed to load kubeCLi (%s)", err.Error())
+		fmt.Printf("Failed to load kubeCli (%s)", err.Error())
 		return
 	}
 	dyncli, err := kubestr.LoadDynCli()
 	if err != nil {
-		fmt.Printf("Failed to load kubeCLi (%s)", err.Error())
+		fmt.Printf("Failed to load dynCli (%s)", err.Error())
 		return
 	}
 	browseRunner := &csi.PVCBrowseRunner{

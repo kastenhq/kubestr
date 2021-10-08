@@ -105,7 +105,7 @@ type PVCBrowseArgs struct {
 
 func (p *PVCBrowseArgs) Validate() error {
 	if p.PVCName == "" || p.Namespace == "" || p.VolumeSnapshotClass == "" {
-		return fmt.Errorf("Invalid PVCInspectorArgs (%v)", p)
+		return fmt.Errorf("Invalid PVCBrowseArgs (%v)", p)
 	}
 	return nil
 }
@@ -119,7 +119,7 @@ type PortForwardAPodRequest struct {
 	LocalPort int
 	// PodPort is the target port for the pod
 	PodPort int
-	// Steams configures where to write or read input from
+	// Streams configures where to write or read input from
 	OutStream    bytes.Buffer
 	ErrOutStream bytes.Buffer
 	// StopCh is the channel used to manage the port forward lifecycle
