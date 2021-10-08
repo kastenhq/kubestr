@@ -18,6 +18,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
 	"time"
 
 	"github.com/kastenhq/kubestr/pkg/csi"
@@ -29,16 +30,18 @@ import (
 
 var (
 	output  string
+	outfile string
 	rootCmd = &cobra.Command{
 		Use:   "kubestr",
 		Short: "A tool to validate kubernetes storage",
 		Long: `kubestr is a tool that will scan your k8s cluster
 		and validate that the storage systems in place as well as run
 		performance tests.`,
-		Run: func(cmd *cobra.Command, args []string) {
+		SilenceUsage: true,
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			Baseline(ctx, output)
+			return Baseline(ctx, output)
 		},
 	}
 
@@ -53,10 +56,10 @@ var (
 		Use:   "fio",
 		Short: "Runs an fio test",
 		Long:  `Run an fio test`,
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			Fio(ctx, output, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath, containerImage)
+			return Fio(ctx, output, outfile, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath, containerImage)
 		},
 	}
 
@@ -68,10 +71,10 @@ var (
 		Use:   "csicheck",
 		Short: "Runs the CSI snapshot restore check",
 		Long:  "Validates a CSI provisioners ability to take a snapshot of an application and restore it",
-		Run: func(cmd *cobra.Command, args []string) {
+		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			CSICheck(ctx, output, namespace, storageClass, csiCheckVolumeSnapshotClass, csiCheckRunAsUser, containerImage, csiCheckCleanup, csiCheckSkipCFSCheck)
+			return CSICheck(ctx, output, outfile, namespace, storageClass, csiCheckVolumeSnapshotClass, csiCheckRunAsUser, containerImage, csiCheckCleanup, csiCheckSkipCFSCheck)
 		},
 	}
 
@@ -81,8 +84,8 @@ var (
 		Short: "Browse the contents of a CSI PVC via file browser",
 		Args:  cobra.ExactArgs(1),
 		Long:  "Browse the contents of a CSI provisioned PVC by cloning the volume and mounting it with a file browser.",
-		Run: func(cmd *cobra.Command, args []string) {
-			CsiPvcBrowse(context.Background(), args[0],
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return CsiPvcBrowse(context.Background(), args[0],
 				namespace,
 				csiCheckVolumeSnapshotClass,
 				csiCheckRunAsUser,
@@ -94,11 +97,12 @@ var (
 
 func init() {
 	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "", "Options(json)")
+	rootCmd.PersistentFlags().StringVarP(&outfile, "outfile", "e", "", "The file where test results will be written")
 
 	rootCmd.AddCommand(fioCmd)
 	fioCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a Storageclass. (Required)")
 	_ = fioCmd.MarkFlagRequired("storageclass")
-	fioCmd.Flags().StringVarP(&fioCheckerSize, "size", "z", fio.DefaultPVCSize, "The size of the volume used to run FIO.")
+	fioCmd.Flags().StringVarP(&fioCheckerSize, "size", "z", fio.DefaultPVCSize, "The size of the volume used to run FIO. Note that the FIO job definition is not scaled accordingly.")
 	fioCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace used to run FIO.")
 	fioCmd.Flags().StringVarP(&fioCheckerFilePath, "fiofile", "f", "", "The path to a an fio config file.")
 	fioCmd.Flags().StringVarP(&fioCheckerTestName, "testname", "t", "", "The Name of a predefined kubestr fio test. Options(default-fio)")
@@ -129,19 +133,19 @@ func Execute() error {
 }
 
 // Baseline executes the baseline check
-func Baseline(ctx context.Context, output string) {
+func Baseline(ctx context.Context, output string) error {
 	p, err := kubestr.NewKubestr()
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		return err
 	}
 	fmt.Print(kubestr.Logo)
 	result := p.KubernetesChecks()
-	if output == "json" {
-		jsonRes, _ := json.MarshalIndent(result, "", "    ")
-		fmt.Println(string(jsonRes))
-		return
+
+	if PrintAndJsonOutput(result, output, outfile) {
+		return err
 	}
+
 	for _, retval := range result {
 		retval.Print()
 		fmt.Println()
@@ -151,13 +155,9 @@ func Baseline(ctx context.Context, output string) {
 	provisionerList, err := p.ValidateProvisioners(ctx)
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		return err
 	}
-	if output == "json" {
-		jsonRes, _ := json.MarshalIndent(result, "", "    ")
-		fmt.Println(string(jsonRes))
-		return
-	}
+
 	fmt.Println("Available Storage Provisioners:")
 	fmt.Println()
 	time.Sleep(500 * time.Millisecond) // Added to introduce lag.
@@ -166,42 +166,61 @@ func Baseline(ctx context.Context, output string) {
 		fmt.Println()
 		time.Sleep(500 * time.Millisecond)
 	}
+	return err
+}
+
+// PrintAndJsonOutput Print JSON output to stdout and to file if arguments say so
+// Returns whether we have generated output or JSON
+func PrintAndJsonOutput(result []*kubestr.TestOutput, output string, outfile string) bool {
+	if output == "json" {
+		jsonRes, _ := json.MarshalIndent(result, "", "    ")
+		if len(outfile) > 0 {
+			err := os.WriteFile(outfile, jsonRes, 0666)
+			if err != nil {
+				fmt.Println("Error writing output:", err.Error())
+				os.Exit(2)
+			}
+		} else {
+			fmt.Println(string(jsonRes))
+		}
+		return true
+	}
+	return false
 }
 
 // Fio executes the FIO test.
-func Fio(ctx context.Context, output, storageclass, size, namespace, jobName, fioFilePath string, containerImage string) {
+func Fio(ctx context.Context, output, outfile, storageclass, size, namespace, jobName, fioFilePath string, containerImage string) error {
 	cli, err := kubestr.LoadKubeCli()
 	if err != nil {
 		fmt.Println(err.Error())
-		return
+		return err
 	}
 	fioRunner := &fio.FIOrunner{
 		Cli: cli,
 	}
 	testName := "FIO test results"
 	var result *kubestr.TestOutput
-	if fioResult, err := fioRunner.RunFio(ctx, &fio.RunFIOArgs{
+	fioResult, err := fioRunner.RunFio(ctx, &fio.RunFIOArgs{
 		StorageClass:   storageclass,
 		Size:           size,
 		Namespace:      namespace,
 		FIOJobName:     jobName,
 		FIOJobFilepath: fioFilePath,
 		Image:          containerImage,
-	}); err != nil {
+	})
+	if err != nil {
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err.Error(), fioResult)
 	} else {
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("\n%s", fioResult.Result.Print()), fioResult)
 	}
-
-	if output == "json" {
-		jsonRes, _ := json.MarshalIndent(result, "", "    ")
-		fmt.Println(string(jsonRes))
-		return
+	var wrappedResult = []*kubestr.TestOutput{result}
+	if !PrintAndJsonOutput(wrappedResult, output, outfile) {
+		result.Print()
 	}
-	result.Print()
+	return err
 }
 
-func CSICheck(ctx context.Context, output,
+func CSICheck(ctx context.Context, output, outfile,
 	namespace string,
 	storageclass string,
 	volumesnapshotclass string,
@@ -209,17 +228,17 @@ func CSICheck(ctx context.Context, output,
 	containerImage string,
 	cleanup bool,
 	skipCFScheck bool,
-) {
+) error {
 	testName := "CSI checker test"
 	kubecli, err := kubestr.LoadKubeCli()
 	if err != nil {
 		fmt.Printf("Failed to load kubeCli (%s)", err.Error())
-		return
+		return err
 	}
 	dyncli, err := kubestr.LoadDynCli()
 	if err != nil {
-		fmt.Printf("Failed to load dynCLi (%s)", err.Error())
-		return
+		fmt.Printf("Failed to load dynCli (%s)", err.Error())
+		return err
 	}
 	csiCheckRunner := &csi.SnapshotRestoreRunner{
 		KubeCli: kubecli,
@@ -241,12 +260,11 @@ func CSICheck(ctx context.Context, output,
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, "CSI application successfully snapshotted and restored.", csiCheckResult)
 	}
 
-	if output == "json" {
-		jsonRes, _ := json.MarshalIndent(result, "", "    ")
-		fmt.Println(string(jsonRes))
-		return
+	var wrappedResult = []*kubestr.TestOutput{result}
+	if !PrintAndJsonOutput(wrappedResult, output, outfile) {
+		result.Print()
 	}
-	result.Print()
+	return err
 }
 
 func CsiPvcBrowse(ctx context.Context,
@@ -255,16 +273,16 @@ func CsiPvcBrowse(ctx context.Context,
 	volumeSnapshotClass string,
 	runAsUser int64,
 	localPort int,
-) {
+) error {
 	kubecli, err := kubestr.LoadKubeCli()
 	if err != nil {
 		fmt.Printf("Failed to load kubeCli (%s)", err.Error())
-		return
+		return err
 	}
 	dyncli, err := kubestr.LoadDynCli()
 	if err != nil {
 		fmt.Printf("Failed to load dynCli (%s)", err.Error())
-		return
+		return err
 	}
 	browseRunner := &csi.PVCBrowseRunner{
 		KubeCli: kubecli,
@@ -279,6 +297,6 @@ func CsiPvcBrowse(ctx context.Context,
 	})
 	if err != nil {
 		fmt.Printf("Failed to run PVC browser (%s)\n", err.Error())
-		return
 	}
+	return err
 }
