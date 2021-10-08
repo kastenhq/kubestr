@@ -5,35 +5,36 @@
 package mocks
 
 import (
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	reflect "reflect"
 )
 
-// MockApiVersionFetcher is a mock of ApiVersionFetcher interface
+// MockApiVersionFetcher is a mock of ApiVersionFetcher interface.
 type MockApiVersionFetcher struct {
 	ctrl     *gomock.Controller
 	recorder *MockApiVersionFetcherMockRecorder
 }
 
-// MockApiVersionFetcherMockRecorder is the mock recorder for MockApiVersionFetcher
+// MockApiVersionFetcherMockRecorder is the mock recorder for MockApiVersionFetcher.
 type MockApiVersionFetcherMockRecorder struct {
 	mock *MockApiVersionFetcher
 }
 
-// NewMockApiVersionFetcher creates a new mock instance
+// NewMockApiVersionFetcher creates a new mock instance.
 func NewMockApiVersionFetcher(ctrl *gomock.Controller) *MockApiVersionFetcher {
 	mock := &MockApiVersionFetcher{ctrl: ctrl}
 	mock.recorder = &MockApiVersionFetcherMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockApiVersionFetcher) EXPECT() *MockApiVersionFetcherMockRecorder {
 	return m.recorder
 }
 
-// GetCSISnapshotGroupVersion mocks base method
+// GetCSISnapshotGroupVersion mocks base method.
 func (m *MockApiVersionFetcher) GetCSISnapshotGroupVersion() (*v1.GroupVersionForDiscovery, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetCSISnapshotGroupVersion")
@@ -42,7 +43,7 @@ func (m *MockApiVersionFetcher) GetCSISnapshotGroupVersion() (*v1.GroupVersionFo
 	return ret0, ret1
 }
 
-// GetCSISnapshotGroupVersion indicates an expected call of GetCSISnapshotGroupVersion
+// GetCSISnapshotGroupVersion indicates an expected call of GetCSISnapshotGroupVersion.
 func (mr *MockApiVersionFetcherMockRecorder) GetCSISnapshotGroupVersion() *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetCSISnapshotGroupVersion", reflect.TypeOf((*MockApiVersionFetcher)(nil).GetCSISnapshotGroupVersion))

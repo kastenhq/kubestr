@@ -77,6 +77,22 @@ var (
 			return CSICheck(ctx, output, outfile, namespace, storageClass, csiCheckVolumeSnapshotClass, csiCheckRunAsUser, containerImage, csiCheckCleanup, csiCheckSkipCFSCheck)
 		},
 	}
+
+	pvcBrowseLocalPort int
+	pvcBrowseCmd       = &cobra.Command{
+		Use:   "browse [PVC name]",
+		Short: "Browse the contents of a CSI PVC via file browser",
+		Args:  cobra.ExactArgs(1),
+		Long:  "Browse the contents of a CSI provisioned PVC by cloning the volume and mounting it with a file browser.",
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return CsiPvcBrowse(context.Background(), args[0],
+				namespace,
+				csiCheckVolumeSnapshotClass,
+				csiCheckRunAsUser,
+				pvcBrowseLocalPort,
+			)
+		},
+	}
 )
 
 func init() {
@@ -102,6 +118,13 @@ func init() {
 	csiCheckCmd.Flags().BoolVarP(&csiCheckCleanup, "cleanup", "c", true, "Clean up the objects created by tool")
 	csiCheckCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the CSI check using pods as a user (int)")
 	csiCheckCmd.Flags().BoolVarP(&csiCheckSkipCFSCheck, "skipCFScheck", "k", false, "Use this flag to skip validating the ability to clone a snapshot.")
+
+	rootCmd.AddCommand(pvcBrowseCmd)
+	pvcBrowseCmd.Flags().StringVarP(&csiCheckVolumeSnapshotClass, "volumesnapshotclass", "v", "", "The name of a VolumeSnapshotClass. (Required)")
+	_ = pvcBrowseCmd.MarkFlagRequired("volumesnapshotclass")
+	pvcBrowseCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of the PersistentVolumeClaim.")
+	pvcBrowseCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
+	pvcBrowseCmd.Flags().IntVarP(&pvcBrowseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
 }
 
 // Execute executes the main command
@@ -209,12 +232,12 @@ func CSICheck(ctx context.Context, output, outfile,
 	testName := "CSI checker test"
 	kubecli, err := kubestr.LoadKubeCli()
 	if err != nil {
-		fmt.Printf("Failed to load kubeCLi (%s)", err.Error())
+		fmt.Printf("Failed to load kubeCli (%s)", err.Error())
 		return err
 	}
 	dyncli, err := kubestr.LoadDynCli()
 	if err != nil {
-		fmt.Printf("Failed to load kubeCLi (%s)", err.Error())
+		fmt.Printf("Failed to load dynCli (%s)", err.Error())
 		return err
 	}
 	csiCheckRunner := &csi.SnapshotRestoreRunner{
@@ -240,6 +263,40 @@ func CSICheck(ctx context.Context, output, outfile,
 	var wrappedResult = []*kubestr.TestOutput{result}
 	if !PrintAndJsonOutput(wrappedResult, output, outfile) {
 		result.Print()
+	}
+	return err
+}
+
+func CsiPvcBrowse(ctx context.Context,
+	pvcName string,
+	namespace string,
+	volumeSnapshotClass string,
+	runAsUser int64,
+	localPort int,
+) error {
+	kubecli, err := kubestr.LoadKubeCli()
+	if err != nil {
+		fmt.Printf("Failed to load kubeCli (%s)", err.Error())
+		return err
+	}
+	dyncli, err := kubestr.LoadDynCli()
+	if err != nil {
+		fmt.Printf("Failed to load dynCli (%s)", err.Error())
+		return err
+	}
+	browseRunner := &csi.PVCBrowseRunner{
+		KubeCli: kubecli,
+		DynCli:  dyncli,
+	}
+	err = browseRunner.RunPVCBrowse(ctx, &csitypes.PVCBrowseArgs{
+		PVCName:             pvcName,
+		Namespace:           namespace,
+		VolumeSnapshotClass: volumeSnapshotClass,
+		RunAsUser:           runAsUser,
+		LocalPort:           localPort,
+	})
+	if err != nil {
+		fmt.Printf("Failed to run PVC browser (%s)\n", err.Error())
 	}
 	return err
 }

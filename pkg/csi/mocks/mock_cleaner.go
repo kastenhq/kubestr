@@ -6,35 +6,36 @@ package mocks
 
 import (
 	context "context"
+	reflect "reflect"
+
 	gomock "github.com/golang/mock/gomock"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	reflect "reflect"
 )
 
-// MockCleaner is a mock of Cleaner interface
+// MockCleaner is a mock of Cleaner interface.
 type MockCleaner struct {
 	ctrl     *gomock.Controller
 	recorder *MockCleanerMockRecorder
 }
 
-// MockCleanerMockRecorder is the mock recorder for MockCleaner
+// MockCleanerMockRecorder is the mock recorder for MockCleaner.
 type MockCleanerMockRecorder struct {
 	mock *MockCleaner
 }
 
-// NewMockCleaner creates a new mock instance
+// NewMockCleaner creates a new mock instance.
 func NewMockCleaner(ctrl *gomock.Controller) *MockCleaner {
 	mock := &MockCleaner{ctrl: ctrl}
 	mock.recorder = &MockCleanerMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockCleaner) EXPECT() *MockCleanerMockRecorder {
 	return m.recorder
 }
 
-// DeletePVC mocks base method
+// DeletePVC mocks base method.
 func (m *MockCleaner) DeletePVC(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeletePVC", arg0, arg1, arg2)
@@ -42,13 +43,13 @@ func (m *MockCleaner) DeletePVC(arg0 context.Context, arg1, arg2 string) error {
 	return ret0
 }
 
-// DeletePVC indicates an expected call of DeletePVC
+// DeletePVC indicates an expected call of DeletePVC.
 func (mr *MockCleanerMockRecorder) DeletePVC(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePVC", reflect.TypeOf((*MockCleaner)(nil).DeletePVC), arg0, arg1, arg2)
 }
 
-// DeletePod mocks base method
+// DeletePod mocks base method.
 func (m *MockCleaner) DeletePod(arg0 context.Context, arg1, arg2 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeletePod", arg0, arg1, arg2)
@@ -56,13 +57,13 @@ func (m *MockCleaner) DeletePod(arg0 context.Context, arg1, arg2 string) error {
 	return ret0
 }
 
-// DeletePod indicates an expected call of DeletePod
+// DeletePod indicates an expected call of DeletePod.
 func (mr *MockCleanerMockRecorder) DeletePod(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeletePod", reflect.TypeOf((*MockCleaner)(nil).DeletePod), arg0, arg1, arg2)
 }
 
-// DeleteSnapshot mocks base method
+// DeleteSnapshot mocks base method.
 func (m *MockCleaner) DeleteSnapshot(arg0 context.Context, arg1, arg2 string, arg3 *v1.GroupVersionForDiscovery) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "DeleteSnapshot", arg0, arg1, arg2, arg3)
@@ -70,7 +71,7 @@ func (m *MockCleaner) DeleteSnapshot(arg0 context.Context, arg1, arg2 string, ar
 	return ret0
 }
 
-// DeleteSnapshot indicates an expected call of DeleteSnapshot
+// DeleteSnapshot indicates an expected call of DeleteSnapshot.
 func (mr *MockCleanerMockRecorder) DeleteSnapshot(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteSnapshot", reflect.TypeOf((*MockCleaner)(nil).DeleteSnapshot), arg0, arg1, arg2, arg3)

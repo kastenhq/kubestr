@@ -5,34 +5,35 @@
 package mocks
 
 import (
-	gomock "github.com/golang/mock/gomock"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
 )
 
-// MockDataValidator is a mock of DataValidator interface
+// MockDataValidator is a mock of DataValidator interface.
 type MockDataValidator struct {
 	ctrl     *gomock.Controller
 	recorder *MockDataValidatorMockRecorder
 }
 
-// MockDataValidatorMockRecorder is the mock recorder for MockDataValidator
+// MockDataValidatorMockRecorder is the mock recorder for MockDataValidator.
 type MockDataValidatorMockRecorder struct {
 	mock *MockDataValidator
 }
 
-// NewMockDataValidator creates a new mock instance
+// NewMockDataValidator creates a new mock instance.
 func NewMockDataValidator(ctrl *gomock.Controller) *MockDataValidator {
 	mock := &MockDataValidator{ctrl: ctrl}
 	mock.recorder = &MockDataValidatorMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockDataValidator) EXPECT() *MockDataValidatorMockRecorder {
 	return m.recorder
 }
 
-// FetchPodData mocks base method
+// FetchPodData mocks base method.
 func (m *MockDataValidator) FetchPodData(arg0, arg1 string) (string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FetchPodData", arg0, arg1)
@@ -41,7 +42,7 @@ func (m *MockDataValidator) FetchPodData(arg0, arg1 string) (string, error) {
 	return ret0, ret1
 }
 
-// FetchPodData indicates an expected call of FetchPodData
+// FetchPodData indicates an expected call of FetchPodData.
 func (mr *MockDataValidatorMockRecorder) FetchPodData(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchPodData", reflect.TypeOf((*MockDataValidator)(nil).FetchPodData), arg0, arg1)

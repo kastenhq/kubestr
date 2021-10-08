@@ -6,37 +6,54 @@ package mocks
 
 import (
 	context "context"
-	gomock "github.com/golang/mock/gomock"
-	v1 "k8s.io/api/storage/v1"
-	v10 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	reflect "reflect"
+
+	gomock "github.com/golang/mock/gomock"
+	v1 "k8s.io/api/core/v1"
+	v10 "k8s.io/api/storage/v1"
+	v11 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
-// MockArgumentValidator is a mock of ArgumentValidator interface
+// MockArgumentValidator is a mock of ArgumentValidator interface.
 type MockArgumentValidator struct {
 	ctrl     *gomock.Controller
 	recorder *MockArgumentValidatorMockRecorder
 }
 
-// MockArgumentValidatorMockRecorder is the mock recorder for MockArgumentValidator
+// MockArgumentValidatorMockRecorder is the mock recorder for MockArgumentValidator.
 type MockArgumentValidatorMockRecorder struct {
 	mock *MockArgumentValidator
 }
 
-// NewMockArgumentValidator creates a new mock instance
+// NewMockArgumentValidator creates a new mock instance.
 func NewMockArgumentValidator(ctrl *gomock.Controller) *MockArgumentValidator {
 	mock := &MockArgumentValidator{ctrl: ctrl}
 	mock.recorder = &MockArgumentValidatorMockRecorder{mock}
 	return mock
 }
 
-// EXPECT returns an object that allows the caller to indicate expected use
+// EXPECT returns an object that allows the caller to indicate expected use.
 func (m *MockArgumentValidator) EXPECT() *MockArgumentValidatorMockRecorder {
 	return m.recorder
 }
 
-// ValidateNamespace mocks base method
+// FetchPV mocks base method.
+func (m *MockArgumentValidator) FetchPV(arg0 context.Context, arg1 string) (*v1.PersistentVolume, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "FetchPV", arg0, arg1)
+	ret0, _ := ret[0].(*v1.PersistentVolume)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// FetchPV indicates an expected call of FetchPV.
+func (mr *MockArgumentValidatorMockRecorder) FetchPV(arg0, arg1 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchPV", reflect.TypeOf((*MockArgumentValidator)(nil).FetchPV), arg0, arg1)
+}
+
+// ValidateNamespace mocks base method.
 func (m *MockArgumentValidator) ValidateNamespace(arg0 context.Context, arg1 string) error {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateNamespace", arg0, arg1)
@@ -44,29 +61,44 @@ func (m *MockArgumentValidator) ValidateNamespace(arg0 context.Context, arg1 str
 	return ret0
 }
 
-// ValidateNamespace indicates an expected call of ValidateNamespace
+// ValidateNamespace indicates an expected call of ValidateNamespace.
 func (mr *MockArgumentValidatorMockRecorder) ValidateNamespace(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateNamespace", reflect.TypeOf((*MockArgumentValidator)(nil).ValidateNamespace), arg0, arg1)
 }
 
-// ValidateStorageClass mocks base method
-func (m *MockArgumentValidator) ValidateStorageClass(arg0 context.Context, arg1 string) (*v1.StorageClass, error) {
+// ValidatePVC mocks base method.
+func (m *MockArgumentValidator) ValidatePVC(arg0 context.Context, arg1, arg2 string) (*v1.PersistentVolumeClaim, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ValidateStorageClass", arg0, arg1)
-	ret0, _ := ret[0].(*v1.StorageClass)
+	ret := m.ctrl.Call(m, "ValidatePVC", arg0, arg1, arg2)
+	ret0, _ := ret[0].(*v1.PersistentVolumeClaim)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ValidateStorageClass indicates an expected call of ValidateStorageClass
+// ValidatePVC indicates an expected call of ValidatePVC.
+func (mr *MockArgumentValidatorMockRecorder) ValidatePVC(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidatePVC", reflect.TypeOf((*MockArgumentValidator)(nil).ValidatePVC), arg0, arg1, arg2)
+}
+
+// ValidateStorageClass mocks base method.
+func (m *MockArgumentValidator) ValidateStorageClass(arg0 context.Context, arg1 string) (*v10.StorageClass, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ValidateStorageClass", arg0, arg1)
+	ret0, _ := ret[0].(*v10.StorageClass)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ValidateStorageClass indicates an expected call of ValidateStorageClass.
 func (mr *MockArgumentValidatorMockRecorder) ValidateStorageClass(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateStorageClass", reflect.TypeOf((*MockArgumentValidator)(nil).ValidateStorageClass), arg0, arg1)
 }
 
-// ValidateVolumeSnapshotClass mocks base method
-func (m *MockArgumentValidator) ValidateVolumeSnapshotClass(arg0 context.Context, arg1 string, arg2 *v10.GroupVersionForDiscovery) (*unstructured.Unstructured, error) {
+// ValidateVolumeSnapshotClass mocks base method.
+func (m *MockArgumentValidator) ValidateVolumeSnapshotClass(arg0 context.Context, arg1 string, arg2 *v11.GroupVersionForDiscovery) (*unstructured.Unstructured, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateVolumeSnapshotClass", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*unstructured.Unstructured)
@@ -74,7 +106,7 @@ func (m *MockArgumentValidator) ValidateVolumeSnapshotClass(arg0 context.Context
 	return ret0, ret1
 }
 
-// ValidateVolumeSnapshotClass indicates an expected call of ValidateVolumeSnapshotClass
+// ValidateVolumeSnapshotClass indicates an expected call of ValidateVolumeSnapshotClass.
 func (mr *MockArgumentValidatorMockRecorder) ValidateVolumeSnapshotClass(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateVolumeSnapshotClass", reflect.TypeOf((*MockArgumentValidator)(nil).ValidateVolumeSnapshotClass), arg0, arg1, arg2)
