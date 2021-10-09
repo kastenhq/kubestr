@@ -372,7 +372,7 @@ type portforward struct{}
 func (p *portforward) PortForwardAPod(req *types.PortForwardAPodRequest) error {
 	path := fmt.Sprintf("/api/v1/namespaces/%s/pods/%s/portforward",
 		req.Pod.Namespace, req.Pod.Name)
-	hostIP := strings.TrimLeft(req.RestConfig.Host, "https:/")
+	hostIP := strings.TrimLeft(req.RestConfig.Host, "htps:/")
 
 	transport, upgrader, err := spdy.RoundTripperFor(req.RestConfig)
 	if err != nil {
