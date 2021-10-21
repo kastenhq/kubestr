@@ -17,6 +17,11 @@ jobs:
       uses: actions/setup-go@v2
       with:
         go-version: 1.17
+    - name: Test
+      env:
+        TEST_GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      run: |
+        echo ${#TEST_GITHUB_TOKEN}
     - name: Run GoReleaser
       uses: goreleaser/goreleaser-action@v2
       with:
