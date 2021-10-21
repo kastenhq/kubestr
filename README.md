@@ -21,7 +21,7 @@ Video
 
 
 Blogs 
-* [Benchmarking and Evaluating Your Kubernetes Storage with Kubestr](https://www.google.com/url?sa=t&rct=j&q=&esrc=s&source=web&cd=&cad=rja&uact=8&ved=2ahUKEwjpp6nn4NDyAhWXiVwKHaxHBigQFnoECAMQAQ&url=https%3A%2F%2Fblog.kasten.io%2Fbenchmarking-kubernetes-storage-with-kubestr&usg=AOvVaw1iH_P27EO2waz81znslF_Q)
+* [Benchmarking and Evaluating Your Kubernetes Storage with Kubestr](https://blog.kasten.io/benchmarking-kubernetes-storage-with-kubestr)
 * [Kubestr: The Easy Button for Validating and Debugging Your Storage in Kubernetes](https://thenewstack.io/kubestr-the-easy-button-for-validating-and-debugging-your-storage-in-kubernetes/)
 * [Introducing Kubestr - A handy tool for Kubernetes Storage](https://vzilla.co.uk/vzilla-blog/introducing-kubestr-a-handy-tool-for-kubernetes-storage)
 
