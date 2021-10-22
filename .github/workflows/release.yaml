@@ -2,7 +2,7 @@ name: Release
 
 on:
   release:
-    types: [created, edited]
+    types: [created]
 
 jobs:
   goreleaser:
@@ -24,4 +24,4 @@ jobs:
         version: latest
         args: release --rm-dist
       env:
-        GITHUB_TOKEN: ${{ secrets.CR_PAT }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
