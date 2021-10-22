@@ -22,7 +22,6 @@ jobs:
       packages: write
       contents: read
     runs-on: ubuntu-latest
-    if: github.event_name == 'push'
 
     steps:
       - name: Check out code into the Go module directory
