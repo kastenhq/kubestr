@@ -18,7 +18,9 @@ env:
 
 jobs:
   push:
-    
+    permissions:
+      packages: write
+      contents: read
     runs-on: ubuntu-latest
     if: github.event_name == 'push'
 
