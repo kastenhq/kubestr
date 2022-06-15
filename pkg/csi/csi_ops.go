@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+	"time"
 
 	"github.com/kanisterio/kanister/pkg/kube"
 	kankube "github.com/kanisterio/kanister/pkg/kube"
@@ -83,11 +84,14 @@ func (o *validateOperations) ValidateVolumeSnapshotClass(ctx context.Context, vo
 type ApplicationCreator interface {
 	CreatePVC(ctx context.Context, args *types.CreatePVCArgs) (*v1.PersistentVolumeClaim, error)
 	CreatePod(ctx context.Context, args *types.CreatePodArgs) (*v1.Pod, error)
+	WaitForPVCReadyOrCheckEventIssues(ctx context.Context, namespace string, pvcName string) error
+	WaitForPodReadyOrCheckEventIssues(ctx context.Context, namespace string, podName string) error
 	WaitForPodReady(ctx context.Context, namespace string, podName string) error
 }
 
 type applicationCreate struct {
 	kubeCli kubernetes.Interface
+	k8sObjectReadyTimeout time.Duration
 }
 
 func (c *applicationCreate) CreatePVC(ctx context.Context, args *types.CreatePVCArgs) (*v1.PersistentVolumeClaim, error) {
@@ -185,6 +189,107 @@ func (c *applicationCreate) CreatePod(ctx context.Context, args *types.CreatePod
 		return pod, err
 	}
 	return podRes, nil
+}
+
+func (c *applicationCreate) WaitForPVCReadyOrCheckEventIssues(ctx context.Context, namespace, name string) error {
+	err := c.waitForPVCReady(ctx, namespace, name)
+	if err != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+		eventErr := c.getErrorFromEvents(ctx, namespace, name, PVCKind)
+		if eventErr != nil {
+			return errors.Wrapf(eventErr, "had issues creating PVC")
+		}
+	}
+	return err
+}
+
+func (c *applicationCreate) waitForPVCReady(ctx context.Context, namespace string, name string) error {
+	if c.k8sObjectReadyTimeout == 0 {
+		return nil
+	}
+
+	timeoutCtx, waitCancel := context.WithTimeout(ctx, c.k8sObjectReadyTimeout)
+	defer waitCancel()
+	for {
+		pvc, err := c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(timeoutCtx, name, metav1.GetOptions{})
+		if err != nil {
+			return errors.Wrapf(err, "Could not find PVC")
+		}
+
+		if pvc.Status.Phase == v1.ClaimLost {
+			return fmt.Errorf("failed to create a PVC, ClaimLost")
+		}
+
+		if pvc.Status.Phase != "" && pvc.Status.Phase != v1.ClaimPending {
+			return nil
+		}
+		select {
+		case <-timeoutCtx.Done():
+			return context.DeadlineExceeded
+		default:
+			time.Sleep(basicK8sObjectWait)
+		}
+	}
+}
+
+func (c *applicationCreate) WaitForPodReadyOrCheckEventIssues(ctx context.Context, namespace, name string) error {
+	err := c.waitForPodReady(ctx, namespace, name)
+	if err != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+		eventErr := c.getErrorFromEvents(ctx, namespace, name, PodKind)
+		if eventErr != nil {
+			return errors.Wrapf(eventErr, "had issues creating Pod")
+		}
+	}
+	return err
+}
+
+func (c *applicationCreate) waitForPodReady(ctx context.Context, namespace, name string) error {
+	if c.k8sObjectReadyTimeout == 0 {
+		return nil
+	}
+
+	timeoutCtx, waitCancel := context.WithTimeout(ctx, c.k8sObjectReadyTimeout)
+	defer waitCancel()
+	for {
+		pod, err := c.kubeCli.CoreV1().Pods(namespace).Get(timeoutCtx, name, metav1.GetOptions{})
+		if err != nil {
+			return err
+		}
+
+		if pod.Status.Phase == v1.PodPending {
+			if pod.Status.Reason == "OutOfmemory" || pod.Status.Reason == "OutOfcpu" {
+				return errors.Errorf("Pod stuck in pending state, reason: %s", pod.Status.Reason)
+			}
+		}
+
+		if pod.Status.Phase != "" && pod.Status.Phase != v1.PodPending {
+			return nil
+		}
+		select {
+		case <-timeoutCtx.Done():
+			return context.DeadlineExceeded
+		default:
+			time.Sleep(basicK8sObjectWait)
+		}
+	}
+}
+
+func (c *applicationCreate) getErrorFromEvents(ctx context.Context, namespace, name, kind string) error {
+	listOptions := metav1.ListOptions{
+		TypeMeta:      metav1.TypeMeta{Kind: kind},
+		FieldSelector: fmt.Sprintf("involvedObject.name=%s", name),
+	}
+
+	events, eventErr := c.kubeCli.CoreV1().Events(namespace).List(ctx, listOptions)
+	if eventErr != nil {
+		return errors.Wrapf(eventErr, "failed to retreieve events for %s of kind: %s", name, kind)
+	}
+
+	for _, event := range events.Items {
+		if event.Type == v1.EventTypeWarning {
+			fmt.Errorf(event.Message)
+		}
+	}
+	return nil
 }
 
 func (c *applicationCreate) WaitForPodReady(ctx context.Context, namespace string, podName string) error {

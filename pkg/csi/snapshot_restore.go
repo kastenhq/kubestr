@@ -24,6 +24,11 @@ const (
 	createdByLabel          = "created-by-kubestr-csi"
 	clonePrefix             = "kubestr-clone-"
 	snapshotPrefix          = "kubestr-snapshot-"
+
+	basicK8sObjectWait = 1 * time.Second // Sleeps to avoid burning resources on kubectl calls and to make testing more reliable
+
+	PVCKind = "PersistentVolumeClaim"
+	PodKind ="Pod"
 )
 
 type SnapshotRestoreRunner struct {
@@ -43,6 +48,7 @@ func (r *SnapshotRestoreRunner) RunSnapshotRestore(ctx context.Context, args *ty
 		},
 		createAppOps: &applicationCreate{
 			kubeCli: r.KubeCli,
+			k8sObjectReadyTimeout: args.K8sObjectReadyTimeout,
 		},
 		dataValidatorOps: &validateData{
 			kubeCli: r.KubeCli,
@@ -103,7 +109,7 @@ func (r *SnapshotRestoreRunner) RunSnapshotRestoreHelper(ctx context.Context, ar
 
 	if args.Cleanup {
 		fmt.Println("Cleaning up resources")
-		r.srSteps.Cleanup(ctx, results)
+		r.srSteps.Cleanup(results)
 	}
 
 	return results, err
@@ -116,7 +122,7 @@ type SnapshotRestoreStepper interface {
 	ValidateData(ctx context.Context, pod *v1.Pod, data string) error
 	SnapshotApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, pvc *v1.PersistentVolumeClaim, snapshotName string) (*snapv1.VolumeSnapshot, error)
 	RestoreApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, snapshot *snapv1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error)
-	Cleanup(ctx context.Context, results *types.CSISnapshotRestoreResults)
+	Cleanup(results *types.CSISnapshotRestoreResults)
 }
 
 type snapshotRestoreSteps struct {
@@ -183,7 +189,19 @@ func (s *snapshotRestoreSteps) CreateApplication(ctx context.Context, args *type
 	if err != nil {
 		return nil, pvc, errors.Wrap(err, "Failed to create POD")
 	}
-	if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
+
+	if args.K8sObjectReadyTimeout == 0 {
+		if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
+			return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
+		}
+		return pod, pvc, nil
+	}
+
+	if err = s.createAppOps.WaitForPVCReadyOrCheckEventIssues(ctx, args.Namespace, pvc.Name); err != nil {
+		return pod, pvc, errors.Wrap(err, "PVC failed to become ready")
+	}
+
+	if err = s.createAppOps.WaitForPodReadyOrCheckEventIssues(ctx, args.Namespace, pod.Name); err != nil {
 		return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
 	}
 	return pod, pvc, nil
@@ -261,13 +279,26 @@ func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *typ
 	if err != nil {
 		return nil, pvc, errors.Wrap(err, "Failed to create restored Pod")
 	}
-	if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
+
+	if args.K8sObjectReadyTimeout == 0 {
+		if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
+			return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
+		}
+		return pod, pvc, nil
+	}
+
+	if err = s.createAppOps.WaitForPVCReadyOrCheckEventIssues(ctx, args.Namespace, pvc.Name); err != nil {
+		return pod, pvc, errors.Wrap(err, "PVC failed to become ready")
+	}
+
+	if err = s.createAppOps.WaitForPodReadyOrCheckEventIssues(ctx, args.Namespace, pod.Name); err != nil {
 		return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
 	}
 	return pod, pvc, nil
 }
 
-func (s *snapshotRestoreSteps) Cleanup(ctx context.Context, results *types.CSISnapshotRestoreResults) {
+func (s *snapshotRestoreSteps) Cleanup(results *types.CSISnapshotRestoreResults) {
+	ctx := context.Background()
 	if results == nil {
 		return
 	}

@@ -79,3 +79,11 @@ func (mr *MockApplicationCreatorMockRecorder) WaitForPodReady(arg0, arg1, arg2 i
 	mr.mock.ctrl.T.Helper()
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitForPodReady", reflect.TypeOf((*MockApplicationCreator)(nil).WaitForPodReady), arg0, arg1, arg2)
 }
+
+func (m *MockApplicationCreator) WaitForPVCReadyOrCheckEventIssues(ctx context.Context, namespace string, pvcName string) error {
+	return nil
+}
+
+func (m *MockApplicationCreator) WaitForPodReadyOrCheckEventIssues(ctx context.Context, namespace string, podName string) error {
+	return nil
+}
