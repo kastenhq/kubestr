@@ -50,6 +50,7 @@ var (
 	containerImage string
 
 	fioCheckerSize     string
+	fioNodeSelector    map[string]string
 	fioCheckerFilePath string
 	fioCheckerTestName string
 	fioCmd             = &cobra.Command{
@@ -59,7 +60,7 @@ var (
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			return Fio(ctx, output, outfile, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath, containerImage)
+			return Fio(ctx, output, outfile, storageClass, fioCheckerSize, namespace, fioNodeSelector, fioCheckerTestName, fioCheckerFilePath, containerImage)
 		},
 	}
 
@@ -104,6 +105,7 @@ func init() {
 	_ = fioCmd.MarkFlagRequired("storageclass")
 	fioCmd.Flags().StringVarP(&fioCheckerSize, "size", "z", fio.DefaultPVCSize, "The size of the volume used to run FIO. Note that the FIO job definition is not scaled accordingly.")
 	fioCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace used to run FIO.")
+	fioCmd.Flags().StringToStringVarP(&fioNodeSelector, "nodeselector", "N", map[string]string{}, "Node selector applied to pod.")
 	fioCmd.Flags().StringVarP(&fioCheckerFilePath, "fiofile", "f", "", "The path to a an fio config file.")
 	fioCmd.Flags().StringVarP(&fioCheckerTestName, "testname", "t", "", "The Name of a predefined kubestr fio test. Options(default-fio)")
 	fioCmd.Flags().StringVarP(&containerImage, "image", "i", "", "The container image used to create a pod.")
@@ -189,7 +191,7 @@ func PrintAndJsonOutput(result []*kubestr.TestOutput, output string, outfile str
 }
 
 // Fio executes the FIO test.
-func Fio(ctx context.Context, output, outfile, storageclass, size, namespace, jobName, fioFilePath string, containerImage string) error {
+func Fio(ctx context.Context, output, outfile, storageclass, size, namespace string, nodeSelector map[string]string, jobName, fioFilePath string, containerImage string) error {
 	cli, err := kubestr.LoadKubeCli()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -204,6 +206,7 @@ func Fio(ctx context.Context, output, outfile, storageclass, size, namespace, jo
 		StorageClass:   storageclass,
 		Size:           size,
 		Namespace:      namespace,
+		NodeSelector:   nodeSelector,
 		FIOJobName:     jobName,
 		FIOJobFilepath: fioFilePath,
 		Image:          containerImage,
