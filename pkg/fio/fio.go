@@ -66,6 +66,7 @@ type RunFIOArgs struct {
 	FIOJobFilepath string
 	FIOJobName     string
 	Image          string
+	Node           string
 }
 
 func (a *RunFIOArgs) Validate() error {
@@ -106,6 +107,10 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 		return nil, errors.Wrapf(err, "Unable to find namespace (%s)", args.Namespace)
 	}
 
+	if err := f.fioSteps.validateNode(ctx, args.Node); err != nil {
+		return nil, errors.Wrapf(err, "Unable to find node (%s)", args.Node)
+	}
+
 	sc, err := f.fioSteps.storageClassExists(ctx, args.StorageClass)
 	if err != nil {
 		return nil, errors.Wrap(err, "Cannot find StorageClass")
@@ -133,7 +138,7 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 	}()
 	fmt.Println("PVC created", pvc.Name)
 
-	pod, err := f.fioSteps.createPod(ctx, pvc.Name, configMap.Name, testFileName, args.Namespace, args.Image)
+	pod, err := f.fioSteps.createPod(ctx, pvc.Name, configMap.Name, testFileName, args.Namespace, args.Image, args.Node)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create POD")
 	}
@@ -156,11 +161,12 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 
 type fioSteps interface {
 	validateNamespace(ctx context.Context, namespace string) error
+	validateNode(ctx context.Context, node string) error
 	storageClassExists(ctx context.Context, storageClass string) (*sv1.StorageClass, error)
 	loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.ConfigMap, error)
 	createPVC(ctx context.Context, storageclass, size, namespace string) (*v1.PersistentVolumeClaim, error)
 	deletePVC(ctx context.Context, pvcName, namespace string) error
-	createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string) (*v1.Pod, error)
+	createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string, node string) (*v1.Pod, error)
 	deletePod(ctx context.Context, podName, namespace string) error
 	runFIOCommand(ctx context.Context, podName, containerName, testFileName, namespace string) (FioResult, error)
 	deleteConfigMap(ctx context.Context, configMap *v1.ConfigMap, namespace string) error
@@ -174,6 +180,17 @@ type fioStepper struct {
 
 func (s *fioStepper) validateNamespace(ctx context.Context, namespace string) error {
 	if _, err := s.cli.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (s *fioStepper) validateNode(ctx context.Context, node string) error {
+	if node == "" {
+		return nil
+	}
+
+	if _, err := s.cli.CoreV1().Nodes().Get(ctx, node, metav1.GetOptions{}); err != nil {
 		return err
 	}
 	return nil
@@ -234,7 +251,7 @@ func (s *fioStepper) deletePVC(ctx context.Context, pvcName, namespace string) e
 	return s.cli.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, pvcName, metav1.DeleteOptions{})
 }
 
-func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string) (*v1.Pod, error) {
+func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string, node string) (*v1.Pod, error) {
 	if pvcName == "" || configMapName == "" || testFileName == "" {
 		return nil, fmt.Errorf("Create pod missing required arguments.")
 	}
@@ -277,6 +294,7 @@ func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, test
 					},
 				},
 			},
+			NodeName: node,
 		},
 	}
 	podRes, err := s.cli.CoreV1().Pods(namespace).Create(ctx, pod, metav1.CreateOptions{})

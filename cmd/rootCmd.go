@@ -46,6 +46,7 @@ var (
 	namespace      string
 	containerImage string
 
+	fioNode            string
 	fioCheckerSize     string
 	fioCheckerFilePath string
 	fioCheckerTestName string
@@ -56,7 +57,7 @@ var (
 		Run: func(cmd *cobra.Command, args []string) {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			Fio(ctx, output, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath, containerImage)
+			Fio(ctx, output, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath, containerImage, fioNode)
 		},
 	}
 
@@ -87,6 +88,7 @@ func init() {
 	fioCmd.Flags().StringVarP(&fioCheckerFilePath, "fiofile", "f", "", "The path to a an fio config file.")
 	fioCmd.Flags().StringVarP(&fioCheckerTestName, "testname", "t", "", "The Name of a predefined kubestr fio test. Options(default-fio)")
 	fioCmd.Flags().StringVarP(&containerImage, "image", "i", "", "The container image used to create a pod.")
+	fioCmd.Flags().StringVarP(&fioNode, "node", "N", "", "The name of the node on which the pod is deployed.")
 
 	rootCmd.AddCommand(csiCheckCmd)
 	csiCheckCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a Storageclass. (Required)")
@@ -146,7 +148,7 @@ func Baseline(ctx context.Context, output string) {
 }
 
 // Fio executes the FIO test.
-func Fio(ctx context.Context, output, storageclass, size, namespace, jobName, fioFilePath string, containerImage string) {
+func Fio(ctx context.Context, output, storageclass, size, namespace, jobName, fioFilePath string, containerImage string, node string) {
 	cli, err := kubestr.LoadKubeCli()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -164,6 +166,7 @@ func Fio(ctx context.Context, output, storageclass, size, namespace, jobName, fi
 		FIOJobName:     jobName,
 		FIOJobFilepath: fioFilePath,
 		Image:          containerImage,
+		Node:           node,
 	}); err != nil {
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err.Error(), fioResult)
 	} else {
