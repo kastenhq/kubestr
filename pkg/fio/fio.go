@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"path/filepath"
+	"regexp"
+	"strings"
 	"time"
 
 	"github.com/briandowns/spinner"
@@ -48,6 +50,12 @@ const (
 	CreatedByFIOLabel = "createdbyfio"
 )
 
+// NodeAffinityRegexp is used to validate node affinity arguments
+var NodeAffinityRegexp = regexp.MustCompile(`^(?P<Label>!?[^=><!]+)(?P<Values>(?:=|!=|>|<).+)?$`)
+
+// TolerationRegexp is used to validate toleration arguments
+var TolerationRegexp = regexp.MustCompile(`^(?P<Key>[^=:]+)(?P<Value>=[^:]+)?(?P<Effect>:(?:NoSchedule|NoExecute|PreferNoSchedule))?$`)
+
 // FIO is an interface that represents FIO related commands
 type FIO interface {
 	RunFio(ctx context.Context, args *RunFIOArgs) (*RunFIOResult, error) // , test config
@@ -66,6 +74,8 @@ type RunFIOArgs struct {
 	FIOJobFilepath string
 	FIOJobName     string
 	Image          string
+	NodeAffinities []string
+	Tolerations    []string
 }
 
 func (a *RunFIOArgs) Validate() error {
@@ -106,6 +116,14 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 		return nil, errors.Wrapf(err, "Unable to find namespace (%s)", args.Namespace)
 	}
 
+	if err := f.fioSteps.validateNodeAffinities(ctx, args.NodeAffinities); err != nil {
+		return nil, errors.Wrapf(err, "Unable to validate node affinities (%s)", args.NodeAffinities)
+	}
+
+	if err := f.fioSteps.validateTolerations(ctx, args.Tolerations); err != nil {
+		return nil, errors.Wrapf(err, "Unable to validate tolerations (%s)", args.Tolerations)
+	}
+
 	sc, err := f.fioSteps.storageClassExists(ctx, args.StorageClass)
 	if err != nil {
 		return nil, errors.Wrap(err, "Cannot find StorageClass")
@@ -133,7 +151,7 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 	}()
 	fmt.Println("PVC created", pvc.Name)
 
-	pod, err := f.fioSteps.createPod(ctx, pvc.Name, configMap.Name, testFileName, args.Namespace, args.Image)
+	pod, err := f.fioSteps.createPod(ctx, pvc.Name, configMap.Name, testFileName, args.Namespace, args.Image, args.NodeAffinities, args.Tolerations)
 	if err != nil {
 		return nil, errors.Wrap(err, "Failed to create POD")
 	}
@@ -156,11 +174,13 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 
 type fioSteps interface {
 	validateNamespace(ctx context.Context, namespace string) error
+	validateNodeAffinities(ctx context.Context, nodeAffinities []string) error
+	validateTolerations(ctx context.Context, tolerations []string) error
 	storageClassExists(ctx context.Context, storageClass string) (*sv1.StorageClass, error)
 	loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.ConfigMap, error)
 	createPVC(ctx context.Context, storageclass, size, namespace string) (*v1.PersistentVolumeClaim, error)
 	deletePVC(ctx context.Context, pvcName, namespace string) error
-	createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string) (*v1.Pod, error)
+	createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string, nodeAffinities []string, tolerations []string) (*v1.Pod, error)
 	deletePod(ctx context.Context, podName, namespace string) error
 	runFIOCommand(ctx context.Context, podName, containerName, testFileName, namespace string) (FioResult, error)
 	deleteConfigMap(ctx context.Context, configMap *v1.ConfigMap, namespace string) error
@@ -176,6 +196,34 @@ func (s *fioStepper) validateNamespace(ctx context.Context, namespace string) er
 	if _, err := s.cli.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{}); err != nil {
 		return err
 	}
+	return nil
+}
+
+func (s *fioStepper) validateNodeAffinities(ctx context.Context, nodeAffinities []string) error {
+	if (nodeAffinities == nil) || (len(nodeAffinities) == 0) {
+		return nil
+	}
+
+	for _, nodeAffinity := range nodeAffinities {
+		if !NodeAffinityRegexp.MatchString(nodeAffinity) {
+			return errors.New(fmt.Sprintf("Node affinity %v doesn't match pattern '[!]label[(=|!|!=|>|<)value1,value2]'", nodeAffinity))
+		}
+	}
+
+	return nil
+}
+
+func (s *fioStepper) validateTolerations(ctx context.Context, tolerations []string) error {
+	if (tolerations == nil) || (len(tolerations) == 0) {
+		return nil
+	}
+
+	for _, toleration := range tolerations {
+		if !TolerationRegexp.MatchString(toleration) {
+			return errors.New(fmt.Sprintf("Toleration %v doesn't match pattern 'key[=value][:effect]'", toleration))
+		}
+	}
+
 	return nil
 }
 
@@ -234,7 +282,96 @@ func (s *fioStepper) deletePVC(ctx context.Context, pvcName, namespace string) e
 	return s.cli.CoreV1().PersistentVolumeClaims(namespace).Delete(ctx, pvcName, metav1.DeleteOptions{})
 }
 
-func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string) (*v1.Pod, error) {
+func getRegexpGroups(matcher *regexp.Regexp, input string) map[string]string {
+	matches := matcher.FindStringSubmatch(input)
+
+	result := make(map[string]string)
+	for i, name := range matcher.SubexpNames() {
+		if i != 0 && name != "" {
+			result[name] = matches[i]
+		}
+	}
+
+	return result
+}
+
+func createNodeSelectorRequirement(nodeAffinity string) v1.NodeSelectorRequirement {
+	affinityMetadata := getRegexpGroups(NodeAffinityRegexp, nodeAffinity)
+
+	requirement := &v1.NodeSelectorRequirement{}
+
+	if val, ok := affinityMetadata["Label"]; ok && len(val) > 0 {
+		if strings.HasPrefix(val, "!") {
+			requirement.Operator = v1.NodeSelectorOpDoesNotExist
+			requirement.Key = val[1:]
+		} else {
+			requirement.Operator = v1.NodeSelectorOpExists
+			requirement.Key = val
+		}
+	}
+
+	if val, ok := affinityMetadata["Values"]; ok && len(val) > 0 {
+		if strings.HasPrefix(val, "!=") {
+			requirement.Operator = v1.NodeSelectorOpNotIn
+			requirement.Values = strings.Split(val[2:], ",")
+		} else if strings.HasPrefix(val, ">") {
+			requirement.Operator = v1.NodeSelectorOpGt
+			requirement.Values = []string{val[1:]}
+		} else if strings.HasPrefix(val, "<") {
+			requirement.Operator = v1.NodeSelectorOpLt
+			requirement.Values = []string{val[1:]}
+		} else {
+			requirement.Operator = v1.NodeSelectorOpIn
+			requirement.Values = strings.Split(val[1:], ",")
+		}
+	}
+
+	return *requirement
+}
+
+func createNodeMatchExpression(nodeAffinities []string) []v1.NodeSelectorRequirement {
+	requirements := make([]v1.NodeSelectorRequirement, len(nodeAffinities))
+	for index, affinity := range nodeAffinities {
+		requirements[index] = createNodeSelectorRequirement(affinity)
+	}
+	return requirements
+}
+
+func createNodeSelectorTerm(nodeAffinities []string) v1.NodeSelectorTerm {
+	return v1.NodeSelectorTerm{
+		MatchExpressions: createNodeMatchExpression(nodeAffinities),
+	}
+}
+
+func createToleration(toleration string) v1.Toleration {
+	tolerationMetadata := getRegexpGroups(TolerationRegexp, toleration)
+
+	podToleration := &v1.Toleration{}
+	podToleration.Key = tolerationMetadata["Key"]
+
+	if val, ok := tolerationMetadata["Effect"]; ok && len(val) > 0 {
+		podToleration.Effect = v1.TaintEffect(val[1:])
+	}
+
+	if val, ok := tolerationMetadata["Value"]; ok && len(val) > 0 {
+		podToleration.Operator = v1.TolerationOpEqual
+		podToleration.Value = val[1:]
+	} else {
+		podToleration.Operator = v1.TolerationOpExists
+	}
+
+	return *podToleration
+}
+
+func createTolerations(tolerations []string) []v1.Toleration {
+	podTolerations := make([]v1.Toleration, len(tolerations))
+	for index, toleration := range tolerations {
+		podTolerations[index] = createToleration(toleration)
+	}
+	return podTolerations
+}
+
+func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string, nodeAffinities []string, tolerations []string) (*v1.Pod, error) {
 	if pvcName == "" || configMapName == "" || testFileName == "" {
 		return nil, fmt.Errorf("Create pod missing required arguments.")
 	}
@@ -272,6 +409,20 @@ func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, test
 				},
 			},
 		},
+	}
+
+	if len(nodeAffinities) > 0 {
+		podSpec.Affinity = &v1.Affinity{
+			NodeAffinity: &v1.NodeAffinity{
+				RequiredDuringSchedulingIgnoredDuringExecution: &v1.NodeSelector{
+					NodeSelectorTerms: []v1.NodeSelectorTerm{createNodeSelectorTerm(nodeAffinities)},
+				},
+			},
+		}
+	}
+
+	if len(tolerations) > 0 {
+		podSpec.Tolerations = createTolerations(tolerations)
 	}
 
 	pod := &v1.Pod{

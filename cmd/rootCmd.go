@@ -52,6 +52,8 @@ var (
 	fioCheckerSize     string
 	fioCheckerFilePath string
 	fioCheckerTestName string
+	fioNodeAffinities  []string
+	fioTolerations     []string
 	fioCmd             = &cobra.Command{
 		Use:   "fio",
 		Short: "Runs an fio test",
@@ -59,7 +61,7 @@ var (
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			return Fio(ctx, output, outfile, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath, containerImage)
+			return Fio(ctx, output, outfile, storageClass, fioCheckerSize, namespace, fioCheckerTestName, fioCheckerFilePath, containerImage, fioNodeAffinities, fioTolerations)
 		},
 	}
 
@@ -96,6 +98,9 @@ var (
 )
 
 func init() {
+	var defaultAffinities []string = make([]string, 0)
+	var defaultTolerations []string = make([]string, 0)
+
 	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "", "Options(json)")
 	rootCmd.PersistentFlags().StringVarP(&outfile, "outfile", "e", "", "The file where test results will be written")
 
@@ -107,6 +112,8 @@ func init() {
 	fioCmd.Flags().StringVarP(&fioCheckerFilePath, "fiofile", "f", "", "The path to a an fio config file.")
 	fioCmd.Flags().StringVarP(&fioCheckerTestName, "testname", "t", "", "The Name of a predefined kubestr fio test. Options(default-fio)")
 	fioCmd.Flags().StringVarP(&containerImage, "image", "i", "", "The container image used to create a pod.")
+	fioCmd.Flags().StringArrayVarP(&fioNodeAffinities, "node-affinity", "l", defaultAffinities, "The label(s) and optional value(s) to use in the FIO pod spec node affinities.")
+	fioCmd.Flags().StringArrayVarP(&fioTolerations, "toleration", "T", defaultTolerations, "The toleration key(s) and optional value(s) to use in the FIO pod spec tolerations.")
 
 	rootCmd.AddCommand(csiCheckCmd)
 	csiCheckCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a Storageclass. (Required)")
@@ -189,7 +196,7 @@ func PrintAndJsonOutput(result []*kubestr.TestOutput, output string, outfile str
 }
 
 // Fio executes the FIO test.
-func Fio(ctx context.Context, output, outfile, storageclass, size, namespace, jobName, fioFilePath string, containerImage string) error {
+func Fio(ctx context.Context, output, outfile, storageclass, size, namespace, jobName, fioFilePath string, containerImage string, nodeAffinities []string, tolerations []string) error {
 	cli, err := kubestr.LoadKubeCli()
 	if err != nil {
 		fmt.Println(err.Error())
@@ -207,6 +214,8 @@ func Fio(ctx context.Context, output, outfile, storageclass, size, namespace, jo
 		FIOJobName:     jobName,
 		FIOJobFilepath: fioFilePath,
 		Image:          containerImage,
+		NodeAffinities: nodeAffinities,
+		Tolerations:    tolerations,
 	})
 	if err != nil {
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, err.Error(), fioResult)

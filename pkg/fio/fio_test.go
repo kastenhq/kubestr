@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"strings"
 	"testing"
 
 	"github.com/kastenhq/kubestr/pkg/common"
@@ -86,6 +87,32 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 			checker:       NotNil,
 			expectedSteps: []string{"VN"},
 		},
+		{ // node name doesn't exist and is not empty
+			cli: fake.NewSimpleClientset(),
+			stepper: &fakeFioStepper{
+				vnoErr: fmt.Errorf("nodeAffinity Err"),
+			},
+			args: &RunFIOArgs{
+				StorageClass: "sc",
+				Size:         "100Gi",
+				Namespace:    "foo",
+			},
+			checker:       NotNil,
+			expectedSteps: []string{"VN", "VNO"},
+		},
+		{ // toleration format error
+			cli: fake.NewSimpleClientset(),
+			stepper: &fakeFioStepper{
+				vtErr: fmt.Errorf("toleration Err"),
+			},
+			args: &RunFIOArgs{
+				StorageClass: "sc",
+				Size:         "100Gi",
+				Namespace:    "foo",
+			},
+			checker:       NotNil,
+			expectedSteps: []string{"VN", "VNO", "VT"},
+		},
 		{ // storageclass not found
 			cli: fake.NewSimpleClientset(),
 			stepper: &fakeFioStepper{
@@ -97,7 +124,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE"},
+			expectedSteps: []string{"VN", "VNO", "VT", "SCE"},
 		},
 		{ // success
 			cli: fake.NewSimpleClientset(),
@@ -127,7 +154,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       IsNil,
-			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
+			expectedSteps: []string{"VN", "VNO", "VT", "SCE", "LCM", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
 			expectedSC:    "sc",
 			expectedSize:  DefaultPVCSize,
 			expectedTFN:   "testfile.fio",
@@ -163,7 +190,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
+			expectedSteps: []string{"VN", "VNO", "VT", "SCE", "LCM", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
 		},
 		{ // create pod error
 			cli: fake.NewSimpleClientset(),
@@ -194,7 +221,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "CPOD", "DPVC", "DCM"},
+			expectedSteps: []string{"VN", "VNO", "VT", "SCE", "LCM", "CPVC", "CPOD", "DPVC", "DCM"},
 		},
 		{ // create PVC error
 			cli: fake.NewSimpleClientset(),
@@ -215,7 +242,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "DCM"},
+			expectedSteps: []string{"VN", "VNO", "VT", "SCE", "LCM", "CPVC", "DCM"},
 		},
 		{ // testfilename retrieval error, more than one provided
 			cli: fake.NewSimpleClientset(),
@@ -236,7 +263,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE", "LCM", "DCM"},
+			expectedSteps: []string{"VN", "VNO", "VT", "SCE", "LCM", "DCM"},
 		},
 		{ // load configmap error
 			cli: fake.NewSimpleClientset(),
@@ -249,7 +276,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE", "LCM"},
+			expectedSteps: []string{"VN", "VNO", "VT", "SCE", "LCM"},
 		},
 	} {
 		c.Log(i)
@@ -274,6 +301,10 @@ type fakeFioStepper struct {
 	steps []string
 
 	vnErr error
+
+	vnoErr error
+
+	vtErr error
 
 	sceSC  *sv1.StorageClass
 	sceErr error
@@ -304,6 +335,14 @@ func (f *fakeFioStepper) validateNamespace(ctx context.Context, namespace string
 	f.steps = append(f.steps, "VN")
 	return f.vnErr
 }
+func (f *fakeFioStepper) validateNodeAffinities(ctx context.Context, nodeAffinities []string) error {
+	f.steps = append(f.steps, "VNO")
+	return f.vnoErr
+}
+func (f *fakeFioStepper) validateTolerations(ctx context.Context, tolerations []string) error {
+	f.steps = append(f.steps, "VT")
+	return f.vtErr
+}
 func (f *fakeFioStepper) storageClassExists(ctx context.Context, storageClass string) (*sv1.StorageClass, error) {
 	f.steps = append(f.steps, "SCE")
 	return f.sceSC, f.sceErr
@@ -322,7 +361,7 @@ func (f *fakeFioStepper) deletePVC(ctx context.Context, pvcName, namespace strin
 	f.steps = append(f.steps, "DPVC")
 	return f.dPVCErr
 }
-func (f *fakeFioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string) (*v1.Pod, error) {
+func (f *fakeFioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string, nodeAffinities []string, tolerations []string) (*v1.Pod, error) {
 	f.steps = append(f.steps, "CPOD")
 	f.cPodExpCM = configMapName
 	f.cPodExpFN = testFileName
@@ -378,6 +417,115 @@ func (s *FIOTestSuite) TestValidateNamespace(c *C) {
 	})}
 	err = stepper.validateNamespace(ctx, "ns")
 	c.Assert(err, IsNil)
+}
+
+func (s *FIOTestSuite) TestValidateNodeAffinities(c *C) {
+	ctx := context.Background()
+	stepper := &fioStepper{cli: fake.NewSimpleClientset()}
+
+	err := stepper.validateNodeAffinities(ctx, []string{})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{""})
+	c.Assert(err, NotNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{"label"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{"!label"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{"label=value"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{"label="})
+	c.Assert(err, NotNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{"label=value1,value2"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{"label!=value"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{"label!="})
+	c.Assert(err, NotNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{"label!=value1,value2"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{"label<value"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{"label<"})
+	c.Assert(err, NotNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{"label>value"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateNodeAffinities(ctx, []string{"label>"})
+	c.Assert(err, NotNil)
+}
+
+func (s *FIOTestSuite) TestValidateTolerations(c *C) {
+	ctx := context.Background()
+	stepper := &fioStepper{cli: fake.NewSimpleClientset()}
+
+	err := stepper.validateTolerations(ctx, []string{})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateTolerations(ctx, []string{""})
+	c.Assert(err, NotNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateTolerations(ctx, []string{"!taint"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint=value"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint="})
+	c.Assert(err, NotNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint:NoSchedule"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint:NoExecute"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint:PreferNoSchedule"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint:effect"})
+	c.Assert(err, NotNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint:"})
+	c.Assert(err, NotNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint=value:NoSchedule"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint=:NoSchedule"})
+	c.Assert(err, NotNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint=value:NoSchedule"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint=value:NoExecute"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint=value:PreferNoSchedule"})
+	c.Assert(err, IsNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint=value:effect"})
+	c.Assert(err, NotNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint=value:"})
+	c.Assert(err, NotNil)
+
+	err = stepper.validateTolerations(ctx, []string{"taint:NoSchedule=value"})
+	c.Assert(err, NotNil)
 }
 
 func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
@@ -526,20 +674,33 @@ func (s *FIOTestSuite) TestDeletePVC(c *C) {
 
 func (s *FIOTestSuite) TestCreatPod(c *C) {
 	ctx := context.Background()
+	emptyTaintEffect := v1.TaintEffectNoSchedule
+	emptyTaintEffect = ""
+
 	for _, tc := range []struct {
-		pvcName       string
-		configMapName string
-		testFileName  string
-		image         string
-		reactor       []k8stesting.Reactor
-		podReadyErr   error
-		errChecker    Checker
+		pvcName        string
+		configMapName  string
+		testFileName   string
+		image          string
+		nodeAffinities []string
+		tolerations    []string
+		reactor        []k8stesting.Reactor
+		podReadyErr    error
+		errChecker     Checker
 	}{
 		{
 			pvcName:       "pvc",
 			configMapName: "cm",
 			testFileName:  "testfile",
 			errChecker:    IsNil,
+		},
+		{
+			pvcName:        "pvc",
+			configMapName:  "cm",
+			testFileName:   "testfile",
+			nodeAffinities: []string{"labelEq=valueEq", "labelGt>valueGt", "labelLt<valueLt", "labelIn=valueIn1,valueIn2", "labelNotIn!=valueNotIn1,valueNotIn2", "labelExists", "!labelNotExists"},
+			tolerations:    []string{"taintOnly", "taintValueOnly=valueOnly", "taintEffectNoSchedule:NoSchedule", "taintEffectPreferNoSchedule:PreferNoSchedule", "taintEffectNoExecute:NoExecute", "taintFull=valueFull:NoSchedule"},
+			errChecker:     IsNil,
 		},
 		{
 			pvcName:       "pvc",
@@ -621,7 +782,7 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 		if tc.reactor != nil {
 			stepper.cli.(*fake.Clientset).Fake.ReactionChain = tc.reactor
 		}
-		pod, err := stepper.createPod(ctx, tc.pvcName, tc.configMapName, tc.testFileName, DefaultNS, tc.image)
+		pod, err := stepper.createPod(ctx, tc.pvcName, tc.configMapName, tc.testFileName, DefaultNS, tc.image, tc.nodeAffinities, tc.tolerations)
 		c.Check(err, tc.errChecker)
 		if err == nil {
 			c.Assert(pod.GenerateName, Equals, PodGenerateName)
@@ -642,6 +803,88 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 				{Name: "persistent-storage", MountPath: VolumeMountPath},
 				{Name: "config-map", MountPath: ConfigMapMountPath},
 			})
+			if len(tc.nodeAffinities) > 0 {
+				nodeAffinity := pod.Spec.Affinity.NodeAffinity.RequiredDuringSchedulingIgnoredDuringExecution.NodeSelectorTerms
+
+				c.Assert(nodeAffinity, HasLen, 1)
+				c.Assert(nodeAffinity[0].MatchExpressions, HasLen, len(tc.nodeAffinities))
+
+				nodeSelectorRequirements := nodeAffinity[0].MatchExpressions
+				for index, affinity := range tc.nodeAffinities {
+					if strings.HasPrefix(affinity, "labelEq") {
+						c.Assert(nodeSelectorRequirements[index].Operator, Equals, v1.NodeSelectorOpIn)
+						c.Assert(nodeSelectorRequirements[index].Key, Equals, "labelEq")
+						c.Assert(nodeSelectorRequirements[index].Values, DeepEquals, []string{"valueEq"})
+					} else if strings.HasPrefix(affinity, "labelGt") {
+						c.Assert(nodeSelectorRequirements[index].Operator, Equals, v1.NodeSelectorOpGt)
+						c.Assert(nodeSelectorRequirements[index].Key, Equals, "labelGt")
+						c.Assert(nodeSelectorRequirements[index].Values, DeepEquals, []string{"valueGt"})
+					} else if strings.HasPrefix(affinity, "labelLt") {
+						c.Assert(nodeSelectorRequirements[index].Operator, Equals, v1.NodeSelectorOpLt)
+						c.Assert(nodeSelectorRequirements[index].Key, Equals, "labelLt")
+						c.Assert(nodeSelectorRequirements[index].Values, DeepEquals, []string{"valueLt"})
+					} else if strings.HasPrefix(affinity, "labelIn") {
+						c.Assert(nodeSelectorRequirements[index].Operator, Equals, v1.NodeSelectorOpIn)
+						c.Assert(nodeSelectorRequirements[index].Key, Equals, "labelIn")
+						c.Assert(nodeSelectorRequirements[index].Values, DeepEquals, []string{"valueIn1", "valueIn2"})
+					} else if strings.HasPrefix(affinity, "labelNotIn") {
+						c.Assert(nodeSelectorRequirements[index].Operator, Equals, v1.NodeSelectorOpNotIn)
+						c.Assert(nodeSelectorRequirements[index].Key, Equals, "labelNotIn")
+						c.Assert(nodeSelectorRequirements[index].Values, DeepEquals, []string{"valueNotIn1", "valueNotIn2"})
+					} else if strings.HasPrefix(affinity, "labelExists") {
+						c.Assert(nodeSelectorRequirements[index].Operator, Equals, v1.NodeSelectorOpExists)
+						c.Assert(nodeSelectorRequirements[index].Key, Equals, "labelExists")
+						c.Assert(nodeSelectorRequirements[index].Values, HasLen, 0)
+					} else if strings.HasSuffix(affinity, "labelNotExists") {
+						c.Assert(nodeSelectorRequirements[index].Operator, Equals, v1.NodeSelectorOpDoesNotExist)
+						c.Assert(nodeSelectorRequirements[index].Key, Equals, "labelNotExists")
+						c.Assert(nodeSelectorRequirements[index].Values, HasLen, 0)
+					}
+				}
+			} else {
+				c.Assert(pod.Spec.Affinity, IsNil)
+			}
+			if len(tc.tolerations) > 0 {
+				tolerations := pod.Spec.Tolerations
+
+				c.Assert(tolerations, HasLen, len(tc.tolerations))
+
+				for index, toleration := range tc.tolerations {
+					if strings.HasPrefix(toleration, "taintOnly") {
+						c.Assert(tolerations[index].Operator, Equals, v1.TolerationOpExists)
+						c.Assert(tolerations[index].Key, Equals, "taintOnly")
+						c.Assert(tolerations[index].Value, Equals, "")
+						c.Assert(tolerations[index].Effect, Equals, emptyTaintEffect)
+					} else if strings.HasPrefix(toleration, "taintValueOnly") {
+						c.Assert(tolerations[index].Operator, Equals, v1.TolerationOpEqual)
+						c.Assert(tolerations[index].Key, Equals, "taintValueOnly")
+						c.Assert(tolerations[index].Value, Equals, "valueOnly")
+						c.Assert(tolerations[index].Effect, Equals, emptyTaintEffect)
+					} else if strings.HasPrefix(toleration, "taintEffectNoSchedule") {
+						c.Assert(tolerations[index].Operator, Equals, v1.TolerationOpExists)
+						c.Assert(tolerations[index].Key, Equals, "taintEffectNoSchedule")
+						c.Assert(tolerations[index].Value, Equals, "")
+						c.Assert(tolerations[index].Effect, Equals, v1.TaintEffectNoSchedule)
+					} else if strings.HasPrefix(toleration, "taintEffectPreferNoSchedule") {
+						c.Assert(tolerations[index].Operator, Equals, v1.TolerationOpExists)
+						c.Assert(tolerations[index].Key, Equals, "taintEffectPreferNoSchedule")
+						c.Assert(tolerations[index].Value, Equals, "")
+						c.Assert(tolerations[index].Effect, Equals, v1.TaintEffectPreferNoSchedule)
+					} else if strings.HasPrefix(toleration, "taintEffectNoExecute") {
+						c.Assert(tolerations[index].Operator, Equals, v1.TolerationOpExists)
+						c.Assert(tolerations[index].Key, Equals, "taintEffectNoExecute")
+						c.Assert(tolerations[index].Value, Equals, "")
+						c.Assert(tolerations[index].Effect, Equals, v1.TaintEffectNoExecute)
+					} else if strings.HasPrefix(toleration, "taintFull") {
+						c.Assert(tolerations[index].Operator, Equals, v1.TolerationOpEqual)
+						c.Assert(tolerations[index].Key, Equals, "taintFull")
+						c.Assert(tolerations[index].Value, Equals, "valueFull")
+						c.Assert(tolerations[index].Effect, Equals, v1.TaintEffectNoSchedule)
+					}
+				}
+			} else {
+				c.Assert(pod.Spec.Tolerations, IsNil)
+			}
 			if tc.image == "" {
 				c.Assert(pod.Spec.Containers[0].Image, Equals, common.DefaultPodImage)
 			} else {
