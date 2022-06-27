@@ -11,6 +11,7 @@ import (
 	"github.com/kanisterio/kanister/pkg/kube"
 	kankube "github.com/kanisterio/kanister/pkg/kube"
 	kansnapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
+	"github.com/kanisterio/kanister/pkg/poll"
 	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/kastenhq/kubestr/pkg/csi/types"
 	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
@@ -20,12 +21,17 @@ import (
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
+	"k8s.io/apimachinery/pkg/fields"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 	pf "k8s.io/client-go/tools/portforward"
 	"k8s.io/client-go/transport/spdy"
+)
+
+const (
+	defaultReadyWaitTimeout  = 15 * time.Minute
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_argument_validator.go -package=mocks . ArgumentValidator
@@ -84,8 +90,7 @@ func (o *validateOperations) ValidateVolumeSnapshotClass(ctx context.Context, vo
 type ApplicationCreator interface {
 	CreatePVC(ctx context.Context, args *types.CreatePVCArgs) (*v1.PersistentVolumeClaim, error)
 	CreatePod(ctx context.Context, args *types.CreatePodArgs) (*v1.Pod, error)
-	WaitForPVCReadyOrCheckEventIssues(ctx context.Context, namespace string, pvcName string) error
-	WaitForPodReadyOrCheckEventIssues(ctx context.Context, namespace string, podName string) error
+	WaitForPVCReady(ctx context.Context, namespace string, pvcName string) error
 	WaitForPodReady(ctx context.Context, namespace string, podName string) error
 }
 
@@ -191,9 +196,13 @@ func (c *applicationCreate) CreatePod(ctx context.Context, args *types.CreatePod
 	return podRes, nil
 }
 
-func (c *applicationCreate) WaitForPVCReadyOrCheckEventIssues(ctx context.Context, namespace, name string) error {
+func (c *applicationCreate) WaitForPVCReady(ctx context.Context, namespace, name string) error {
+	if c.kubeCli == nil {
+		return fmt.Errorf("kubeCli not initialized")
+	}
+
 	err := c.waitForPVCReady(ctx, namespace, name)
-	if err != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
+	if err != nil && (errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "would exceed context deadline")) {
 		eventErr := c.getErrorFromEvents(ctx, namespace, name, PVCKind)
 		if eventErr != nil {
 			return errors.Wrapf(eventErr, "had issues creating PVC")
@@ -203,38 +212,34 @@ func (c *applicationCreate) WaitForPVCReadyOrCheckEventIssues(ctx context.Contex
 }
 
 func (c *applicationCreate) waitForPVCReady(ctx context.Context, namespace string, name string) error {
-	if c.k8sObjectReadyTimeout == 0 {
-		return nil
+	pvcReadyTimeout := c.k8sObjectReadyTimeout
+	if pvcReadyTimeout == 0 {
+		pvcReadyTimeout = defaultReadyWaitTimeout
 	}
 
-	timeoutCtx, waitCancel := context.WithTimeout(ctx, c.k8sObjectReadyTimeout)
+	timeoutCtx, waitCancel := context.WithTimeout(ctx, pvcReadyTimeout)
 	defer waitCancel()
-	for {
+	return poll.Wait(timeoutCtx, func(ctx context.Context) (bool, error) {
 		pvc, err := c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(timeoutCtx, name, metav1.GetOptions{})
 		if err != nil {
-			return errors.Wrapf(err, "Could not find PVC")
+			return false, errors.Wrapf(err, "Could not find PVC")
 		}
 
 		if pvc.Status.Phase == v1.ClaimLost {
-			return fmt.Errorf("failed to create a PVC, ClaimLost")
+			return false, fmt.Errorf("failed to create a PVC, ClaimLost")
 		}
 
-		if pvc.Status.Phase != "" && pvc.Status.Phase != v1.ClaimPending {
-			return nil
-		}
-		select {
-		case <-timeoutCtx.Done():
-			return context.DeadlineExceeded
-		default:
-			time.Sleep(basicK8sObjectWait)
-		}
-	}
+		return pvc.Status.Phase == v1.ClaimBound, nil
+	})
 }
 
-func (c *applicationCreate) WaitForPodReadyOrCheckEventIssues(ctx context.Context, namespace, name string) error {
-	err := c.waitForPodReady(ctx, namespace, name)
-	if err != nil && (errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded)) {
-		eventErr := c.getErrorFromEvents(ctx, namespace, name, PodKind)
+func (c *applicationCreate) WaitForPodReady(ctx context.Context, namespace string, podName string) error {
+	if c.kubeCli == nil {
+		return fmt.Errorf("kubeCli not initialized")
+	}
+	err := c.waitForPodReady(ctx, namespace, podName)
+	if err != nil && (errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "would exceed context deadline")) {
+		eventErr := c.getErrorFromEvents(ctx, namespace, podName, PodKind)
 		if eventErr != nil {
 			return errors.Wrapf(eventErr, "had issues creating Pod")
 		}
@@ -242,41 +247,26 @@ func (c *applicationCreate) WaitForPodReadyOrCheckEventIssues(ctx context.Contex
 	return err
 }
 
-func (c *applicationCreate) waitForPodReady(ctx context.Context, namespace, name string) error {
-	if c.k8sObjectReadyTimeout == 0 {
-		return nil
+func (c *applicationCreate) waitForPodReady(ctx context.Context, namespace string, podName string) error {
+	podReadyTimeout := c.k8sObjectReadyTimeout
+	if podReadyTimeout == 0 {
+		podReadyTimeout = defaultReadyWaitTimeout
 	}
 
-	timeoutCtx, waitCancel := context.WithTimeout(ctx, c.k8sObjectReadyTimeout)
+	timeoutCtx, waitCancel := context.WithTimeout(ctx, podReadyTimeout)
 	defer waitCancel()
-	for {
-		pod, err := c.kubeCli.CoreV1().Pods(namespace).Get(timeoutCtx, name, metav1.GetOptions{})
-		if err != nil {
-			return err
-		}
-
-		if pod.Status.Phase == v1.PodPending {
-			if pod.Status.Reason == "OutOfmemory" || pod.Status.Reason == "OutOfcpu" {
-				return errors.Errorf("Pod stuck in pending state, reason: %s", pod.Status.Reason)
-			}
-		}
-
-		if pod.Status.Phase != "" && pod.Status.Phase != v1.PodPending {
-			return nil
-		}
-		select {
-		case <-timeoutCtx.Done():
-			return context.DeadlineExceeded
-		default:
-			time.Sleep(basicK8sObjectWait)
-		}
-	}
+	err := kankube.WaitForPodReady(timeoutCtx, c.kubeCli, namespace, podName)
+	return err
 }
 
 func (c *applicationCreate) getErrorFromEvents(ctx context.Context, namespace, name, kind string) error {
+	fieldSelectors := fields.Set{
+		"involvedObject.kind": kind,
+		"involvedObject.name": name,
+	}.AsSelector().String()
 	listOptions := metav1.ListOptions{
 		TypeMeta:      metav1.TypeMeta{Kind: kind},
-		FieldSelector: fmt.Sprintf("involvedObject.name=%s", name),
+		FieldSelector: fieldSelectors,
 	}
 
 	events, eventErr := c.kubeCli.CoreV1().Events(namespace).List(ctx, listOptions)
@@ -286,18 +276,10 @@ func (c *applicationCreate) getErrorFromEvents(ctx context.Context, namespace, n
 
 	for _, event := range events.Items {
 		if event.Type == v1.EventTypeWarning {
-			fmt.Errorf(event.Message)
+			return fmt.Errorf(event.Message)
 		}
 	}
 	return nil
-}
-
-func (c *applicationCreate) WaitForPodReady(ctx context.Context, namespace string, podName string) error {
-	if c.kubeCli == nil {
-		return fmt.Errorf("kubeCli not initialized")
-	}
-	err := kankube.WaitForPodReady(ctx, c.kubeCli, namespace, podName)
-	return err
 }
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_snapshot_creator.go -package=mocks . SnapshotCreator

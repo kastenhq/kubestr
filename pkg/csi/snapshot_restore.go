@@ -38,6 +38,12 @@ type SnapshotRestoreRunner struct {
 }
 
 func (r *SnapshotRestoreRunner) RunSnapshotRestore(ctx context.Context, args *types.CSISnapshotRestoreArgs) (*types.CSISnapshotRestoreResults, error) {
+	if r.KubeCli == nil || r.DynCli == nil {
+		return &types.CSISnapshotRestoreResults{}, fmt.Errorf("cli uninitialized")
+	}
+	if args == nil {
+		return &types.CSISnapshotRestoreResults{}, fmt.Errorf("snapshot args not specified")
+	}
 	r.srSteps = &snapshotRestoreSteps{
 		validateOps: &validateOperations{
 			kubeCli: r.KubeCli,
@@ -190,18 +196,11 @@ func (s *snapshotRestoreSteps) CreateApplication(ctx context.Context, args *type
 		return nil, pvc, errors.Wrap(err, "Failed to create POD")
 	}
 
-	if args.K8sObjectReadyTimeout == 0 {
-		if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
-			return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
-		}
-		return pod, pvc, nil
-	}
-
-	if err = s.createAppOps.WaitForPVCReadyOrCheckEventIssues(ctx, args.Namespace, pvc.Name); err != nil {
+	if err = s.createAppOps.WaitForPVCReady(ctx, args.Namespace, pvc.Name); err != nil {
 		return pod, pvc, errors.Wrap(err, "PVC failed to become ready")
 	}
 
-	if err = s.createAppOps.WaitForPodReadyOrCheckEventIssues(ctx, args.Namespace, pod.Name); err != nil {
+	if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
 		return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
 	}
 	return pod, pvc, nil
@@ -280,18 +279,11 @@ func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *typ
 		return nil, pvc, errors.Wrap(err, "Failed to create restored Pod")
 	}
 
-	if args.K8sObjectReadyTimeout == 0 {
-		if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
-			return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
-		}
-		return pod, pvc, nil
-	}
-
-	if err = s.createAppOps.WaitForPVCReadyOrCheckEventIssues(ctx, args.Namespace, pvc.Name); err != nil {
+	if err = s.createAppOps.WaitForPVCReady(ctx, args.Namespace, pvc.Name); err != nil {
 		return pod, pvc, errors.Wrap(err, "PVC failed to become ready")
 	}
 
-	if err = s.createAppOps.WaitForPodReadyOrCheckEventIssues(ctx, args.Namespace, pod.Name); err != nil {
+	if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
 		return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
 	}
 	return pod, pvc, nil
@@ -305,31 +297,31 @@ func (s *snapshotRestoreSteps) Cleanup(results *types.CSISnapshotRestoreResults)
 	if results.OriginalPVC != nil {
 		err := s.cleanerOps.DeletePVC(ctx, results.OriginalPVC.Name, results.OriginalPVC.Namespace)
 		if err != nil {
-			fmt.Printf("Error deleteing PVC (%s) - (%v)\n", results.OriginalPVC.Name, err)
+			fmt.Printf("Error deleting original PVC (%s) - (%v)\n", results.OriginalPVC.Name, err)
 		}
 	}
 	if results.OriginalPod != nil {
 		err := s.cleanerOps.DeletePod(ctx, results.OriginalPod.Name, results.OriginalPod.Namespace)
 		if err != nil {
-			fmt.Printf("Error deleteing Pod (%s) - (%v)\n", results.OriginalPod.Name, err)
+			fmt.Printf("Error deleting original Pod (%s) - (%v)\n", results.OriginalPod.Name, err)
 		}
 	}
 	if results.ClonedPVC != nil {
 		err := s.cleanerOps.DeletePVC(ctx, results.ClonedPVC.Name, results.ClonedPVC.Namespace)
 		if err != nil {
-			fmt.Printf("Error deleteing PVC (%s) - (%v)\n", results.ClonedPVC.Name, err)
+			fmt.Printf("Error deleting cloned PVC (%s) - (%v)\n", results.ClonedPVC.Name, err)
 		}
 	}
 	if results.ClonedPod != nil {
 		err := s.cleanerOps.DeletePod(ctx, results.ClonedPod.Name, results.ClonedPod.Namespace)
 		if err != nil {
-			fmt.Printf("Error deleteing Pod (%s) - (%v)\n", results.ClonedPod.Name, err)
+			fmt.Printf("Error deleting cloned Pod (%s) - (%v)\n", results.ClonedPod.Name, err)
 		}
 	}
 	if results.Snapshot != nil {
 		err := s.cleanerOps.DeleteSnapshot(ctx, results.Snapshot.Name, results.Snapshot.Namespace, s.SnapshotGroupVersion)
 		if err != nil {
-			fmt.Printf("Error deleteing Snapshot (%s) - (%v)\n", results.Snapshot.Name, err)
+			fmt.Printf("Error deleting Snapshot (%s) - (%v)\n", results.Snapshot.Name, err)
 		}
 	}
 }

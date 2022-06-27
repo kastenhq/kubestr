@@ -110,7 +110,7 @@ func (s *CSITestSuite) TestRunSnapshotRestoreHelper(c *C) {
 							Namespace: "ns",
 						},
 					}, gomock.Any()).Return(nil),
-					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any()).Return(),
+					f.stepperOps.EXPECT().Cleanup(gomock.Any()).Return(),
 				)
 			},
 			result: &types.CSISnapshotRestoreResults{

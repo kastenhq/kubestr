@@ -38,15 +38,15 @@ func (m *MockSnapshotRestoreStepper) EXPECT() *MockSnapshotRestoreStepperMockRec
 }
 
 // Cleanup mocks base method.
-func (m *MockSnapshotRestoreStepper) Cleanup(arg0 context.Context, arg1 *types.CSISnapshotRestoreResults) {
+func (m *MockSnapshotRestoreStepper) Cleanup(results *types.CSISnapshotRestoreResults) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Cleanup", arg0, arg1)
+	m.ctrl.Call(m, "Cleanup", results)
 }
 
 // Cleanup indicates an expected call of Cleanup.
-func (mr *MockSnapshotRestoreStepperMockRecorder) Cleanup(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockSnapshotRestoreStepperMockRecorder) Cleanup(results interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockSnapshotRestoreStepper)(nil).Cleanup), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockSnapshotRestoreStepper)(nil).Cleanup), results)
 }
 
 // CreateApplication mocks base method.

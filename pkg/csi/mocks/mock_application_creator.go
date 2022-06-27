@@ -80,10 +80,15 @@ func (mr *MockApplicationCreatorMockRecorder) WaitForPodReady(arg0, arg1, arg2 i
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitForPodReady", reflect.TypeOf((*MockApplicationCreator)(nil).WaitForPodReady), arg0, arg1, arg2)
 }
 
-func (m *MockApplicationCreator) WaitForPVCReadyOrCheckEventIssues(ctx context.Context, namespace string, pvcName string) error {
-	return nil
+func (m *MockApplicationCreator) WaitForPVCReady(ctx context.Context, namespace string, pvcName string) error {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "WaitForPVCReady", ctx, namespace, pvcName)
+	err, _ := ret[0].(error)
+	return err
 }
 
-func (m *MockApplicationCreator) WaitForPodReadyOrCheckEventIssues(ctx context.Context, namespace string, podName string) error {
-	return nil
+// WaitForPodReady indicates an expected call of WaitForPVCReady.
+func (mr *MockApplicationCreatorMockRecorder) WaitForPVCReady(ctx, namespace, pvcName interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "WaitForPVCReady", reflect.TypeOf((*MockApplicationCreator)(nil).WaitForPVCReady), ctx, namespace, pvcName)
 }

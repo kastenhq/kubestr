@@ -242,6 +242,7 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 							Name: "pod1",
 						},
 					}, nil),
+					f.createAppOps.EXPECT().WaitForPVCReady(gomock.Any(), "ns", "pvc1").Return(nil),
 					f.createAppOps.EXPECT().WaitForPodReady(gomock.Any(), "ns", "pod1").Return(nil),
 				)
 			},
@@ -282,6 +283,7 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 							Name: "pod1",
 						},
 					}, nil),
+					f.createAppOps.EXPECT().WaitForPVCReady(gomock.Any(), "ns", "pvc1").Return(nil),
 					f.createAppOps.EXPECT().WaitForPodReady(gomock.Any(), "ns", "pod1").Return(fmt.Errorf("pod ready error")),
 				)
 			},
@@ -587,6 +589,7 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 							Name: "pod1",
 						},
 					}, nil),
+					f.createAppOps.EXPECT().WaitForPVCReady(gomock.Any(), "ns", "pvc1").Return(nil),
 					f.createAppOps.EXPECT().WaitForPodReady(gomock.Any(), "ns", "pod1").Return(nil),
 				)
 			},
@@ -640,6 +643,7 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 							Name: "pod1",
 						},
 					}, nil),
+					f.createAppOps.EXPECT().WaitForPVCReady(gomock.Any(), "ns", "pvc1").Return(nil),
 					f.createAppOps.EXPECT().WaitForPodReady(gomock.Any(), "ns", "pod1").Return(fmt.Errorf("pod ready error")),
 				)
 			},

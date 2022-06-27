@@ -462,6 +462,7 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 func (s *CSITestSuite) TestCreatePod(c *C) {
 	ctx := context.Background()
 	for _, tc := range []struct {
+		description string
 		cli         kubernetes.Interface
 		args        *types.CreatePodArgs
 		failCreates bool
@@ -469,6 +470,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 		podChecker  Checker
 	}{
 		{
+			description: "pod with container image and runAsUser 1000 created",
 			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName:   "name",
@@ -482,17 +484,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: NotNil,
 		},
 		{
-			cli: fake.NewSimpleClientset(),
-			args: &types.CreatePodArgs{
-				GenerateName: "name",
-				PVCName:      "pvcname",
-				Namespace:    "ns",
-				Command:      []string{"somecommand"},
-			},
-			errChecker: IsNil,
-			podChecker: NotNil,
-		},
-		{
+			description: "Pod creation error on kubeCli",
 			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
@@ -505,6 +497,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker:  NotNil,
 		},
 		{
+			description: "Pod generate name arg not set",
 			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "",
@@ -516,6 +509,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: IsNil,
 		},
 		{
+			description: "PVC name not set error",
 			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
@@ -527,6 +521,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: IsNil,
 		},
 		{
+			description: "default namespace pod is created",
 			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
@@ -538,6 +533,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: IsNil,
 		},
 		{
+			description: "ns namespace pod is created",
 			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
@@ -549,12 +545,14 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: NotNil,
 		},
 		{
+			description: "kubeCli not initialized",
 			cli:        nil,
 			args:       &types.CreatePodArgs{},
 			errChecker: NotNil,
 			podChecker: IsNil,
 		},
 	} {
+		fmt.Println("test:", tc.description)
 		creator := &applicationCreate{kubeCli: tc.cli}
 		if tc.failCreates {
 			creator.kubeCli.(*fake.Clientset).Fake.PrependReactor("create", "pods", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -598,7 +596,6 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			} else {
 				c.Check(pod.Spec.SecurityContext, IsNil)
 			}
-
 		}
 	}
 }
