@@ -31,7 +31,7 @@ import (
 )
 
 const (
-	defaultReadyWaitTimeout  = 15 * time.Minute
+	defaultReadyWaitTimeout  = 2 * time.Minute
 
 	PVCKind = "PersistentVolumeClaim"
 	PodKind ="Pod"

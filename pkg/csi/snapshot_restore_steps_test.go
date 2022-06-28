@@ -330,6 +330,47 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 			podChecker: IsNil,
 			pvcChecker: IsNil,
 		},
+		{ // PVC times out provisioning
+			args: &types.CSISnapshotRestoreArgs{
+				StorageClass:   "sc",
+				Namespace:      "ns",
+				RunAsUser:      100,
+				ContainerImage: "image",
+			},
+			genString: "some string",
+			prepare: func(f *fields) {
+				gomock.InOrder(
+					f.createAppOps.EXPECT().CreatePVC(gomock.Any(), &types.CreatePVCArgs{
+						GenerateName: originalPVCGenerateName,
+						StorageClass: "sc",
+						Namespace:    "ns",
+					}).Return(&v1.PersistentVolumeClaim{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "pvc1",
+						},
+					}, nil),
+					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
+						GenerateName:   originalPodGenerateName,
+						PVCName:        "pvc1",
+						Namespace:      "ns",
+						Command:        []string{"/bin/sh"},
+						ContainerArgs:  []string{"-c", "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null"},
+						RunAsUser:      100,
+						ContainerImage: "image",
+						MountPath:      "/data",
+					}).Return(&v1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "pod1",
+						},
+					}, nil),
+					f.createAppOps.EXPECT().WaitForPVCReady(gomock.Any(), "ns", "pvc1").Return(fmt.Errorf("rate: Wait(n=1) would exceed context deadline")),
+					f.createAppOps.EXPECT().WaitForPodReady(gomock.Any(), "ns", "pvc1").Times(0),
+				)
+			},
+			errChecker: NotNil,
+			podChecker: NotNil,
+			pvcChecker: NotNil,
+		},
 	} {
 		ctrl := gomock.NewController(c)
 		defer ctrl.Finish()
