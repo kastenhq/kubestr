@@ -24,11 +24,6 @@ const (
 	createdByLabel          = "created-by-kubestr-csi"
 	clonePrefix             = "kubestr-clone-"
 	snapshotPrefix          = "kubestr-snapshot-"
-
-	basicK8sObjectWait = 1 * time.Second // Sleeps to avoid burning resources on kubectl calls and to make testing more reliable
-
-	PVCKind = "PersistentVolumeClaim"
-	PodKind ="Pod"
 )
 
 type SnapshotRestoreRunner struct {
@@ -115,7 +110,8 @@ func (r *SnapshotRestoreRunner) RunSnapshotRestoreHelper(ctx context.Context, ar
 
 	if args.Cleanup {
 		fmt.Println("Cleaning up resources")
-		r.srSteps.Cleanup(results)
+		// don't let Cancelled/DeadlineExceeded context affect cleanup
+		r.srSteps.Cleanup(context.Background(), results)
 	}
 
 	return results, err
@@ -128,7 +124,7 @@ type SnapshotRestoreStepper interface {
 	ValidateData(ctx context.Context, pod *v1.Pod, data string) error
 	SnapshotApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, pvc *v1.PersistentVolumeClaim, snapshotName string) (*snapv1.VolumeSnapshot, error)
 	RestoreApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, snapshot *snapv1.VolumeSnapshot) (*v1.Pod, *v1.PersistentVolumeClaim, error)
-	Cleanup(results *types.CSISnapshotRestoreResults)
+	Cleanup(ctx context.Context, results *types.CSISnapshotRestoreResults)
 }
 
 type snapshotRestoreSteps struct {
@@ -289,8 +285,7 @@ func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *typ
 	return pod, pvc, nil
 }
 
-func (s *snapshotRestoreSteps) Cleanup(results *types.CSISnapshotRestoreResults) {
-	ctx := context.Background()
+func (s *snapshotRestoreSteps) Cleanup(ctx context.Context, results *types.CSISnapshotRestoreResults) {
 	if results == nil {
 		return
 	}

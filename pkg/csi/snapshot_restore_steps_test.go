@@ -838,7 +838,7 @@ func (s *CSITestSuite) TestCleanup(c *C) {
 			cleanerOps:           f.cleanerOps,
 			SnapshotGroupVersion: groupversion,
 		}
-		stepper.Cleanup(tc.results)
+		stepper.Cleanup(ctx, tc.results)
 	}
 }
 

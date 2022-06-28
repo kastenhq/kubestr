@@ -32,6 +32,9 @@ import (
 
 const (
 	defaultReadyWaitTimeout  = 15 * time.Minute
+
+	PVCKind = "PersistentVolumeClaim"
+	PodKind ="Pod"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_argument_validator.go -package=mocks . ArgumentValidator
