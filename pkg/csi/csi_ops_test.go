@@ -1173,10 +1173,6 @@ func (s *CSITestSuite) TestWaitForPVCReady(c *C) {
 	deadlineExceededGetFunc := func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 		return true, nil, pkgerrors.Wrapf(context.DeadlineExceeded, "some wrapped error")
 	}
-	// side effect of poll.Wait. See https://github.com/kubernetes/kubernetes/blob/42fec42586c4411f649bf766fe65059602ee6499/vendor/golang.org/x/time/rate/rate.go#L247
-	preemptiveDeadlineExceededGetFunc := func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
-		return true, nil, pkgerrors.Wrapf(fmt.Errorf("rate: Wait(n=1) would exceed context deadline"), "some wrapped error")
-	}
 
 	warningEvent := v1.Event{
 		Type: v1.EventTypeWarning,
@@ -1221,21 +1217,6 @@ func (s *CSITestSuite) TestWaitForPVCReady(c *C) {
 			description: "context.DeadlineExceeded, unable to provision PVC",
 			cli:         fake.NewSimpleClientset(stuckPVC),
 			pvcGetFunc:  deadlineExceededGetFunc,
-			eventsList:  []v1.Event{warningEvent},
-			errChecker:  NotNil,
-			errString:   warningEvent.Message,
-		},
-		{
-			description: "Pre-emptive deadline exceeded but no event warnings",
-			cli:         fake.NewSimpleClientset(stuckPVC),
-			pvcGetFunc:  preemptiveDeadlineExceededGetFunc,
-			errChecker:  NotNil,
-			errString:   "would exceed context deadline",
-		},
-		{
-			description: "Pre-emptive deadline exceeded, unable to provision PVC",
-			cli:         fake.NewSimpleClientset(stuckPVC),
-			pvcGetFunc:  preemptiveDeadlineExceededGetFunc,
 			eventsList:  []v1.Event{warningEvent},
 			errChecker:  NotNil,
 			errString:   warningEvent.Message,

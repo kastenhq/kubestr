@@ -205,7 +205,7 @@ func (c *applicationCreate) WaitForPVCReady(ctx context.Context, namespace, name
 	}
 
 	err := c.waitForPVCReady(ctx, namespace, name)
-	if err != nil && (errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "would exceed context deadline")) {
+	if err != nil {
 		eventErr := c.getErrorFromEvents(ctx, namespace, name, PVCKind)
 		if eventErr != nil {
 			return errors.Wrapf(eventErr, "had issues creating PVC")
@@ -241,7 +241,7 @@ func (c *applicationCreate) WaitForPodReady(ctx context.Context, namespace strin
 		return fmt.Errorf("kubeCli not initialized")
 	}
 	err := c.waitForPodReady(ctx, namespace, podName)
-	if err != nil && (errors.Is(err, context.DeadlineExceeded) || strings.Contains(err.Error(), "would exceed context deadline")) {
+	if err != nil {
 		eventErr := c.getErrorFromEvents(ctx, namespace, podName, PodKind)
 		if eventErr != nil {
 			return errors.Wrapf(eventErr, "had issues creating Pod")
