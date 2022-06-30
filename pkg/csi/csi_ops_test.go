@@ -4,10 +4,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	kansnapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
 	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
 	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1beta1"
+	pkgerrors "github.com/pkg/errors"
 	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/kastenhq/kubestr/pkg/csi/types"
 	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
@@ -462,6 +464,7 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 func (s *CSITestSuite) TestCreatePod(c *C) {
 	ctx := context.Background()
 	for _, tc := range []struct {
+		description string
 		cli         kubernetes.Interface
 		args        *types.CreatePodArgs
 		failCreates bool
@@ -469,6 +472,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 		podChecker  Checker
 	}{
 		{
+			description: "pod with container image and runAsUser 1000 created",
 			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName:   "name",
@@ -482,17 +486,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: NotNil,
 		},
 		{
-			cli: fake.NewSimpleClientset(),
-			args: &types.CreatePodArgs{
-				GenerateName: "name",
-				PVCName:      "pvcname",
-				Namespace:    "ns",
-				Command:      []string{"somecommand"},
-			},
-			errChecker: IsNil,
-			podChecker: NotNil,
-		},
-		{
+			description: "Pod creation error on kubeCli",
 			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
@@ -505,6 +499,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker:  NotNil,
 		},
 		{
+			description: "Pod generate name arg not set",
 			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "",
@@ -516,6 +511,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: IsNil,
 		},
 		{
+			description: "PVC name not set error",
 			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
@@ -527,6 +523,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: IsNil,
 		},
 		{
+			description: "default namespace pod is created",
 			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
@@ -538,6 +535,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: IsNil,
 		},
 		{
+			description: "ns namespace pod is created",
 			cli: fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
@@ -549,12 +547,14 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: NotNil,
 		},
 		{
+			description: "kubeCli not initialized",
 			cli:        nil,
 			args:       &types.CreatePodArgs{},
 			errChecker: NotNil,
 			podChecker: IsNil,
 		},
 	} {
+		fmt.Println("test:", tc.description)
 		creator := &applicationCreate{kubeCli: tc.cli}
 		if tc.failCreates {
 			creator.kubeCli.(*fake.Clientset).Fake.PrependReactor("create", "pods", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -598,7 +598,6 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			} else {
 				c.Check(pod.Spec.SecurityContext, IsNil)
 			}
-
 		}
 	}
 }
@@ -1158,5 +1157,93 @@ func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
 		}
 		err := cleaner.DeleteSnapshot(ctx, tc.snapshotName, tc.namespace, tc.groupVersion)
 		c.Check(err, tc.errChecker)
+	}
+}
+
+func (s *CSITestSuite) TestWaitForPVCReady(c *C) {
+	ctx := context.Background()
+	const ns = "ns"
+	const pvc = "pvc"
+	boundPVC := s.getPVC(ns, pvc, v1.ClaimBound)
+	claimLostPVC := s.getPVC(ns, pvc, v1.ClaimLost)
+	stuckPVC := s.getPVC(ns, pvc, "")
+	normalGetFunc :=  func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+		return
+	}
+	deadlineExceededGetFunc := func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, nil, pkgerrors.Wrapf(context.DeadlineExceeded, "some wrapped error")
+	}
+
+	warningEvent := v1.Event{
+		Type: v1.EventTypeWarning,
+		Message: "waiting for a volume to be created, either by external provisioner \"ceph.com/rbd\" or manually created by system administrator",
+	}
+	for _, tc := range []struct {
+		description string
+		cli        kubernetes.Interface
+		pvcGetFunc func(action k8stesting.Action) (handled bool, ret runtime.Object, err error)
+		eventsList []v1.Event
+		errChecker Checker
+		errString string
+	}{
+		{
+			description: "Happy path",
+			cli: fake.NewSimpleClientset(boundPVC),
+			pvcGetFunc: normalGetFunc,
+			errChecker: IsNil,
+		},
+		{
+			description: "Missing PVC",
+			cli: fake.NewSimpleClientset(),
+			pvcGetFunc: normalGetFunc,
+			errChecker: NotNil,
+			errString: "Could not find PVC",
+		},
+		{
+			description: "PVC ClaimLost",
+			cli:         fake.NewSimpleClientset(claimLostPVC),
+			pvcGetFunc:  normalGetFunc,
+			errChecker:  NotNil,
+			errString:   "ClaimLost",
+		},
+		{
+			description: "context.DeadlineExceeded but no event warnings",
+			cli:         fake.NewSimpleClientset(stuckPVC),
+			pvcGetFunc:  deadlineExceededGetFunc,
+			errChecker:  NotNil,
+			errString:   context.DeadlineExceeded.Error(),
+		},
+		{
+			description: "context.DeadlineExceeded, unable to provision PVC",
+			cli:         fake.NewSimpleClientset(stuckPVC),
+			pvcGetFunc:  deadlineExceededGetFunc,
+			eventsList:  []v1.Event{warningEvent},
+			errChecker:  NotNil,
+			errString:   warningEvent.Message,
+		},
+	}{
+		fmt.Println("test:", tc.description)
+		creator := &applicationCreate{kubeCli: tc.cli}
+		creator.kubeCli.(*fake.Clientset).PrependReactor("get", "persistentvolumeclaims", tc.pvcGetFunc)
+		creator.kubeCli.(*fake.Clientset).PrependReactor("list", "events", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			return true, &v1.EventList{Items: tc.eventsList}, nil
+		})
+		err := creator.WaitForPVCReady(ctx, ns, pvc)
+		c.Check(err, tc.errChecker)
+		if err != nil {
+			c.Assert(strings.Contains(err.Error(), tc.errString), Equals, true)
+		}
+	}
+}
+
+func (s *CSITestSuite) getPVC(ns, pvc string, phase v1.PersistentVolumeClaimPhase) *v1.PersistentVolumeClaim {
+	return &v1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: pvc,
+			Namespace: ns,
+		},
+		Status: v1.PersistentVolumeClaimStatus {
+			Phase: phase,
+		},
 	}
 }

@@ -33,6 +33,12 @@ type SnapshotRestoreRunner struct {
 }
 
 func (r *SnapshotRestoreRunner) RunSnapshotRestore(ctx context.Context, args *types.CSISnapshotRestoreArgs) (*types.CSISnapshotRestoreResults, error) {
+	if r.KubeCli == nil || r.DynCli == nil {
+		return &types.CSISnapshotRestoreResults{}, fmt.Errorf("cli uninitialized")
+	}
+	if args == nil {
+		return &types.CSISnapshotRestoreResults{}, fmt.Errorf("snapshot args not specified")
+	}
 	r.srSteps = &snapshotRestoreSteps{
 		validateOps: &validateOperations{
 			kubeCli: r.KubeCli,
@@ -43,6 +49,7 @@ func (r *SnapshotRestoreRunner) RunSnapshotRestore(ctx context.Context, args *ty
 		},
 		createAppOps: &applicationCreate{
 			kubeCli: r.KubeCli,
+			k8sObjectReadyTimeout: args.K8sObjectReadyTimeout,
 		},
 		dataValidatorOps: &validateData{
 			kubeCli: r.KubeCli,
@@ -103,7 +110,8 @@ func (r *SnapshotRestoreRunner) RunSnapshotRestoreHelper(ctx context.Context, ar
 
 	if args.Cleanup {
 		fmt.Println("Cleaning up resources")
-		r.srSteps.Cleanup(ctx, results)
+		// don't let Cancelled/DeadlineExceeded context affect cleanup
+		r.srSteps.Cleanup(context.Background(), results)
 	}
 
 	return results, err
@@ -183,6 +191,11 @@ func (s *snapshotRestoreSteps) CreateApplication(ctx context.Context, args *type
 	if err != nil {
 		return nil, pvc, errors.Wrap(err, "Failed to create POD")
 	}
+
+	if err = s.createAppOps.WaitForPVCReady(ctx, args.Namespace, pvc.Name); err != nil {
+		return pod, pvc, errors.Wrap(err, "PVC failed to become ready")
+	}
+
 	if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
 		return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
 	}
@@ -261,6 +274,11 @@ func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *typ
 	if err != nil {
 		return nil, pvc, errors.Wrap(err, "Failed to create restored Pod")
 	}
+
+	if err = s.createAppOps.WaitForPVCReady(ctx, args.Namespace, pvc.Name); err != nil {
+		return pod, pvc, errors.Wrap(err, "PVC failed to become ready")
+	}
+
 	if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
 		return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
 	}
@@ -274,31 +292,31 @@ func (s *snapshotRestoreSteps) Cleanup(ctx context.Context, results *types.CSISn
 	if results.OriginalPVC != nil {
 		err := s.cleanerOps.DeletePVC(ctx, results.OriginalPVC.Name, results.OriginalPVC.Namespace)
 		if err != nil {
-			fmt.Printf("Error deleteing PVC (%s) - (%v)\n", results.OriginalPVC.Name, err)
+			fmt.Printf("Error deleting original PVC (%s) - (%v)\n", results.OriginalPVC.Name, err)
 		}
 	}
 	if results.OriginalPod != nil {
 		err := s.cleanerOps.DeletePod(ctx, results.OriginalPod.Name, results.OriginalPod.Namespace)
 		if err != nil {
-			fmt.Printf("Error deleteing Pod (%s) - (%v)\n", results.OriginalPod.Name, err)
+			fmt.Printf("Error deleting original Pod (%s) - (%v)\n", results.OriginalPod.Name, err)
 		}
 	}
 	if results.ClonedPVC != nil {
 		err := s.cleanerOps.DeletePVC(ctx, results.ClonedPVC.Name, results.ClonedPVC.Namespace)
 		if err != nil {
-			fmt.Printf("Error deleteing PVC (%s) - (%v)\n", results.ClonedPVC.Name, err)
+			fmt.Printf("Error deleting cloned PVC (%s) - (%v)\n", results.ClonedPVC.Name, err)
 		}
 	}
 	if results.ClonedPod != nil {
 		err := s.cleanerOps.DeletePod(ctx, results.ClonedPod.Name, results.ClonedPod.Namespace)
 		if err != nil {
-			fmt.Printf("Error deleteing Pod (%s) - (%v)\n", results.ClonedPod.Name, err)
+			fmt.Printf("Error deleting cloned Pod (%s) - (%v)\n", results.ClonedPod.Name, err)
 		}
 	}
 	if results.Snapshot != nil {
 		err := s.cleanerOps.DeleteSnapshot(ctx, results.Snapshot.Name, results.Snapshot.Namespace, s.SnapshotGroupVersion)
 		if err != nil {
-			fmt.Printf("Error deleteing Snapshot (%s) - (%v)\n", results.Snapshot.Name, err)
+			fmt.Printf("Error deleting Snapshot (%s) - (%v)\n", results.Snapshot.Name, err)
 		}
 	}
 }

@@ -3,6 +3,7 @@ package types
 import (
 	"bytes"
 	"fmt"
+	"time"
 
 	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	v1 "k8s.io/api/core/v1"
@@ -18,6 +19,7 @@ type CSISnapshotRestoreArgs struct {
 	ContainerImage      string
 	Cleanup             bool
 	SkipCFSCheck        bool
+	K8sObjectReadyTimeout time.Duration
 }
 
 func (a *CSISnapshotRestoreArgs) Validate() error {
