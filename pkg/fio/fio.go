@@ -243,41 +243,43 @@ func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, test
 		image = common.DefaultPodImage
 	}
 
-	pod := &v1.Pod{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: PodGenerateName,
-			Namespace:    namespace,
-		},
-		Spec: v1.PodSpec{
-			Containers: []v1.Container{{
-				Name:    ContainerName,
-				Command: []string{"/bin/sh"},
-				Args:    []string{"-c", "tail -f /dev/null"},
-				VolumeMounts: []v1.VolumeMount{
-					{Name: "persistent-storage", MountPath: VolumeMountPath},
-					{Name: "config-map", MountPath: ConfigMapMountPath},
+	podSpec := &v1.PodSpec{
+		Containers: []v1.Container{{
+			Name:    ContainerName,
+			Command: []string{"/bin/sh"},
+			Args:    []string{"-c", "tail -f /dev/null"},
+			VolumeMounts: []v1.VolumeMount{
+				{Name: "persistent-storage", MountPath: VolumeMountPath},
+				{Name: "config-map", MountPath: ConfigMapMountPath},
+			},
+			Image: image,
+		}},
+		Volumes: []v1.Volume{
+			{
+				Name: "persistent-storage",
+				VolumeSource: v1.VolumeSource{
+					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{ClaimName: pvcName},
 				},
-				Image: image,
-			}},
-			Volumes: []v1.Volume{
-				{
-					Name: "persistent-storage",
-					VolumeSource: v1.VolumeSource{
-						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{ClaimName: pvcName},
-					},
-				},
-				{
-					Name: "config-map",
-					VolumeSource: v1.VolumeSource{
-						ConfigMap: &v1.ConfigMapVolumeSource{
-							LocalObjectReference: v1.LocalObjectReference{
-								Name: configMapName,
-							},
+			},
+			{
+				Name: "config-map",
+				VolumeSource: v1.VolumeSource{
+					ConfigMap: &v1.ConfigMapVolumeSource{
+						LocalObjectReference: v1.LocalObjectReference{
+							Name: configMapName,
 						},
 					},
 				},
 			},
 		},
+	}
+
+	pod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: PodGenerateName,
+			Namespace:    namespace,
+		},
+		Spec: *podSpec,
 	}
 	podRes, err := s.cli.CoreV1().Pods(namespace).Create(ctx, pod, metav1.CreateOptions{})
 	if err != nil {
