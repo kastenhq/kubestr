@@ -6,7 +6,7 @@ replace github.com/graymeta/stow => github.com/kastenhq/stow v0.1.2-kasten
 
 require (
 	github.com/Masterminds/semver v1.5.0 // indirect
-	github.com/briandowns/spinner v1.12.0
+	github.com/briandowns/spinner v1.18.1
 	github.com/golang/mock v1.6.0
 	github.com/jarcoal/httpmock v1.0.5 // indirect
 	github.com/kanisterio/kanister v0.0.0-20210805190523-86f566052e0e
