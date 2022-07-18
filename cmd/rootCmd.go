@@ -85,8 +85,8 @@ var (
 	pvcBrowseCmd       = &cobra.Command{
 		Use:   "browse [PVC name]",
 		Short: "Browse the contents of a CSI PVC via file browser",
-		Args:  cobra.ExactArgs(1),
 		Long:  "Browse the contents of a CSI provisioned PVC by cloning the volume and mounting it with a file browser.",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return CsiPvcBrowse(context.Background(), args[0],
 				namespace,
