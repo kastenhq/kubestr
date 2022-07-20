@@ -5,7 +5,6 @@ go 1.17
 replace github.com/graymeta/stow => github.com/kastenhq/stow v0.1.2-kasten
 
 require (
-	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/briandowns/spinner v1.18.1
 	github.com/golang/mock v1.6.0
 	github.com/kanisterio/kanister v0.0.0-20220712181324-befdee224291
@@ -22,6 +21,7 @@ require (
 	cloud.google.com/go/compute v1.7.0 // indirect
 	github.com/Azure/go-ansiterm v0.0.0-20210617225240-d185dfc1b5a1 // indirect
 	github.com/MakeNowJust/heredoc v0.0.0-20170808103936-bb23615498cd // indirect
+	github.com/Masterminds/semver v1.5.0 // indirect
 	github.com/PuerkitoBio/purell v1.1.1 // indirect
 	github.com/PuerkitoBio/urlesc v0.0.0-20170810143723-de5bf2ad4578 // indirect
 	github.com/asaskevich/govalidator v0.0.0-20200907205600-7a23bdc65eef // indirect
