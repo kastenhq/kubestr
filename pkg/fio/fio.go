@@ -4,7 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"time"
 
@@ -189,7 +189,7 @@ func (s *fioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.C
 	}
 	switch {
 	case args.FIOJobFilepath != "":
-		data, err := ioutil.ReadFile(args.FIOJobFilepath)
+		data, err := os.ReadFile(args.FIOJobFilepath)
 		if err != nil {
 			return nil, errors.Wrap(err, "File reading error")
 		}

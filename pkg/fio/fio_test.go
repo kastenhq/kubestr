@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -382,7 +381,7 @@ func (s *FIOTestSuite) TestValidateNamespace(c *C) {
 
 func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 	ctx := context.Background()
-	file, err := ioutil.TempFile("", "tempTLCfile")
+	file, err := os.CreateTemp("", "tempTLCfile")
 	c.Check(err, IsNil)
 	defer os.Remove(file.Name())
 	for i, tc := range []struct {
