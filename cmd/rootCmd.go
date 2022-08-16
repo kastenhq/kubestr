@@ -38,6 +38,7 @@ var (
 		and validate that the storage systems in place as well as run
 		performance tests.`,
 		SilenceUsage: true,
+		Args:         cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
@@ -57,6 +58,7 @@ var (
 		Use:   "fio",
 		Short: "Runs an fio test",
 		Long:  `Run an fio test`,
+		Args:  cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
@@ -72,6 +74,7 @@ var (
 		Use:   "csicheck",
 		Short: "Runs the CSI snapshot restore check",
 		Long:  "Validates a CSI provisioners ability to take a snapshot of an application and restore it",
+		Args:  cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
@@ -83,8 +86,8 @@ var (
 	pvcBrowseCmd       = &cobra.Command{
 		Use:   "browse [PVC name]",
 		Short: "Browse the contents of a CSI PVC via file browser",
-		Args:  cobra.ExactArgs(1),
 		Long:  "Browse the contents of a CSI provisioned PVC by cloning the volume and mounting it with a file browser.",
+		Args:  cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return CsiPvcBrowse(context.Background(), args[0],
 				namespace,
