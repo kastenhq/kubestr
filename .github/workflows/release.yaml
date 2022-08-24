@@ -8,6 +8,8 @@ jobs:
   goreleaser:
     name: Release Go Binary
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
     steps:
     - name: Checkout
       uses: actions/checkout@v2
