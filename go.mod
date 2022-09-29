@@ -5,7 +5,7 @@ go 1.17
 replace github.com/graymeta/stow => github.com/kastenhq/stow v0.1.2-kasten
 
 require (
-	github.com/briandowns/spinner v1.18.1
+	github.com/briandowns/spinner v1.19.0
 	github.com/golang/mock v1.6.0
 	github.com/kanisterio/kanister v0.0.0-20220712181324-befdee224291
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.2.0
