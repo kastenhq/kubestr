@@ -568,8 +568,8 @@ github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/X
 github.com/jtolds/gls v4.20.0+incompatible/go.mod h1:QJZ7F/aHp+rZTRtaJ1ow/lLfFfVYBRgL+9YlvaHOwJU=
 github.com/julienschmidt/httprouter v1.2.0/go.mod h1:SYymIcj16QtmaHHD7aYtjjsJG7VTCxuUUipMqKk8s4w=
 github.com/julienschmidt/httprouter v1.3.0/go.mod h1:JR6WtHb+2LUe8TCKY3cZOxFyyO8IZAc4RVcycCCAKdM=
-github.com/kanisterio/kanister v0.0.0-20220712181324-befdee224291 h1:uLxDJpOREhn0EojXo30tGmQ9cI6AyJhWAP/69QDJrAc=
-github.com/kanisterio/kanister v0.0.0-20220712181324-befdee224291/go.mod h1:O0k6Dv28um30lGjtSKdOB/4pQ3/LHt7/xcXGtrUCgGM=
+github.com/kanisterio/kanister v0.0.0-20221018102647-7c853bce9492 h1:0KxHPUfmsGp7g7XTGvQoFm1iOufl0pKz+D5afl8nhq0=
+github.com/kanisterio/kanister v0.0.0-20221018102647-7c853bce9492/go.mod h1:MnVK+h5RQg7ReyzNCZh7HoukbKIw/vQEMuuKPtNIZuo=
 github.com/kastenhq/stow v0.1.2-kasten/go.mod h1:ABI2whmZOX25JbmbVuHRLFuPiGnv5lxXhduCtof7UHk=
 github.com/kelseyhightower/envconfig v1.4.0 h1:Im6hONhd3pLkfDFsbRgu68RDNkGF1r3dvMUtDTo2cv8=
 github.com/kelseyhightower/envconfig v1.4.0/go.mod h1:cccZRl6mQpaq41TPp5QxidR+Sa3axMbJDNb//FQX6Gg=
