@@ -31,10 +31,10 @@ import (
 )
 
 const (
-	defaultReadyWaitTimeout  = 2 * time.Minute
+	defaultReadyWaitTimeout = 2 * time.Minute
 
 	PVCKind = "PersistentVolumeClaim"
-	PodKind ="Pod"
+	PodKind = "Pod"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_argument_validator.go -package=mocks . ArgumentValidator
@@ -98,7 +98,7 @@ type ApplicationCreator interface {
 }
 
 type applicationCreate struct {
-	kubeCli kubernetes.Interface
+	kubeCli               kubernetes.Interface
 	k8sObjectReadyTimeout time.Duration
 }
 
@@ -365,7 +365,7 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 		Driver:                  snapSrc.Driver,
 		VolumeSnapshotClassName: targetSnapClassName,
 	}
-	err = snapshotter.CreateFromSource(ctx, src, snapshotCFSCloneName, args.Namespace, true)
+	err = snapshotter.CreateFromSource(ctx, src, snapshotCFSCloneName, args.Namespace, true, nil)
 	if err != nil {
 		return errors.Wrapf(err, "Failed to clone snapshot from source (%s)", snapshotCFSCloneName)
 	}
