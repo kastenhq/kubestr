@@ -7,7 +7,7 @@ replace github.com/graymeta/stow => github.com/kastenhq/stow v0.1.2-kasten
 require (
 	github.com/briandowns/spinner v1.19.0
 	github.com/golang/mock v1.6.0
-	github.com/kanisterio/kanister v0.0.0-20220712181324-befdee224291
+	github.com/kanisterio/kanister v0.0.0-20221021092747-4dca8c82ae9d
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.6.0
