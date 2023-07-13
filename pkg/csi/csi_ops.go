@@ -53,21 +53,21 @@ type validateOperations struct {
 }
 
 func (o *validateOperations) ValidatePVC(ctx context.Context, pvcName, namespace string) (*v1.PersistentVolumeClaim, error) {
-	if o.kubeCli == nil { //nolint:typecheck
+	if o.kubeCli == nil {
 		return nil, fmt.Errorf("kubeCli not initialized")
 	}
 	return o.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
 }
 
 func (o *validateOperations) FetchPV(ctx context.Context, pvName string) (*v1.PersistentVolume, error) {
-	if o.kubeCli == nil { //nolint:typecheck
+	if o.kubeCli == nil {
 		return nil, fmt.Errorf("kubeCli not initialized")
 	}
 	return o.kubeCli.CoreV1().PersistentVolumes().Get(ctx, pvName, metav1.GetOptions{})
 }
 
 func (o *validateOperations) ValidateNamespace(ctx context.Context, namespace string) error {
-	if o.kubeCli == nil { //nolint:typecheck
+	if o.kubeCli == nil {
 		return fmt.Errorf("kubeCli not initialized")
 	}
 	_, err := o.kubeCli.CoreV1().Namespaces().Get(ctx, namespace, metav1.GetOptions{})
@@ -75,14 +75,14 @@ func (o *validateOperations) ValidateNamespace(ctx context.Context, namespace st
 }
 
 func (o *validateOperations) ValidateStorageClass(ctx context.Context, storageClass string) (*sv1.StorageClass, error) {
-	if o.kubeCli == nil { //nolint:typecheck
+	if o.kubeCli == nil {
 		return nil, fmt.Errorf("kubeCli not initialized")
 	}
 	return o.kubeCli.StorageV1().StorageClasses().Get(ctx, storageClass, metav1.GetOptions{})
 }
 
 func (o *validateOperations) ValidateVolumeSnapshotClass(ctx context.Context, volumeSnapshotClass string, groupVersion *metav1.GroupVersionForDiscovery) (*unstructured.Unstructured, error) {
-	if o.dynCli == nil { //nolint:typecheck
+	if o.dynCli == nil {
 		return nil, fmt.Errorf("dynCli not initialized")
 	}
 	VolSnapClassGVR := schema.GroupVersionResource{Group: common.SnapGroupName, Version: groupVersion.Version, Resource: common.VolumeSnapshotClassResourcePlural}
@@ -103,7 +103,7 @@ type applicationCreate struct {
 }
 
 func (c *applicationCreate) CreatePVC(ctx context.Context, args *types.CreatePVCArgs) (*v1.PersistentVolumeClaim, error) {
-	if c.kubeCli == nil { //nolint:typecheck
+	if c.kubeCli == nil {
 		return nil, fmt.Errorf("kubeCli not initialized")
 	}
 	if err := args.Validate(); err != nil {
