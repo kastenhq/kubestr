@@ -1,4 +1,4 @@
-FROM golang:1.19.10-alpine3.18 AS builder
+FROM golang:1.19-alpine3.18 AS builder
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
@@ -15,7 +15,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go get -ldflags="-w -s" .
+RUN go install -ldflags="-w -s" .
 
 FROM alpine:3.18
 
