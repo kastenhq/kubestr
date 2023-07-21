@@ -21,23 +21,23 @@ import (
 	"k8s.io/client-go/kubernetes/fake"
 )
 
-func TestBlockMountTesterNew(t *testing.T) {
+func TestBlockMountCheckerNew(t *testing.T) {
 	kubeCli := fake.NewSimpleClientset()
 	dynCli := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
 
 	invalidArgs := []struct {
 		name string
-		args BlockMountTesterArgs
+		args BlockMountCheckerArgs
 	}{
-		{"args:empty", BlockMountTesterArgs{}},
-		{"args:KubeCli", BlockMountTesterArgs{
+		{"args:empty", BlockMountCheckerArgs{}},
+		{"args:KubeCli", BlockMountCheckerArgs{
 			KubeCli: kubeCli,
 		}},
-		{"args:KubeCli-DynCli", BlockMountTesterArgs{
+		{"args:KubeCli-DynCli", BlockMountCheckerArgs{
 			KubeCli: kubeCli,
 			DynCli:  dynCli,
 		}},
-		{"args:KubeCli-DynCli-StorageClass", BlockMountTesterArgs{
+		{"args:KubeCli-DynCli-StorageClass", BlockMountCheckerArgs{
 			KubeCli:      kubeCli,
 			DynCli:       dynCli,
 			StorageClass: "sc",
@@ -54,7 +54,7 @@ func TestBlockMountTesterNew(t *testing.T) {
 
 	t.Run("success", func(t *testing.T) {
 		c := qt.New(t)
-		args := BlockMountTesterArgs{
+		args := BlockMountCheckerArgs{
 			KubeCli:      kubeCli,
 			DynCli:       dynCli,
 			StorageClass: "sc",
@@ -78,7 +78,7 @@ func TestBlockMountTesterNew(t *testing.T) {
 	})
 }
 
-func TestBlockMountTesterPvcWaitForTermination(t *testing.T) {
+func TestBlockMountCheckerPvcWaitForTermination(t *testing.T) {
 	type prepareArgs struct {
 		b             *blockMountTester
 		mockValidator *mocks.MockArgumentValidator
@@ -113,7 +113,7 @@ func TestBlockMountTesterPvcWaitForTermination(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			c := qt.New(t)
 
-			args := BlockMountTesterArgs{
+			args := BlockMountCheckerArgs{
 				KubeCli:      kubeCli,
 				DynCli:       dynCli,
 				StorageClass: "sc",
@@ -146,7 +146,7 @@ func TestBlockMountTesterPvcWaitForTermination(t *testing.T) {
 	}
 }
 
-func TestBlockMountTesterCleanup(t *testing.T) {
+func TestBlockMountCheckerCleanup(t *testing.T) {
 	type prepareArgs struct {
 		b             *blockMountTester
 		mockCleaner   *mocks.MockCleaner
@@ -217,7 +217,7 @@ func TestBlockMountTesterCleanup(t *testing.T) {
 
 			kubeCli := fake.NewSimpleClientset(tc.objs...)
 			dynCli := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
-			args := BlockMountTesterArgs{
+			args := BlockMountCheckerArgs{
 				KubeCli:      kubeCli,
 				DynCli:       dynCli,
 				StorageClass: scName,
@@ -248,7 +248,7 @@ func TestBlockMountTesterCleanup(t *testing.T) {
 	}
 }
 
-func TestBlockMountTesterMount(t *testing.T) {
+func TestBlockMountCheckerMount(t *testing.T) {
 	type prepareArgs struct {
 		b              *blockMountTester
 		mockCleaner    *mocks.MockCleaner
@@ -317,7 +317,7 @@ func TestBlockMountTesterMount(t *testing.T) {
 		noCleanup  bool
 		objs       []runtime.Object
 		prepare    func(*prepareArgs)
-		result     *BlockMountTesterResult
+		result     *BlockMountCheckerResult
 	}{
 		{
 			name:       "no-storage-class",
@@ -371,7 +371,7 @@ func TestBlockMountTesterMount(t *testing.T) {
 				pa.mockAppCreator.EXPECT().CreatePod(gomock.Any(), createPodArgs(pa.b)).Return(createPod(pa.b), nil)
 				pa.mockAppCreator.EXPECT().WaitForPodReady(gomock.Any(), pa.b.args.Namespace, pa.b.podName).Return(nil)
 			},
-			result: &BlockMountTesterResult{
+			result: &BlockMountCheckerResult{
 				StorageClass: sc,
 			},
 		},
@@ -383,7 +383,7 @@ func TestBlockMountTesterMount(t *testing.T) {
 
 			kubeCli := fake.NewSimpleClientset(tc.objs...)
 			dynCli := fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
-			args := BlockMountTesterArgs{
+			args := BlockMountCheckerArgs{
 				KubeCli:      kubeCli,
 				DynCli:       dynCli,
 				StorageClass: scName,

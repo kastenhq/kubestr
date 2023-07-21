@@ -16,7 +16,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 )
 
-type BlockMountTesterArgs struct {
+type BlockMountCheckerArgs struct {
 	KubeCli kubernetes.Interface
 	DynCli  dynamic.Interface
 
@@ -28,7 +28,7 @@ type BlockMountTesterArgs struct {
 	K8sObjectReadyTimeout time.Duration
 }
 
-func (a *BlockMountTesterArgs) Validate() error {
+func (a *BlockMountCheckerArgs) Validate() error {
 	if a.KubeCli == nil || a.DynCli == nil || a.StorageClass == "" || a.Namespace == "" {
 		return fmt.Errorf("Require fields are missing. (KubeCli, DynCli, StorageClass, Namespace)")
 	}
@@ -36,13 +36,13 @@ func (a *BlockMountTesterArgs) Validate() error {
 
 }
 
-// BlockMountTester tests if a storage class can provision volumes for block mounts.
-type BlockMountTester interface {
-	Mount(ctx context.Context) (*BlockMountTesterResult, error)
+// BlockMountChecker tests if a storage class can provision volumes for block mounts.
+type BlockMountChecker interface {
+	Mount(ctx context.Context) (*BlockMountCheckerResult, error)
 	Cleanup()
 }
 
-type BlockMountTesterResult struct {
+type BlockMountCheckerResult struct {
 	StorageClass *sv1.StorageClass
 }
 
@@ -56,7 +56,7 @@ const (
 
 // blockMountTester provides BlockMountTester
 type blockMountTester struct {
-	args              BlockMountTesterArgs
+	args              BlockMountCheckerArgs
 	podName           string
 	pvcName           string
 	validator         csi.ArgumentValidator
@@ -66,7 +66,7 @@ type blockMountTester struct {
 	pvcCleanupTimeout time.Duration
 }
 
-func NewBlockMountTester(args BlockMountTesterArgs) (BlockMountTester, error) {
+func NewBlockMountTester(args BlockMountCheckerArgs) (BlockMountChecker, error) {
 	if err := args.Validate(); err != nil {
 		return nil, err
 	}
@@ -84,7 +84,7 @@ func NewBlockMountTester(args BlockMountTesterArgs) (BlockMountTester, error) {
 	return b, nil
 }
 
-func (b *blockMountTester) Mount(ctx context.Context) (*BlockMountTesterResult, error) {
+func (b *blockMountTester) Mount(ctx context.Context) (*BlockMountCheckerResult, error) {
 	fmt.Printf("Fetching StorageClass %s ...\n", b.args.StorageClass)
 	sc, err := b.validator.ValidateStorageClass(ctx, b.args.StorageClass)
 	if err != nil {
@@ -142,7 +142,7 @@ func (b *blockMountTester) Mount(ctx context.Context) (*BlockMountTesterResult, 
 	}
 	fmt.Printf(" -> Pod ready (%s)\n", time.Since(tB).Truncate(time.Millisecond).String())
 
-	return &BlockMountTesterResult{
+	return &BlockMountCheckerResult{
 		StorageClass: sc,
 	}, nil
 }

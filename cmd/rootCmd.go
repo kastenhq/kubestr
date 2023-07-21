@@ -104,7 +104,7 @@ var (
 	blockMountCleanupOnly        bool
 	blockMountWaitTimeoutSeconds uint32
 	blockMountCmd                = &cobra.Command{
-		Use:   "blockmount -s StorageClass",
+		Use:   "blockmount",
 		Short: "Checks if a storage class supports block volumes",
 		Long: `Checks if volumes provisioned by a storage class can be mounted
 in block mode.
@@ -119,7 +119,16 @@ The test works as follows:
 		RunE: func(cmd *cobra.Command, args []string) error {
 			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
 			defer cancel()
-			return TestBlockMount(ctx, output, outfile, namespace, storageClass, blockMountRunAsUser, containerImage, blockMountCleanup, blockMountCleanupOnly, blockMountWaitTimeoutSeconds)
+
+			checkerArgs := block.BlockMountCheckerArgs{
+				StorageClass:          storageClass,
+				Namespace:             namespace,
+				Cleanup:               blockMountCleanup,
+				RunAsUser:             blockMountRunAsUser,
+				ContainerImage:        containerImage,
+				K8sObjectReadyTimeout: (time.Second * time.Duration(blockMountWaitTimeoutSeconds)),
+			}
+			return BlockMountCheck(ctx, output, outfile, blockMountCleanupOnly, checkerArgs)
 		},
 	}
 )
@@ -342,37 +351,22 @@ func CsiPvcBrowse(ctx context.Context,
 	return err
 }
 
-func TestBlockMount(ctx context.Context, output, outfile,
-	namespace string,
-	storageclass string,
-	runAsUser int64,
-	containerImage string,
-	cleanup bool,
-	cleanupOnly bool,
-	timeoutSeconds uint32,
-) error {
+func BlockMountCheck(ctx context.Context, output, outfile string, cleanupOnly bool, checkerArgs block.BlockMountCheckerArgs) error {
 	kubecli, err := kubestr.LoadKubeCli()
 	if err != nil {
 		fmt.Printf("Failed to load kubeCli (%s)", err.Error())
 		return err
 	}
+	checkerArgs.KubeCli = kubecli
 
 	dyncli, err := kubestr.LoadDynCli()
 	if err != nil {
 		fmt.Printf("Failed to load dynCli (%s)", err.Error())
 		return err
 	}
+	checkerArgs.DynCli = dyncli
 
-	blockMountTester, err := block.NewBlockMountTester(block.BlockMountTesterArgs{
-		KubeCli:               kubecli,
-		DynCli:                dyncli,
-		StorageClass:          storageclass,
-		Namespace:             namespace,
-		Cleanup:               cleanup,
-		RunAsUser:             runAsUser,
-		ContainerImage:        containerImage,
-		K8sObjectReadyTimeout: (time.Second * time.Duration(timeoutSeconds)),
-	})
+	blockMountTester, err := block.NewBlockMountTester(checkerArgs)
 	if err != nil {
 		fmt.Printf("Failed to initialize BlockMounter (%s)", err.Error())
 		return err
@@ -381,7 +375,7 @@ func TestBlockMount(ctx context.Context, output, outfile,
 	var (
 		testName    string
 		result      *kubestr.TestOutput
-		mountResult *block.BlockMountTesterResult
+		mountResult *block.BlockMountCheckerResult
 	)
 
 	if cleanupOnly {
@@ -395,9 +389,9 @@ func TestBlockMount(ctx context.Context, output, outfile,
 	}
 
 	if err != nil {
-		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, fmt.Sprintf("StorageClass (%s) does not appear to support Block VolumeMode", storageclass), mountResult)
+		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, fmt.Sprintf("StorageClass (%s) does not appear to support Block VolumeMode", checkerArgs.StorageClass), mountResult)
 	} else {
-		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("StorageClass (%s) supports Block VolumeMode", storageclass), mountResult)
+		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("StorageClass (%s) supports Block VolumeMode", checkerArgs.StorageClass), mountResult)
 	}
 
 	var wrappedResult = []*kubestr.TestOutput{result}
