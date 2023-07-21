@@ -185,8 +185,6 @@ func (b *blockMountTester) Cleanup() {
 	} else {
 		fmt.Printf(" -> Deleted PVC (%s)\n", time.Since(tB).Truncate(time.Millisecond).String())
 	}
-
-	return
 }
 
 func (b *blockMountTester) pvcWaitForTermination(timeout time.Duration) error {
