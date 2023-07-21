@@ -46,7 +46,7 @@ func TestBlockMountCheckerNew(t *testing.T) {
 	for _, tc := range invalidArgs {
 		t.Run(tc.name, func(t *testing.T) {
 			c := qt.New(t)
-			bmt, err := NewBlockMountTester(tc.args)
+			bmt, err := NewBlockMountChecker(tc.args)
 			c.Assert(err, qt.IsNotNil)
 			c.Assert(bmt, qt.IsNil)
 		})
@@ -60,27 +60,27 @@ func TestBlockMountCheckerNew(t *testing.T) {
 			StorageClass: "sc",
 			Namespace:    "namespace",
 		}
-		bmt, err := NewBlockMountTester(args)
+		bmt, err := NewBlockMountChecker(args)
 		c.Assert(err, qt.IsNil)
 		c.Assert(bmt, qt.IsNotNil)
 
-		b, ok := bmt.(*blockMountTester)
+		b, ok := bmt.(*blockMountChecker)
 		c.Assert(ok, qt.IsTrue)
 
 		c.Assert(b.args, qt.Equals, args)
 		c.Assert(b.validator, qt.IsNotNil)
 		c.Assert(b.appCreator, qt.IsNotNil)
 		c.Assert(b.cleaner, qt.IsNotNil)
-		c.Assert(b.podName, qt.Equals, fmt.Sprintf(blockMountTesterPodNameFmt, args.StorageClass))
-		c.Assert(b.pvcName, qt.Equals, fmt.Sprintf(blockMountTesterPVCNameFmt, args.StorageClass))
-		c.Assert(b.podCleanupTimeout, qt.Equals, blockModeTesterPodCleanupTimeout)
-		c.Assert(b.pvcCleanupTimeout, qt.Equals, blockModeTesterPvcCleanupTimeout)
+		c.Assert(b.podName, qt.Equals, fmt.Sprintf(blockMountCheckerPodNameFmt, args.StorageClass))
+		c.Assert(b.pvcName, qt.Equals, fmt.Sprintf(blockMountCheckerPVCNameFmt, args.StorageClass))
+		c.Assert(b.podCleanupTimeout, qt.Equals, blockModeCheckerPodCleanupTimeout)
+		c.Assert(b.pvcCleanupTimeout, qt.Equals, blockModeCheckerPvcCleanupTimeout)
 	})
 }
 
 func TestBlockMountCheckerPvcWaitForTermination(t *testing.T) {
 	type prepareArgs struct {
-		b             *blockMountTester
+		b             *blockMountChecker
 		mockValidator *mocks.MockArgumentValidator
 	}
 
@@ -119,10 +119,10 @@ func TestBlockMountCheckerPvcWaitForTermination(t *testing.T) {
 				StorageClass: "sc",
 				Namespace:    "namespace",
 			}
-			bmt, err := NewBlockMountTester(args)
+			bmt, err := NewBlockMountChecker(args)
 			c.Assert(err, qt.IsNil)
 			c.Assert(bmt, qt.IsNotNil)
-			b, ok := bmt.(*blockMountTester)
+			b, ok := bmt.(*blockMountChecker)
 			c.Assert(ok, qt.IsTrue)
 
 			ctrl := gomock.NewController(t)
@@ -148,7 +148,7 @@ func TestBlockMountCheckerPvcWaitForTermination(t *testing.T) {
 
 func TestBlockMountCheckerCleanup(t *testing.T) {
 	type prepareArgs struct {
-		b             *blockMountTester
+		b             *blockMountChecker
 		mockCleaner   *mocks.MockCleaner
 		mockValidator *mocks.MockArgumentValidator
 	}
@@ -159,7 +159,7 @@ func TestBlockMountCheckerCleanup(t *testing.T) {
 	namespace := "namespace"
 	runningPod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf(blockMountTesterPodNameFmt, scName),
+			Name:      fmt.Sprintf(blockMountCheckerPodNameFmt, scName),
 			Namespace: namespace,
 		},
 		Spec: v1.PodSpec{
@@ -223,10 +223,10 @@ func TestBlockMountCheckerCleanup(t *testing.T) {
 				StorageClass: scName,
 				Namespace:    namespace,
 			}
-			bmt, err := NewBlockMountTester(args)
+			bmt, err := NewBlockMountChecker(args)
 			c.Assert(err, qt.IsNil)
 			c.Assert(bmt, qt.IsNotNil)
-			b, ok := bmt.(*blockMountTester)
+			b, ok := bmt.(*blockMountChecker)
 			c.Assert(ok, qt.IsTrue)
 
 			ctrl := gomock.NewController(t)
@@ -250,7 +250,7 @@ func TestBlockMountCheckerCleanup(t *testing.T) {
 
 func TestBlockMountCheckerMount(t *testing.T) {
 	type prepareArgs struct {
-		b              *blockMountTester
+		b              *blockMountChecker
 		mockCleaner    *mocks.MockCleaner
 		mockValidator  *mocks.MockArgumentValidator
 		mockAppCreator *mocks.MockApplicationCreator
@@ -272,7 +272,7 @@ func TestBlockMountCheckerMount(t *testing.T) {
 		pa.mockCleaner.EXPECT().DeletePVC(gomock.Any(), pa.b.pvcName, pa.b.args.Namespace).Return(errNotFound)
 		pa.mockValidator.EXPECT().ValidatePVC(gomock.Any(), pa.b.pvcName, pa.b.args.Namespace).Return(nil, errNotFound)
 	}
-	createPVCArgs := func(b *blockMountTester) *types.CreatePVCArgs {
+	createPVCArgs := func(b *blockMountChecker) *types.CreatePVCArgs {
 		blockMode := v1.PersistentVolumeBlock
 		return &types.CreatePVCArgs{
 			Name:         b.pvcName,
@@ -281,7 +281,7 @@ func TestBlockMountCheckerMount(t *testing.T) {
 			VolumeMode:   &blockMode,
 		}
 	}
-	createPVC := func(b *blockMountTester) *v1.PersistentVolumeClaim {
+	createPVC := func(b *blockMountChecker) *v1.PersistentVolumeClaim {
 		return &v1.PersistentVolumeClaim{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: b.args.Namespace,
@@ -289,7 +289,7 @@ func TestBlockMountCheckerMount(t *testing.T) {
 			},
 		}
 	}
-	createPodArgs := func(b *blockMountTester) *types.CreatePodArgs {
+	createPodArgs := func(b *blockMountChecker) *types.CreatePodArgs {
 		return &types.CreatePodArgs{
 			Name:           b.podName,
 			PVCName:        b.pvcName,
@@ -301,7 +301,7 @@ func TestBlockMountCheckerMount(t *testing.T) {
 			DevicePath:     "/mnt/block",
 		}
 	}
-	createPod := func(b *blockMountTester) *v1.Pod {
+	createPod := func(b *blockMountChecker) *v1.Pod {
 		return &v1.Pod{
 			ObjectMeta: metav1.ObjectMeta{
 				Namespace: b.args.Namespace,
@@ -390,10 +390,10 @@ func TestBlockMountCheckerMount(t *testing.T) {
 				Namespace:    namespace,
 				Cleanup:      !tc.noCleanup,
 			}
-			bmt, err := NewBlockMountTester(args)
+			bmt, err := NewBlockMountChecker(args)
 			c.Assert(err, qt.IsNil)
 			c.Assert(bmt, qt.IsNotNil)
-			b, ok := bmt.(*blockMountTester)
+			b, ok := bmt.(*blockMountChecker)
 			c.Assert(ok, qt.IsTrue)
 
 			ctrl := gomock.NewController(t)

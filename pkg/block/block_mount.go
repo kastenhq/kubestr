@@ -47,15 +47,15 @@ type BlockMountCheckerResult struct {
 }
 
 const (
-	blockMountTesterPVCNameFmt = "kubestr-blockmount-%s-pvc"
-	blockMountTesterPodNameFmt = "kubestr-blockmount-%s-pod"
+	blockMountCheckerPVCNameFmt = "kubestr-blockmount-%s-pvc"
+	blockMountCheckerPodNameFmt = "kubestr-blockmount-%s-pod"
 
-	blockModeTesterPodCleanupTimeout = time.Second * 120
-	blockModeTesterPvcCleanupTimeout = time.Second * 120
+	blockModeCheckerPodCleanupTimeout = time.Second * 120
+	blockModeCheckerPvcCleanupTimeout = time.Second * 120
 )
 
-// blockMountTester provides BlockMountTester
-type blockMountTester struct {
+// blockMountChecker provides BlockMountChecker
+type blockMountChecker struct {
 	args              BlockMountCheckerArgs
 	podName           string
 	pvcName           string
@@ -66,25 +66,25 @@ type blockMountTester struct {
 	pvcCleanupTimeout time.Duration
 }
 
-func NewBlockMountTester(args BlockMountCheckerArgs) (BlockMountChecker, error) {
+func NewBlockMountChecker(args BlockMountCheckerArgs) (BlockMountChecker, error) {
 	if err := args.Validate(); err != nil {
 		return nil, err
 	}
 
-	b := &blockMountTester{}
+	b := &blockMountChecker{}
 	b.args = args
-	b.podName = fmt.Sprintf(blockMountTesterPodNameFmt, b.args.StorageClass)
-	b.pvcName = fmt.Sprintf(blockMountTesterPVCNameFmt, b.args.StorageClass)
+	b.podName = fmt.Sprintf(blockMountCheckerPodNameFmt, b.args.StorageClass)
+	b.pvcName = fmt.Sprintf(blockMountCheckerPVCNameFmt, b.args.StorageClass)
 	b.validator = csi.NewArgumentValidator(b.args.KubeCli, b.args.DynCli)
 	b.appCreator = csi.NewApplicationCreator(b.args.KubeCli, args.K8sObjectReadyTimeout)
 	b.cleaner = csi.NewCleaner(b.args.KubeCli, b.args.DynCli)
-	b.podCleanupTimeout = blockModeTesterPodCleanupTimeout
-	b.pvcCleanupTimeout = blockModeTesterPvcCleanupTimeout
+	b.podCleanupTimeout = blockModeCheckerPodCleanupTimeout
+	b.pvcCleanupTimeout = blockModeCheckerPvcCleanupTimeout
 
 	return b, nil
 }
 
-func (b *blockMountTester) Mount(ctx context.Context) (*BlockMountCheckerResult, error) {
+func (b *blockMountChecker) Mount(ctx context.Context) (*BlockMountCheckerResult, error) {
 	fmt.Printf("Fetching StorageClass %s ...\n", b.args.StorageClass)
 	sc, err := b.validator.ValidateStorageClass(ctx, b.args.StorageClass)
 	if err != nil {
@@ -147,7 +147,7 @@ func (b *blockMountTester) Mount(ctx context.Context) (*BlockMountCheckerResult,
 	}, nil
 }
 
-func (b *blockMountTester) Cleanup() {
+func (b *blockMountChecker) Cleanup() {
 	var (
 		ctx = context.Background()
 		err error
@@ -187,7 +187,7 @@ func (b *blockMountTester) Cleanup() {
 	}
 }
 
-func (b *blockMountTester) pvcWaitForTermination(timeout time.Duration) error {
+func (b *blockMountChecker) pvcWaitForTermination(timeout time.Duration) error {
 	pvcWaitCtx, pvcWaitCancelFn := context.WithTimeout(context.Background(), timeout)
 	defer pvcWaitCancelFn()
 

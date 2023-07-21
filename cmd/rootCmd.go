@@ -366,7 +366,7 @@ func BlockMountCheck(ctx context.Context, output, outfile string, cleanupOnly bo
 	}
 	checkerArgs.DynCli = dyncli
 
-	blockMountTester, err := block.NewBlockMountTester(checkerArgs)
+	blockMountTester, err := block.NewBlockMountChecker(checkerArgs)
 	if err != nil {
 		fmt.Printf("Failed to initialize BlockMounter (%s)", err.Error())
 		return err
