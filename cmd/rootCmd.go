@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/kastenhq/kubestr/pkg/block"
 	"github.com/kastenhq/kubestr/pkg/csi"
 	csitypes "github.com/kastenhq/kubestr/pkg/csi/types"
 	"github.com/kastenhq/kubestr/pkg/fio"
@@ -97,6 +98,30 @@ var (
 			)
 		},
 	}
+
+	blockMountRunAsUser          int64
+	blockMountCleanup            bool
+	blockMountCleanupOnly        bool
+	blockMountWaitTimeoutSeconds uint32
+	blockMountCmd                = &cobra.Command{
+		Use:   "blockmount -s StorageClass",
+		Short: "Checks if a storage class supports block volumes",
+		Long: `Checks if volumes provisioned by a storage class can be mounted
+in block mode.
+
+The test works as follows:
+- It dynamically provisions a volume of the given storage class.
+- It then launches a pod with the volume mounted as a block device.
+- If the pod is successfully created then the test passes. If it
+  fails or times out then the test fails.
+`,
+		Args: cobra.ExactArgs(0),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+			return TestBlockMount(ctx, output, outfile, namespace, storageClass, blockMountRunAsUser, containerImage, blockMountCleanup, blockMountCleanupOnly, blockMountWaitTimeoutSeconds)
+		},
+	}
 )
 
 func init() {
@@ -121,7 +146,7 @@ func init() {
 	csiCheckCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace used to run the check.")
 	csiCheckCmd.Flags().StringVarP(&containerImage, "image", "i", "", "The container image used to create a pod.")
 	csiCheckCmd.Flags().BoolVarP(&csiCheckCleanup, "cleanup", "c", true, "Clean up the objects created by tool")
-	csiCheckCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the CSI check using pods as a user (int)")
+	csiCheckCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the CSI check pod with the specified user ID (int)")
 	csiCheckCmd.Flags().BoolVarP(&csiCheckSkipCFSCheck, "skipCFScheck", "k", false, "Use this flag to skip validating the ability to clone a snapshot.")
 
 	rootCmd.AddCommand(pvcBrowseCmd)
@@ -130,6 +155,16 @@ func init() {
 	pvcBrowseCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of the PersistentVolumeClaim.")
 	pvcBrowseCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
 	pvcBrowseCmd.Flags().IntVarP(&pvcBrowseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
+
+	rootCmd.AddCommand(blockMountCmd)
+	blockMountCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a Storageclass. (Required)")
+	_ = blockMountCmd.MarkFlagRequired("storageclass")
+	blockMountCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace used to run the check.")
+	blockMountCmd.Flags().StringVarP(&containerImage, "image", "i", "", "The container image used to create a pod.")
+	blockMountCmd.Flags().BoolVarP(&blockMountCleanup, "cleanup", "c", true, "Clean up the objects created by tool.")
+	blockMountCmd.Flags().BoolVarP(&blockMountCleanupOnly, "cleanup-only", "", false, "Do not run the test, but just clean up resources left from a previous invocation.")
+	blockMountCmd.Flags().Int64VarP(&blockMountRunAsUser, "runAsUser", "u", 0, "Runs the block mount test pod with the specified user ID (int)")
+	blockMountCmd.Flags().Uint32VarP(&blockMountWaitTimeoutSeconds, "wait-timeout", "w", 60, "Max time to wait for the test pod to become ready")
 }
 
 // Execute executes the main command
@@ -303,6 +338,71 @@ func CsiPvcBrowse(ctx context.Context,
 	})
 	if err != nil {
 		fmt.Printf("Failed to run PVC browser (%s)\n", err.Error())
+	}
+	return err
+}
+
+func TestBlockMount(ctx context.Context, output, outfile,
+	namespace string,
+	storageclass string,
+	runAsUser int64,
+	containerImage string,
+	cleanup bool,
+	cleanupOnly bool,
+	timeoutSeconds uint32,
+) error {
+	kubecli, err := kubestr.LoadKubeCli()
+	if err != nil {
+		fmt.Printf("Failed to load kubeCli (%s)", err.Error())
+		return err
+	}
+
+	dyncli, err := kubestr.LoadDynCli()
+	if err != nil {
+		fmt.Printf("Failed to load dynCli (%s)", err.Error())
+		return err
+	}
+
+	blockMountTester, err := block.NewBlockMountTester(block.BlockMountTesterArgs{
+		KubeCli:               kubecli,
+		DynCli:                dyncli,
+		StorageClass:          storageclass,
+		Namespace:             namespace,
+		Cleanup:               cleanup,
+		RunAsUser:             runAsUser,
+		ContainerImage:        containerImage,
+		K8sObjectReadyTimeout: (time.Second * time.Duration(timeoutSeconds)),
+	})
+	if err != nil {
+		fmt.Printf("Failed to initialize BlockMounter (%s)", err.Error())
+		return err
+	}
+
+	var (
+		testName    string
+		result      *kubestr.TestOutput
+		mountResult *block.BlockMountTesterResult
+	)
+
+	if cleanupOnly {
+		testName = "Block VolumeMode cleanup"
+
+		blockMountTester.Cleanup()
+	} else {
+		testName = "Block VolumeMode test"
+
+		mountResult, err = blockMountTester.Mount(ctx)
+	}
+
+	if err != nil {
+		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, fmt.Sprintf("StorageClass (%s) does not appear to support Block VolumeMode", storageclass), mountResult)
+	} else {
+		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("StorageClass (%s) supports Block VolumeMode", storageclass), mountResult)
+	}
+
+	var wrappedResult = []*kubestr.TestOutput{result}
+	if !PrintAndJsonOutput(wrappedResult, output, outfile) {
+		result.Print()
 	}
 	return err
 }

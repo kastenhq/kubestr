@@ -12,13 +12,13 @@ import (
 )
 
 type CSISnapshotRestoreArgs struct {
-	StorageClass        string
-	VolumeSnapshotClass string
-	Namespace           string
-	RunAsUser           int64
-	ContainerImage      string
-	Cleanup             bool
-	SkipCFSCheck        bool
+	StorageClass          string
+	VolumeSnapshotClass   string
+	Namespace             string
+	RunAsUser             int64
+	ContainerImage        string
+	Cleanup               bool
+	SkipCFSCheck          bool
 	K8sObjectReadyTimeout time.Duration
 }
 
@@ -38,34 +38,44 @@ type CSISnapshotRestoreResults struct {
 }
 
 type CreatePVCArgs struct {
-	GenerateName string
+	Name         string // Only one of Name or
+	GenerateName string // GenerateName should be specified.
 	StorageClass string
 	Namespace    string
 	DataSource   *v1.TypedLocalObjectReference
 	RestoreSize  *resource.Quantity
+	VolumeMode   *v1.PersistentVolumeMode // missing implies v1.PersistentVolumeFilesystem
 }
 
 func (c *CreatePVCArgs) Validate() error {
-	if c.GenerateName == "" || c.StorageClass == "" || c.Namespace == "" {
-		return fmt.Errorf("Invalid CreatePVCArgs (%v)", c)
+	if (c.GenerateName == "" && c.Name == "") ||
+		(c.GenerateName != "" && c.Name != "") ||
+		c.StorageClass == "" || c.Namespace == "" {
+		return fmt.Errorf("Invalid CreatePVCArgs (%#v)", c)
 	}
 	return nil
 }
 
 type CreatePodArgs struct {
-	GenerateName   string
+	Name           string // Only one of Name or
+	GenerateName   string // GenerateName should be specified.
 	PVCName        string
 	Namespace      string
 	RunAsUser      int64
 	ContainerImage string
 	Command        []string
 	ContainerArgs  []string
-	MountPath      string
+	MountPath      string // Only one of MountPath or
+	DevicePath     string // DevicePath should be specified.
 }
 
 func (c *CreatePodArgs) Validate() error {
-	if c.GenerateName == "" || c.PVCName == "" || c.Namespace == "" {
-		return fmt.Errorf("Invalid CreatePodArgs (%v)", c)
+	if (c.GenerateName == "" && c.Name == "") ||
+		(c.GenerateName != "" && c.Name != "") ||
+		(c.MountPath == "" && c.DevicePath == "") ||
+		(c.MountPath != "" && c.DevicePath != "") ||
+		c.PVCName == "" || c.Namespace == "" {
+		return fmt.Errorf("Invalid CreatePodArgs (%#v)", c)
 	}
 	return nil
 }

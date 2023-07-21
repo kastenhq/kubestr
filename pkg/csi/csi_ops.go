@@ -1,5 +1,7 @@
 package csi
 
+// This file contains general Kubernetes operations, not just CSI related operations.
+
 import (
 	"context"
 	"fmt"
@@ -52,6 +54,13 @@ type validateOperations struct {
 	dynCli  dynamic.Interface
 }
 
+func NewArgumentValidator(kubeCli kubernetes.Interface, dynCli dynamic.Interface) ArgumentValidator {
+	return &validateOperations{
+		kubeCli: kubeCli,
+		dynCli:  dynCli,
+	}
+}
+
 func (o *validateOperations) ValidatePVC(ctx context.Context, pvcName, namespace string) (*v1.PersistentVolumeClaim, error) {
 	if o.kubeCli == nil {
 		return nil, fmt.Errorf("kubeCli not initialized")
@@ -102,6 +111,13 @@ type applicationCreate struct {
 	k8sObjectReadyTimeout time.Duration
 }
 
+func NewApplicationCreator(kubeCli kubernetes.Interface, k8sObjectReadyTimeout time.Duration) ApplicationCreator {
+	return &applicationCreate{
+		kubeCli:               kubeCli,
+		k8sObjectReadyTimeout: k8sObjectReadyTimeout,
+	}
+}
+
 func (c *applicationCreate) CreatePVC(ctx context.Context, args *types.CreatePVCArgs) (*v1.PersistentVolumeClaim, error) {
 	if c.kubeCli == nil {
 		return nil, fmt.Errorf("kubeCli not initialized")
@@ -111,6 +127,7 @@ func (c *applicationCreate) CreatePVC(ctx context.Context, args *types.CreatePVC
 	}
 	pvc := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
+			Name:         args.Name,
 			GenerateName: args.GenerateName,
 			Namespace:    args.Namespace,
 			Labels: map[string]string{
@@ -120,6 +137,7 @@ func (c *applicationCreate) CreatePVC(ctx context.Context, args *types.CreatePVC
 		Spec: v1.PersistentVolumeClaimSpec{
 			AccessModes:      []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
 			StorageClassName: &args.StorageClass,
+			VolumeMode:       args.VolumeMode,
 			Resources: v1.ResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceStorage: resource.MustParse("1Gi"),
@@ -155,8 +173,14 @@ func (c *applicationCreate) CreatePod(ctx context.Context, args *types.CreatePod
 		args.ContainerImage = common.DefaultPodImage
 	}
 
+	volumeNameInPod := "persistent-storage"
+	containerName := args.Name
+	if containerName == "" {
+		containerName = args.GenerateName
+	}
 	pod := &v1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
+			Name:         args.Name,
 			GenerateName: args.GenerateName,
 			Namespace:    args.Namespace,
 			Labels: map[string]string{
@@ -165,17 +189,13 @@ func (c *applicationCreate) CreatePod(ctx context.Context, args *types.CreatePod
 		},
 		Spec: v1.PodSpec{
 			Containers: []v1.Container{{
-				Name:    args.GenerateName,
+				Name:    containerName,
 				Image:   args.ContainerImage,
 				Command: args.Command,
 				Args:    args.ContainerArgs,
-				VolumeMounts: []v1.VolumeMount{{
-					Name:      "persistent-storage",
-					MountPath: args.MountPath,
-				}},
 			}},
 			Volumes: []v1.Volume{{
-				Name: "persistent-storage",
+				Name: volumeNameInPod,
 				VolumeSource: v1.VolumeSource{
 					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
 						ClaimName: args.PVCName,
@@ -183,6 +203,18 @@ func (c *applicationCreate) CreatePod(ctx context.Context, args *types.CreatePod
 				}},
 			},
 		},
+	}
+
+	if args.MountPath != "" {
+		pod.Spec.Containers[0].VolumeMounts = []v1.VolumeMount{{
+			Name:      volumeNameInPod,
+			MountPath: args.MountPath,
+		}}
+	} else { // args.DevicePath
+		pod.Spec.Containers[0].VolumeDevices = []v1.VolumeDevice{{
+			Name:       volumeNameInPod,
+			DevicePath: args.DevicePath,
+		}}
 	}
 
 	if args.RunAsUser > 0 {
@@ -382,6 +414,13 @@ type Cleaner interface {
 type cleanse struct {
 	kubeCli kubernetes.Interface
 	dynCli  dynamic.Interface
+}
+
+func NewCleaner(kubeCli kubernetes.Interface, dynCli dynamic.Interface) Cleaner {
+	return &cleanse{
+		kubeCli: kubeCli,
+		dynCli:  dynCli,
+	}
 }
 
 func (c *cleanse) DeletePVC(ctx context.Context, pvcName string, namespace string) error {
