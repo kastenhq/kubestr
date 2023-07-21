@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	kansnapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
 	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
@@ -11,6 +12,7 @@ import (
 	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/kastenhq/kubestr/pkg/csi/types"
 	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
+	pkgerrors "github.com/pkg/errors"
 	. "gopkg.in/check.v1"
 	v1 "k8s.io/api/core/v1"
 	sv1 "k8s.io/api/storage/v1"
@@ -462,6 +464,7 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 func (s *CSITestSuite) TestCreatePod(c *C) {
 	ctx := context.Background()
 	for _, tc := range []struct {
+		description string
 		cli         kubernetes.Interface
 		args        *types.CreatePodArgs
 		failCreates bool
@@ -469,12 +472,13 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 		podChecker  Checker
 	}{
 		{
-			cli: fake.NewSimpleClientset(),
+			description: "pod with container image and runAsUser 1000 created",
+			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName:   "name",
 				PVCName:        "pvcname",
 				Namespace:      "ns",
-				Cmd:            "somecommand",
+				Command:        []string{"somecommand"},
 				RunAsUser:      1000,
 				ContainerImage: "containerimage",
 			},
@@ -482,79 +486,75 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			podChecker: NotNil,
 		},
 		{
-			cli: fake.NewSimpleClientset(),
+			description: "Pod creation error on kubeCli",
+			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
 				PVCName:      "pvcname",
 				Namespace:    "ns",
-				Cmd:          "somecommand",
-			},
-			errChecker: IsNil,
-			podChecker: NotNil,
-		},
-		{
-			cli: fake.NewSimpleClientset(),
-			args: &types.CreatePodArgs{
-				GenerateName: "name",
-				PVCName:      "pvcname",
-				Namespace:    "ns",
-				Cmd:          "somecommand",
+				Command:      []string{"somecommand"},
 			},
 			failCreates: true,
 			errChecker:  NotNil,
 			podChecker:  NotNil,
 		},
 		{
-			cli: fake.NewSimpleClientset(),
+			description: "Pod generate name arg not set",
+			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "",
 				PVCName:      "pvcname",
 				Namespace:    "ns",
-				Cmd:          "somecommand",
+				Command:      []string{"somecommand"},
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
 		},
 		{
-			cli: fake.NewSimpleClientset(),
+			description: "PVC name not set error",
+			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
 				PVCName:      "",
 				Namespace:    "ns",
-				Cmd:          "somecommand",
+				Command:      []string{"somecommand"},
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
 		},
 		{
-			cli: fake.NewSimpleClientset(),
+			description: "default namespace pod is created",
+			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
 				PVCName:      "pvcname",
 				Namespace:    "",
-				Cmd:          "somecommand",
+				Command:      []string{"somecommand"},
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
 		},
 		{
-			cli: fake.NewSimpleClientset(),
+			description: "ns namespace pod is created",
+			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
 				PVCName:      "pvcname",
 				Namespace:    "ns",
-				Cmd:          "",
+				Command:      []string{"somecommand"},
 			},
-			errChecker: NotNil,
-			podChecker: IsNil,
+			errChecker: IsNil,
+			podChecker: NotNil,
 		},
 		{
-			cli:        nil,
-			args:       &types.CreatePodArgs{},
-			errChecker: NotNil,
-			podChecker: IsNil,
+			description: "kubeCli not initialized",
+			cli:         nil,
+			args:        &types.CreatePodArgs{},
+			errChecker:  NotNil,
+			podChecker:  IsNil,
 		},
 	} {
+		fmt.Println("test:", tc.description)
 		creator := &applicationCreate{kubeCli: tc.cli}
 		if tc.failCreates {
 			creator.kubeCli.(*fake.Clientset).Fake.PrependReactor("create", "pods", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
@@ -571,11 +571,11 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			c.Assert(pod.Namespace, Equals, tc.args.Namespace)
 			c.Assert(len(pod.Spec.Containers), Equals, 1)
 			c.Assert(pod.Spec.Containers[0].Name, Equals, tc.args.GenerateName)
-			c.Assert(pod.Spec.Containers[0].Command, DeepEquals, []string{"/bin/sh"})
-			c.Assert(pod.Spec.Containers[0].Args, DeepEquals, []string{"-c", tc.args.Cmd})
+			c.Assert(pod.Spec.Containers[0].Command, DeepEquals, tc.args.Command)
+			c.Assert(pod.Spec.Containers[0].Args, DeepEquals, tc.args.ContainerArgs)
 			c.Assert(pod.Spec.Containers[0].VolumeMounts, DeepEquals, []v1.VolumeMount{{
 				Name:      "persistent-storage",
-				MountPath: "/data",
+				MountPath: tc.args.MountPath,
 			}})
 			c.Assert(pod.Spec.Volumes, DeepEquals, []v1.Volume{{
 				Name: "persistent-storage",
@@ -598,7 +598,6 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			} else {
 				c.Check(pod.Spec.SecurityContext, IsNil)
 			}
-
 		}
 	}
 }
@@ -886,13 +885,13 @@ func (f *fakeSnapshotter) Delete(ctx context.Context, name, namespace string) (*
 	return nil, nil
 }
 func (f *fakeSnapshotter) DeleteContent(ctx context.Context, name string) error { return nil }
-func (f *fakeSnapshotter) Clone(ctx context.Context, name, namespace, cloneName, cloneNamespace string, waitForReady bool) error {
+func (f *fakeSnapshotter) Clone(ctx context.Context, name, namespace, cloneName, cloneNamespace string, waitForReady bool, labels map[string]string) error {
 	return nil
 }
 func (f *fakeSnapshotter) GetSource(ctx context.Context, snapshotName, namespace string) (*kansnapshot.Source, error) {
 	return f.gsSrc, f.gsErr
 }
-func (f *fakeSnapshotter) CreateFromSource(ctx context.Context, source *kansnapshot.Source, snapshotName, namespace string, waitForReady bool) error {
+func (f *fakeSnapshotter) CreateFromSource(ctx context.Context, source *kansnapshot.Source, snapshotName, namespace string, waitForReady bool, labels map[string]string) error {
 	return f.cfsErr
 }
 func (f *fakeSnapshotter) CreateContentFromSource(ctx context.Context, source *kansnapshot.Source, contentName, snapshotName, namespace, deletionPolicy string) error {
@@ -1158,5 +1157,93 @@ func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
 		}
 		err := cleaner.DeleteSnapshot(ctx, tc.snapshotName, tc.namespace, tc.groupVersion)
 		c.Check(err, tc.errChecker)
+	}
+}
+
+func (s *CSITestSuite) TestWaitForPVCReady(c *C) {
+	ctx := context.Background()
+	const ns = "ns"
+	const pvc = "pvc"
+	boundPVC := s.getPVC(ns, pvc, v1.ClaimBound)
+	claimLostPVC := s.getPVC(ns, pvc, v1.ClaimLost)
+	stuckPVC := s.getPVC(ns, pvc, "")
+	normalGetFunc := func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+		return
+	}
+	deadlineExceededGetFunc := func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+		return true, nil, pkgerrors.Wrapf(context.DeadlineExceeded, "some wrapped error")
+	}
+
+	warningEvent := v1.Event{
+		Type:    v1.EventTypeWarning,
+		Message: "waiting for a volume to be created, either by external provisioner \"ceph.com/rbd\" or manually created by system administrator",
+	}
+	for _, tc := range []struct {
+		description string
+		cli         kubernetes.Interface
+		pvcGetFunc  func(action k8stesting.Action) (handled bool, ret runtime.Object, err error)
+		eventsList  []v1.Event
+		errChecker  Checker
+		errString   string
+	}{
+		{
+			description: "Happy path",
+			cli:         fake.NewSimpleClientset(boundPVC),
+			pvcGetFunc:  normalGetFunc,
+			errChecker:  IsNil,
+		},
+		{
+			description: "Missing PVC",
+			cli:         fake.NewSimpleClientset(),
+			pvcGetFunc:  normalGetFunc,
+			errChecker:  NotNil,
+			errString:   "Could not find PVC",
+		},
+		{
+			description: "PVC ClaimLost",
+			cli:         fake.NewSimpleClientset(claimLostPVC),
+			pvcGetFunc:  normalGetFunc,
+			errChecker:  NotNil,
+			errString:   "ClaimLost",
+		},
+		{
+			description: "context.DeadlineExceeded but no event warnings",
+			cli:         fake.NewSimpleClientset(stuckPVC),
+			pvcGetFunc:  deadlineExceededGetFunc,
+			errChecker:  NotNil,
+			errString:   context.DeadlineExceeded.Error(),
+		},
+		{
+			description: "context.DeadlineExceeded, unable to provision PVC",
+			cli:         fake.NewSimpleClientset(stuckPVC),
+			pvcGetFunc:  deadlineExceededGetFunc,
+			eventsList:  []v1.Event{warningEvent},
+			errChecker:  NotNil,
+			errString:   warningEvent.Message,
+		},
+	} {
+		fmt.Println("test:", tc.description)
+		creator := &applicationCreate{kubeCli: tc.cli}
+		creator.kubeCli.(*fake.Clientset).PrependReactor("get", "persistentvolumeclaims", tc.pvcGetFunc)
+		creator.kubeCli.(*fake.Clientset).PrependReactor("list", "events", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			return true, &v1.EventList{Items: tc.eventsList}, nil
+		})
+		err := creator.WaitForPVCReady(ctx, ns, pvc)
+		c.Check(err, tc.errChecker)
+		if err != nil {
+			c.Assert(strings.Contains(err.Error(), tc.errString), Equals, true)
+		}
+	}
+}
+
+func (s *CSITestSuite) getPVC(ns, pvc string, phase v1.PersistentVolumeClaimPhase) *v1.PersistentVolumeClaim {
+	return &v1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      pvc,
+			Namespace: ns,
+		},
+		Status: v1.PersistentVolumeClaimStatus{
+			Phase: phase,
+		},
 	}
 }

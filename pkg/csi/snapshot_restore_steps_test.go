@@ -232,14 +232,17 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 						GenerateName:   originalPodGenerateName,
 						PVCName:        "pvc1",
 						Namespace:      "ns",
-						Cmd:            "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null",
+						Command:        []string{"/bin/sh"},
+						ContainerArgs:  []string{"-c", "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null"},
 						RunAsUser:      100,
 						ContainerImage: "image",
+						MountPath:      "/data",
 					}).Return(&v1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "pod1",
 						},
 					}, nil),
+					f.createAppOps.EXPECT().WaitForPVCReady(gomock.Any(), "ns", "pvc1").Return(nil),
 					f.createAppOps.EXPECT().WaitForPodReady(gomock.Any(), "ns", "pod1").Return(nil),
 				)
 			},
@@ -270,14 +273,17 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 						GenerateName:   originalPodGenerateName,
 						PVCName:        "pvc1",
 						Namespace:      "ns",
-						Cmd:            "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null",
+						Command:        []string{"/bin/sh"},
+						ContainerArgs:  []string{"-c", "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null"},
 						RunAsUser:      100,
 						ContainerImage: "image",
+						MountPath:      "/data",
 					}).Return(&v1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "pod1",
 						},
 					}, nil),
+					f.createAppOps.EXPECT().WaitForPVCReady(gomock.Any(), "ns", "pvc1").Return(nil),
 					f.createAppOps.EXPECT().WaitForPodReady(gomock.Any(), "ns", "pod1").Return(fmt.Errorf("pod ready error")),
 				)
 			},
@@ -323,6 +329,47 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 			errChecker: NotNil,
 			podChecker: IsNil,
 			pvcChecker: IsNil,
+		},
+		{ // PVC times out provisioning
+			args: &types.CSISnapshotRestoreArgs{
+				StorageClass:   "sc",
+				Namespace:      "ns",
+				RunAsUser:      100,
+				ContainerImage: "image",
+			},
+			genString: "some string",
+			prepare: func(f *fields) {
+				gomock.InOrder(
+					f.createAppOps.EXPECT().CreatePVC(gomock.Any(), &types.CreatePVCArgs{
+						GenerateName: originalPVCGenerateName,
+						StorageClass: "sc",
+						Namespace:    "ns",
+					}).Return(&v1.PersistentVolumeClaim{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "pvc1",
+						},
+					}, nil),
+					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
+						GenerateName:   originalPodGenerateName,
+						PVCName:        "pvc1",
+						Namespace:      "ns",
+						Command:        []string{"/bin/sh"},
+						ContainerArgs:  []string{"-c", "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null"},
+						RunAsUser:      100,
+						ContainerImage: "image",
+						MountPath:      "/data",
+					}).Return(&v1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "pod1",
+						},
+					}, nil),
+					f.createAppOps.EXPECT().WaitForPVCReady(gomock.Any(), "ns", "pvc1").Return(fmt.Errorf("rate: Wait(n=1) would exceed context deadline")),
+					f.createAppOps.EXPECT().WaitForPodReady(gomock.Any(), "ns", "pvc1").Times(0),
+				)
+			},
+			errChecker: NotNil,
+			podChecker: NotNil,
+			pvcChecker: NotNil,
 		},
 	} {
 		ctrl := gomock.NewController(c)
@@ -573,7 +620,9 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 						GenerateName:   clonedPodGenerateName,
 						PVCName:        "pvc1",
 						Namespace:      "ns",
-						Cmd:            "tail -f /dev/null",
+						Command:        []string{"/bin/sh"},
+						ContainerArgs:  []string{"-c", "tail -f /dev/null"},
+						MountPath:      "/data",
 						RunAsUser:      100,
 						ContainerImage: "image",
 					}).Return(&v1.Pod{
@@ -581,6 +630,7 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 							Name: "pod1",
 						},
 					}, nil),
+					f.createAppOps.EXPECT().WaitForPVCReady(gomock.Any(), "ns", "pvc1").Return(nil),
 					f.createAppOps.EXPECT().WaitForPodReady(gomock.Any(), "ns", "pod1").Return(nil),
 				)
 			},
@@ -624,7 +674,9 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 						GenerateName:   clonedPodGenerateName,
 						PVCName:        "pvc1",
 						Namespace:      "ns",
-						Cmd:            "tail -f /dev/null",
+						Command:        []string{"/bin/sh"},
+						ContainerArgs:  []string{"-c", "tail -f /dev/null"},
+						MountPath:      "/data",
 						RunAsUser:      100,
 						ContainerImage: "image",
 					}).Return(&v1.Pod{
@@ -632,6 +684,7 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 							Name: "pod1",
 						},
 					}, nil),
+					f.createAppOps.EXPECT().WaitForPVCReady(gomock.Any(), "ns", "pvc1").Return(nil),
 					f.createAppOps.EXPECT().WaitForPodReady(gomock.Any(), "ns", "pod1").Return(fmt.Errorf("pod ready error")),
 				)
 			},

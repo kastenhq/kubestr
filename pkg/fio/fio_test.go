@@ -4,7 +4,6 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -86,6 +85,19 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 			checker:       NotNil,
 			expectedSteps: []string{"VN"},
 		},
+		{ // no node satisfies selector
+			cli: fake.NewSimpleClientset(),
+			stepper: &fakeFioStepper{
+				vnsErr: fmt.Errorf("node selector Err"),
+			},
+			args: &RunFIOArgs{
+				StorageClass: "sc",
+				Size:         "100Gi",
+				Namespace:    "foo",
+			},
+			checker:       NotNil,
+			expectedSteps: []string{"VN", "VNS"},
+		},
 		{ // storageclass not found
 			cli: fake.NewSimpleClientset(),
 			stepper: &fakeFioStepper{
@@ -97,7 +109,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE"},
+			expectedSteps: []string{"VN", "VNS", "SCE"},
 		},
 		{ // success
 			cli: fake.NewSimpleClientset(),
@@ -127,7 +139,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       IsNil,
-			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
+			expectedSteps: []string{"VN", "VNS", "SCE", "LCM", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
 			expectedSC:    "sc",
 			expectedSize:  DefaultPVCSize,
 			expectedTFN:   "testfile.fio",
@@ -163,7 +175,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
+			expectedSteps: []string{"VN", "VNS", "SCE", "LCM", "CPVC", "CPOD", "RFIOC", "DPOD", "DPVC", "DCM"},
 		},
 		{ // create pod error
 			cli: fake.NewSimpleClientset(),
@@ -194,7 +206,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "CPOD", "DPVC", "DCM"},
+			expectedSteps: []string{"VN", "VNS", "SCE", "LCM", "CPVC", "CPOD", "DPVC", "DCM"},
 		},
 		{ // create PVC error
 			cli: fake.NewSimpleClientset(),
@@ -215,7 +227,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE", "LCM", "CPVC", "DCM"},
+			expectedSteps: []string{"VN", "VNS", "SCE", "LCM", "CPVC", "DCM"},
 		},
 		{ // testfilename retrieval error, more than one provided
 			cli: fake.NewSimpleClientset(),
@@ -236,7 +248,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE", "LCM", "DCM"},
+			expectedSteps: []string{"VN", "VNS", "SCE", "LCM", "DCM"},
 		},
 		{ // load configmap error
 			cli: fake.NewSimpleClientset(),
@@ -249,7 +261,7 @@ func (s *FIOTestSuite) TestRunFioHelper(c *C) {
 				Namespace:    "foo",
 			},
 			checker:       NotNil,
-			expectedSteps: []string{"VN", "SCE", "LCM"},
+			expectedSteps: []string{"VN", "VNS", "SCE", "LCM"},
 		},
 	} {
 		c.Log(i)
@@ -274,6 +286,8 @@ type fakeFioStepper struct {
 	steps []string
 
 	vnErr error
+
+	vnsErr error
 
 	sceSC  *sv1.StorageClass
 	sceErr error
@@ -304,6 +318,10 @@ func (f *fakeFioStepper) validateNamespace(ctx context.Context, namespace string
 	f.steps = append(f.steps, "VN")
 	return f.vnErr
 }
+func (f *fakeFioStepper) validateNodeSelector(ctx context.Context, selector map[string]string) error {
+	f.steps = append(f.steps, "VNS")
+	return f.vnsErr
+}
 func (f *fakeFioStepper) storageClassExists(ctx context.Context, storageClass string) (*sv1.StorageClass, error) {
 	f.steps = append(f.steps, "SCE")
 	return f.sceSC, f.sceErr
@@ -322,7 +340,7 @@ func (f *fakeFioStepper) deletePVC(ctx context.Context, pvcName, namespace strin
 	f.steps = append(f.steps, "DPVC")
 	return f.dPVCErr
 }
-func (f *fakeFioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, image string) (*v1.Pod, error) {
+func (f *fakeFioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, nodeSelector map[string]string, image string) (*v1.Pod, error) {
 	f.steps = append(f.steps, "CPOD")
 	f.cPodExpCM = configMapName
 	f.cPodExpFN = testFileName
@@ -380,9 +398,59 @@ func (s *FIOTestSuite) TestValidateNamespace(c *C) {
 	c.Assert(err, IsNil)
 }
 
+func (s *FIOTestSuite) TestValidateNodeSelector(c *C) {
+	ctx := context.Background()
+	stepper := &fioStepper{cli: fake.NewSimpleClientset(
+		&v1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "a",
+				Labels: map[string]string{
+					"key": "value",
+				},
+			},
+		},
+		&v1.Node{
+			ObjectMeta: metav1.ObjectMeta{
+				Name: "b",
+				Labels: map[string]string{
+					"key": "value",
+					"foo": "bar",
+				},
+			},
+		},
+	)}
+	for _, tc := range []struct {
+		nodeSelector map[string]string
+		checker      Checker
+	}{
+		{ // 0 nodes satisfy
+			nodeSelector: map[string]string{
+				"not": "present",
+			},
+			checker: NotNil,
+		},
+		{ // 1 node satisfies
+			nodeSelector: map[string]string{
+				"key": "value",
+				"foo": "bar",
+			},
+			checker: IsNil,
+		},
+		{ // 2 nodes satisfy
+			nodeSelector: map[string]string{
+				"key": "value",
+			},
+			checker: IsNil,
+		},
+	} {
+		err := stepper.validateNodeSelector(ctx, tc.nodeSelector)
+		c.Check(err, tc.checker)
+	}
+}
+
 func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 	ctx := context.Background()
-	file, err := ioutil.TempFile("", "tempTLCfile")
+	file, err := os.CreateTemp("", "tempTLCfile")
 	c.Check(err, IsNil)
 	defer os.Remove(file.Name())
 	for i, tc := range []struct {
@@ -530,6 +598,7 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 		pvcName       string
 		configMapName string
 		testFileName  string
+		nodeSelector  map[string]string
 		image         string
 		reactor       []k8stesting.Reactor
 		podReadyErr   error
@@ -539,7 +608,11 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 			pvcName:       "pvc",
 			configMapName: "cm",
 			testFileName:  "testfile",
-			errChecker:    IsNil,
+			nodeSelector: map[string]string{
+				"key": "",
+				"foo": "bar",
+			},
+			errChecker: IsNil,
 		},
 		{
 			pvcName:       "pvc",
@@ -621,7 +694,7 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 		if tc.reactor != nil {
 			stepper.cli.(*fake.Clientset).Fake.ReactionChain = tc.reactor
 		}
-		pod, err := stepper.createPod(ctx, tc.pvcName, tc.configMapName, tc.testFileName, DefaultNS, tc.image)
+		pod, err := stepper.createPod(ctx, tc.pvcName, tc.configMapName, tc.testFileName, DefaultNS, tc.nodeSelector, tc.image)
 		c.Check(err, tc.errChecker)
 		if err == nil {
 			c.Assert(pod.GenerateName, Equals, PodGenerateName)
@@ -647,6 +720,7 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 			} else {
 				c.Assert(pod.Spec.Containers[0].Image, Equals, tc.image)
 			}
+			c.Assert(pod.Spec.NodeSelector, DeepEquals, tc.nodeSelector)
 		}
 	}
 }
