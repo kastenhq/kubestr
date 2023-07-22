@@ -12,6 +12,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	sv1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
 )
@@ -26,6 +27,7 @@ type BlockMountCheckerArgs struct {
 	RunAsUser             int64
 	ContainerImage        string
 	K8sObjectReadyTimeout time.Duration
+	PVCSize               string
 }
 
 func (a *BlockMountCheckerArgs) Validate() error {
@@ -51,7 +53,8 @@ const (
 	blockMountCheckerPodNameFmt = "kubestr-blockmount-%s-pod"
 
 	blockModeCheckerPodCleanupTimeout = time.Second * 120
-	blockModeCheckerPvcCleanupTimeout = time.Second * 120
+	blockModeCheckerPVCCleanupTimeout = time.Second * 120
+	blockModeCheckerPVCDefaultSize    = "1Gi"
 )
 
 // blockMountChecker provides BlockMountChecker
@@ -79,7 +82,7 @@ func NewBlockMountChecker(args BlockMountCheckerArgs) (BlockMountChecker, error)
 	b.appCreator = csi.NewApplicationCreator(b.args.KubeCli, args.K8sObjectReadyTimeout)
 	b.cleaner = csi.NewCleaner(b.args.KubeCli, b.args.DynCli)
 	b.podCleanupTimeout = blockModeCheckerPodCleanupTimeout
-	b.pvcCleanupTimeout = blockModeCheckerPvcCleanupTimeout
+	b.pvcCleanupTimeout = blockModeCheckerPVCCleanupTimeout
 
 	return b, nil
 }
@@ -94,23 +97,32 @@ func (b *blockMountChecker) Mount(ctx context.Context) (*BlockMountCheckerResult
 
 	fmt.Printf(" -> Provisioner: %s\n", sc.Provisioner)
 
-	if b.args.Cleanup {
-		defer b.Cleanup()
-	} else {
-		defer func() {
-			fmt.Println("Resources were not cleaned up")
-		}()
+	if b.args.PVCSize == "" {
+		b.args.PVCSize = blockModeCheckerPVCDefaultSize
 	}
 
-	fmt.Println("Provisioning a Volume for block mode access ...")
+	restoreSize, err := resource.ParseQuantity(b.args.PVCSize)
+	if err != nil {
+		fmt.Printf(" -> Invalid PVC size %s: (%v)\n", b.args.PVCSize, err)
+		return nil, err
+	}
+
 	blockMode := v1.PersistentVolumeBlock
-	tB := time.Now()
-	_, err = b.appCreator.CreatePVC(ctx, &types.CreatePVCArgs{
+	createPVCArgs := &types.CreatePVCArgs{
 		Name:         b.pvcName,
 		Namespace:    b.args.Namespace,
 		StorageClass: b.args.StorageClass,
 		VolumeMode:   &blockMode,
-	})
+		RestoreSize:  &restoreSize,
+	}
+
+	if b.args.Cleanup {
+		defer b.Cleanup()
+	}
+
+	fmt.Printf("Provisioning a Volume (%s) for block mode access ...\n", b.args.PVCSize)
+	tB := time.Now()
+	_, err = b.appCreator.CreatePVC(ctx, createPVCArgs)
 	if err != nil {
 		fmt.Printf(" -> Failed to provision a Volume (%v)\n", err)
 		return nil, err
@@ -135,12 +147,12 @@ func (b *blockMountChecker) Mount(ctx context.Context) (*BlockMountCheckerResult
 	}
 	fmt.Printf(" -> Created Pod %s/%s\n", b.args.Namespace, b.podName)
 
-	fmt.Printf(" -> Waiting at most %s for Pod to become ready ...\n", b.args.K8sObjectReadyTimeout.String())
+	fmt.Printf(" -> Waiting at most %s for the Pod to become ready ...\n", b.args.K8sObjectReadyTimeout.String())
 	if err = b.appCreator.WaitForPodReady(ctx, b.args.Namespace, b.podName); err != nil {
-		fmt.Printf(" -> Pod timed out (%v)\n", err)
+		fmt.Printf(" -> The Pod timed out (%v)\n", err)
 		return nil, err
 	}
-	fmt.Printf(" -> Pod ready (%s)\n", time.Since(tB).Truncate(time.Millisecond).String())
+	fmt.Printf(" -> The Pod is ready (%s)\n", time.Since(tB).Truncate(time.Millisecond).String())
 
 	return &BlockMountCheckerResult{
 		StorageClass: sc,

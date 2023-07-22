@@ -14,6 +14,7 @@ import (
 	v1 "k8s.io/api/core/v1"
 	sv1 "k8s.io/api/storage/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -74,7 +75,7 @@ func TestBlockMountCheckerNew(t *testing.T) {
 		c.Assert(b.podName, qt.Equals, fmt.Sprintf(blockMountCheckerPodNameFmt, args.StorageClass))
 		c.Assert(b.pvcName, qt.Equals, fmt.Sprintf(blockMountCheckerPVCNameFmt, args.StorageClass))
 		c.Assert(b.podCleanupTimeout, qt.Equals, blockModeCheckerPodCleanupTimeout)
-		c.Assert(b.pvcCleanupTimeout, qt.Equals, blockModeCheckerPvcCleanupTimeout)
+		c.Assert(b.pvcCleanupTimeout, qt.Equals, blockModeCheckerPVCCleanupTimeout)
 	})
 }
 
@@ -273,12 +274,18 @@ func TestBlockMountCheckerMount(t *testing.T) {
 		pa.mockValidator.EXPECT().ValidatePVC(gomock.Any(), pa.b.pvcName, pa.b.args.Namespace).Return(nil, errNotFound)
 	}
 	createPVCArgs := func(b *blockMountChecker) *types.CreatePVCArgs {
+		pvcSize := b.args.PVCSize
+		if pvcSize == "" {
+			pvcSize = blockModeCheckerPVCDefaultSize
+		}
+		restoreSize := resource.MustParse(pvcSize)
 		blockMode := v1.PersistentVolumeBlock
 		return &types.CreatePVCArgs{
 			Name:         b.pvcName,
 			Namespace:    b.args.Namespace,
 			StorageClass: b.args.StorageClass,
 			VolumeMode:   &blockMode,
+			RestoreSize:  &restoreSize,
 		}
 	}
 	createPVC := func(b *blockMountChecker) *v1.PersistentVolumeClaim {
@@ -328,6 +335,15 @@ func TestBlockMountCheckerMount(t *testing.T) {
 			},
 		},
 		{
+			name:       "invalid-pvc-size",
+			podTimeout: time.Hour,
+			pvcTimeout: time.Hour,
+			prepare: func(pa *prepareArgs) {
+				pa.b.args.PVCSize = "10Q"
+				pa.mockValidator.EXPECT().ValidateStorageClass(gomock.Any(), pa.b.args.StorageClass).Return(sc, nil)
+			},
+		},
+		{
 			name:       "create-pvc-error",
 			podTimeout: time.Hour,
 			pvcTimeout: time.Hour,
@@ -367,6 +383,7 @@ func TestBlockMountCheckerMount(t *testing.T) {
 			noCleanup:  true,
 			prepare: func(pa *prepareArgs) {
 				pa.mockValidator.EXPECT().ValidateStorageClass(gomock.Any(), pa.b.args.StorageClass).Return(sc, nil)
+				pa.b.args.PVCSize = blockModeCheckerPVCDefaultSize
 				pa.mockAppCreator.EXPECT().CreatePVC(gomock.Any(), createPVCArgs(pa.b)).Return(createPVC(pa.b), nil)
 				pa.mockAppCreator.EXPECT().CreatePod(gomock.Any(), createPodArgs(pa.b)).Return(createPod(pa.b), nil)
 				pa.mockAppCreator.EXPECT().WaitForPodReady(gomock.Any(), pa.b.args.Namespace, pa.b.podName).Return(nil)

@@ -103,17 +103,22 @@ var (
 	blockMountCleanup            bool
 	blockMountCleanupOnly        bool
 	blockMountWaitTimeoutSeconds uint32
+	blockMountPVCSize            string
 	blockMountCmd                = &cobra.Command{
 		Use:   "blockmount",
 		Short: "Checks if a storage class supports block volumes",
-		Long: `Checks if volumes provisioned by a storage class can be mounted
-in block mode.
+		Long: `Checks if volumes provisioned by a storage class can be mounted in block mode.
 
-The test works as follows:
+The checker works as follows:
 - It dynamically provisions a volume of the given storage class.
 - It then launches a pod with the volume mounted as a block device.
-- If the pod is successfully created then the test passes. If it
-  fails or times out then the test fails.
+- If the pod is successfully created then the test passes.
+- If the pod fails or times out then the test fails.
+
+In case of failure, re-run the checker with the "-c" flag and examine the
+failed PVC and Pod: it may be necessary to adjust the default values used for
+the PVC size, the pod wait timeout, etc. Clean up the failed resources by
+running the checker with the "--cleanup-only" flag.
 `,
 		Args: cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
@@ -123,10 +128,11 @@ The test works as follows:
 			checkerArgs := block.BlockMountCheckerArgs{
 				StorageClass:          storageClass,
 				Namespace:             namespace,
-				Cleanup:               blockMountCleanup,
+				Cleanup:               !blockMountCleanup, // invert
 				RunAsUser:             blockMountRunAsUser,
 				ContainerImage:        containerImage,
 				K8sObjectReadyTimeout: (time.Second * time.Duration(blockMountWaitTimeoutSeconds)),
+				PVCSize:               blockMountPVCSize,
 			}
 			return BlockMountCheck(ctx, output, outfile, blockMountCleanupOnly, checkerArgs)
 		},
@@ -170,10 +176,11 @@ func init() {
 	_ = blockMountCmd.MarkFlagRequired("storageclass")
 	blockMountCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace used to run the check.")
 	blockMountCmd.Flags().StringVarP(&containerImage, "image", "i", "", "The container image used to create a pod.")
-	blockMountCmd.Flags().BoolVarP(&blockMountCleanup, "cleanup", "c", true, "Clean up the objects created by tool.")
-	blockMountCmd.Flags().BoolVarP(&blockMountCleanupOnly, "cleanup-only", "", false, "Do not run the test, but just clean up resources left from a previous invocation.")
-	blockMountCmd.Flags().Int64VarP(&blockMountRunAsUser, "runAsUser", "u", 0, "Runs the block mount test pod with the specified user ID (int)")
-	blockMountCmd.Flags().Uint32VarP(&blockMountWaitTimeoutSeconds, "wait-timeout", "w", 60, "Max time to wait for the test pod to become ready")
+	blockMountCmd.Flags().BoolVarP(&blockMountCleanup, "no-cleanup", "c", false, "Do not clean up the objects created by the check.")
+	blockMountCmd.Flags().BoolVarP(&blockMountCleanupOnly, "cleanup-only", "", false, "Do not run the checker, but just clean up resources left from a previous invocation.")
+	blockMountCmd.Flags().Int64VarP(&blockMountRunAsUser, "runAsUser", "u", 0, "Runs the block mount check pod with the specified user ID (int)")
+	blockMountCmd.Flags().Uint32VarP(&blockMountWaitTimeoutSeconds, "wait-timeout", "w", 60, "Max time in seconds to wait for the check pod to become ready")
+	blockMountCmd.Flags().StringVarP(&blockMountPVCSize, "pvc-size", "", "1Gi", "The size of the provisioned PVC.")
 }
 
 // Execute executes the main command
@@ -372,23 +379,21 @@ func BlockMountCheck(ctx context.Context, output, outfile string, cleanupOnly bo
 		return err
 	}
 
-	var (
-		testName    string
-		result      *kubestr.TestOutput
-		mountResult *block.BlockMountCheckerResult
-	)
-
 	if cleanupOnly {
-		testName = "Block VolumeMode cleanup"
-
 		blockMountTester.Cleanup()
-	} else {
-		testName = "Block VolumeMode test"
-
-		mountResult, err = blockMountTester.Mount(ctx)
+		return nil
 	}
 
+	var (
+		testName = "Block VolumeMode test"
+		result   *kubestr.TestOutput
+	)
+
+	mountResult, err := blockMountTester.Mount(ctx)
 	if err != nil {
+		if !checkerArgs.Cleanup {
+			fmt.Printf("Warning: Resources may not have been released. Rerun with the additional --cleanup-only flag.\n")
+		}
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, fmt.Sprintf("StorageClass (%s) does not appear to support Block VolumeMode", checkerArgs.StorageClass), mountResult)
 	} else {
 		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("StorageClass (%s) supports Block VolumeMode", checkerArgs.StorageClass), mountResult)
@@ -398,5 +403,6 @@ func BlockMountCheck(ctx context.Context, output, outfile string, cleanupOnly bo
 	if !PrintAndJsonOutput(wrappedResult, output, outfile) {
 		result.Print()
 	}
+
 	return err
 }
