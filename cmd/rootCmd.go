@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/kastenhq/kubestr/pkg/block"
 	"github.com/kastenhq/kubestr/pkg/csi"
 	csitypes "github.com/kastenhq/kubestr/pkg/csi/types"
 	"github.com/kastenhq/kubestr/pkg/fio"
@@ -97,6 +98,45 @@ var (
 			)
 		},
 	}
+
+	blockMountRunAsUser          int64
+	blockMountCleanup            bool
+	blockMountCleanupOnly        bool
+	blockMountWaitTimeoutSeconds uint32
+	blockMountPVCSize            string
+	blockMountCmd                = &cobra.Command{
+		Use:   "blockmount",
+		Short: "Checks if a storage class supports block volumes",
+		Long: `Checks if volumes provisioned by a storage class can be mounted in block mode.
+
+The checker works as follows:
+- It dynamically provisions a volume of the given storage class.
+- It then launches a pod with the volume mounted as a block device.
+- If the pod is successfully created then the test passes.
+- If the pod fails or times out then the test fails.
+
+In case of failure, re-run the checker with the "-c=false" flag and examine the
+failed PVC and Pod: it may be necessary to adjust the default values used for
+the PVC size, the pod wait timeout, etc. Clean up the failed resources by
+running the checker with the "--cleanup-only" flag.
+`,
+		Args: cobra.ExactArgs(0),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+			defer cancel()
+
+			checkerArgs := block.BlockMountCheckerArgs{
+				StorageClass:          storageClass,
+				Namespace:             namespace,
+				Cleanup:               blockMountCleanup,
+				RunAsUser:             blockMountRunAsUser,
+				ContainerImage:        containerImage,
+				K8sObjectReadyTimeout: (time.Second * time.Duration(blockMountWaitTimeoutSeconds)),
+				PVCSize:               blockMountPVCSize,
+			}
+			return BlockMountCheck(ctx, output, outfile, blockMountCleanupOnly, checkerArgs)
+		},
+	}
 )
 
 func init() {
@@ -121,7 +161,7 @@ func init() {
 	csiCheckCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace used to run the check.")
 	csiCheckCmd.Flags().StringVarP(&containerImage, "image", "i", "", "The container image used to create a pod.")
 	csiCheckCmd.Flags().BoolVarP(&csiCheckCleanup, "cleanup", "c", true, "Clean up the objects created by tool")
-	csiCheckCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the CSI check using pods as a user (int)")
+	csiCheckCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the CSI check pod with the specified user ID (int)")
 	csiCheckCmd.Flags().BoolVarP(&csiCheckSkipCFSCheck, "skipCFScheck", "k", false, "Use this flag to skip validating the ability to clone a snapshot.")
 
 	rootCmd.AddCommand(pvcBrowseCmd)
@@ -130,6 +170,17 @@ func init() {
 	pvcBrowseCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of the PersistentVolumeClaim.")
 	pvcBrowseCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
 	pvcBrowseCmd.Flags().IntVarP(&pvcBrowseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
+
+	rootCmd.AddCommand(blockMountCmd)
+	blockMountCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a Storageclass. (Required)")
+	_ = blockMountCmd.MarkFlagRequired("storageclass")
+	blockMountCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace used to run the check.")
+	blockMountCmd.Flags().StringVarP(&containerImage, "image", "i", "", "The container image used to create a pod.")
+	blockMountCmd.Flags().BoolVarP(&blockMountCleanup, "cleanup", "c", true, "Clean up the objects created by the check.")
+	blockMountCmd.Flags().BoolVarP(&blockMountCleanupOnly, "cleanup-only", "", false, "Do not run the checker, but just clean up resources left from a previous invocation.")
+	blockMountCmd.Flags().Int64VarP(&blockMountRunAsUser, "runAsUser", "u", 0, "Runs the block mount check pod with the specified user ID (int)")
+	blockMountCmd.Flags().Uint32VarP(&blockMountWaitTimeoutSeconds, "wait-timeout", "w", 60, "Max time in seconds to wait for the check pod to become ready")
+	blockMountCmd.Flags().StringVarP(&blockMountPVCSize, "pvc-size", "", "1Gi", "The size of the provisioned PVC.")
 }
 
 // Execute executes the main command
@@ -304,5 +355,54 @@ func CsiPvcBrowse(ctx context.Context,
 	if err != nil {
 		fmt.Printf("Failed to run PVC browser (%s)\n", err.Error())
 	}
+	return err
+}
+
+func BlockMountCheck(ctx context.Context, output, outfile string, cleanupOnly bool, checkerArgs block.BlockMountCheckerArgs) error {
+	kubecli, err := kubestr.LoadKubeCli()
+	if err != nil {
+		fmt.Printf("Failed to load kubeCli (%s)", err.Error())
+		return err
+	}
+	checkerArgs.KubeCli = kubecli
+
+	dyncli, err := kubestr.LoadDynCli()
+	if err != nil {
+		fmt.Printf("Failed to load dynCli (%s)", err.Error())
+		return err
+	}
+	checkerArgs.DynCli = dyncli
+
+	blockMountTester, err := block.NewBlockMountChecker(checkerArgs)
+	if err != nil {
+		fmt.Printf("Failed to initialize BlockMounter (%s)", err.Error())
+		return err
+	}
+
+	if cleanupOnly {
+		blockMountTester.Cleanup()
+		return nil
+	}
+
+	var (
+		testName = "Block VolumeMode test"
+		result   *kubestr.TestOutput
+	)
+
+	mountResult, err := blockMountTester.Mount(ctx)
+	if err != nil {
+		if !checkerArgs.Cleanup {
+			fmt.Printf("Warning: Resources may not have been released. Rerun with the additional --cleanup-only flag.\n")
+		}
+		result = kubestr.MakeTestOutput(testName, kubestr.StatusError, fmt.Sprintf("StorageClass (%s) does not appear to support Block VolumeMode", checkerArgs.StorageClass), mountResult)
+	} else {
+		result = kubestr.MakeTestOutput(testName, kubestr.StatusOK, fmt.Sprintf("StorageClass (%s) supports Block VolumeMode", checkerArgs.StorageClass), mountResult)
+	}
+
+	var wrappedResult = []*kubestr.TestOutput{result}
+	if !PrintAndJsonOutput(wrappedResult, output, outfile) {
+		result.Print()
+	}
+
 	return err
 }

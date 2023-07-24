@@ -183,27 +183,66 @@ func (s *CSITestSuite) TestGetCSISnapshotGroupVersion(c *C) {
 	}
 }
 
+func (s *CSITestSuite) TestValidatePVC(c *C) {
+	ctx := context.Background()
+	ops := NewArgumentValidator(fake.NewSimpleClientset(), nil)
+	pvc, err := ops.ValidatePVC(ctx, "pvc", "ns")
+	c.Check(err, NotNil)
+	c.Check(pvc, IsNil)
+
+	ops = NewArgumentValidator(fake.NewSimpleClientset(&v1.PersistentVolumeClaim{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: "ns",
+			Name:      "pvc",
+		},
+	}), nil)
+	pvc, err = ops.ValidatePVC(ctx, "pvc", "ns")
+	c.Check(err, IsNil)
+	c.Check(pvc, NotNil)
+
+	ops = NewArgumentValidator(nil, nil)
+	pvc, err = ops.ValidatePVC(ctx, "pvc", "ns")
+	c.Check(err, NotNil)
+	c.Check(pvc, IsNil)
+}
+
+func (s *CSITestSuite) TestFetchPV(c *C) {
+	ctx := context.Background()
+	ops := NewArgumentValidator(fake.NewSimpleClientset(), nil)
+	pv, err := ops.FetchPV(ctx, "pv")
+	c.Check(err, NotNil)
+	c.Check(pv, IsNil)
+
+	ops = NewArgumentValidator(fake.NewSimpleClientset(&v1.PersistentVolume{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pv",
+		},
+	}), nil)
+	pv, err = ops.FetchPV(ctx, "pv")
+	c.Check(err, IsNil)
+	c.Check(pv, NotNil)
+
+	ops = NewArgumentValidator(nil, nil)
+	pv, err = ops.FetchPV(ctx, "pv")
+	c.Check(err, NotNil)
+	c.Check(pv, IsNil)
+}
+
 func (s *CSITestSuite) TestValidateNamespace(c *C) {
 	ctx := context.Background()
-	ops := &validateOperations{
-		kubeCli: fake.NewSimpleClientset(),
-	}
+	ops := NewArgumentValidator(fake.NewSimpleClientset(), nil)
 	err := ops.ValidateNamespace(ctx, "ns")
 	c.Check(err, NotNil)
 
-	ops = &validateOperations{
-		kubeCli: fake.NewSimpleClientset(&v1.Namespace{
-			ObjectMeta: metav1.ObjectMeta{
-				Name: "ns",
-			},
-		}),
-	}
+	ops = NewArgumentValidator(fake.NewSimpleClientset(&v1.Namespace{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "ns",
+		},
+	}), nil)
 	err = ops.ValidateNamespace(ctx, "ns")
 	c.Check(err, IsNil)
 
-	ops = &validateOperations{
-		kubeCli: nil,
-	}
+	ops = NewArgumentValidator(nil, nil)
 	err = ops.ValidateNamespace(ctx, "ns")
 	c.Check(err, NotNil)
 }
@@ -427,7 +466,8 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 			pvcChecker: IsNil,
 		},
 	} {
-		creator := &applicationCreate{kubeCli: tc.cli}
+		appCreator := NewApplicationCreator(tc.cli, 0)
+		creator := appCreator.(*applicationCreate)
 		if tc.failCreates {
 			creator.kubeCli.(*fake.Clientset).Fake.PrependReactor("create", "persistentvolumeclaims", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 				return true, nil, errors.New("Error creating object")
@@ -481,6 +521,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 				Command:        []string{"somecommand"},
 				RunAsUser:      1000,
 				ContainerImage: "containerimage",
+				MountPath:      "/mnt/fs",
 			},
 			errChecker: IsNil,
 			podChecker: NotNil,
@@ -493,19 +534,61 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 				PVCName:      "pvcname",
 				Namespace:    "ns",
 				Command:      []string{"somecommand"},
+				MountPath:    "/mnt/fs",
 			},
 			failCreates: true,
 			errChecker:  NotNil,
 			podChecker:  NotNil,
 		},
 		{
-			description: "Pod generate name arg not set",
+			description: "Neither Name nor GenerateName set",
 			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "",
 				PVCName:      "pvcname",
 				Namespace:    "ns",
 				Command:      []string{"somecommand"},
+				MountPath:    "/mnt/fs",
+			},
+			errChecker: NotNil,
+			podChecker: IsNil,
+		},
+		{
+			description: "Both Name and GenerateName set",
+			cli:         fake.NewSimpleClientset(),
+			args: &types.CreatePodArgs{
+				GenerateName: "name",
+				Name:         "name",
+				PVCName:      "pvcname",
+				Namespace:    "ns",
+				Command:      []string{"somecommand"},
+				MountPath:    "/mnt/fs",
+			},
+			errChecker: NotNil,
+			podChecker: IsNil,
+		},
+		{
+			description: "Neither MountPath nor DevicePath set error",
+			cli:         fake.NewSimpleClientset(),
+			args: &types.CreatePodArgs{
+				GenerateName: "name",
+				PVCName:      "",
+				Namespace:    "ns",
+				Command:      []string{"somecommand"},
+			},
+			errChecker: NotNil,
+			podChecker: IsNil,
+		},
+		{
+			description: "Both MountPath and DevicePath set error",
+			cli:         fake.NewSimpleClientset(),
+			args: &types.CreatePodArgs{
+				GenerateName: "name",
+				PVCName:      "",
+				Namespace:    "ns",
+				Command:      []string{"somecommand"},
+				MountPath:    "/mnt/fs",
+				DevicePath:   "/mnt/dev",
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
@@ -518,6 +601,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 				PVCName:      "",
 				Namespace:    "ns",
 				Command:      []string{"somecommand"},
+				MountPath:    "/mnt/fs",
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
@@ -530,18 +614,33 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 				PVCName:      "pvcname",
 				Namespace:    "",
 				Command:      []string{"somecommand"},
+				MountPath:    "/mnt/fs",
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
 		},
 		{
-			description: "ns namespace pod is created",
+			description: "ns namespace pod is created (GenerateName/MountPath)",
 			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
 				PVCName:      "pvcname",
 				Namespace:    "ns",
 				Command:      []string{"somecommand"},
+				MountPath:    "/mnt/fs",
+			},
+			errChecker: IsNil,
+			podChecker: NotNil,
+		},
+		{
+			description: "ns namespace pod is created (Name/DevicePath)",
+			cli:         fake.NewSimpleClientset(),
+			args: &types.CreatePodArgs{
+				Name:       "name",
+				PVCName:    "pvcname",
+				Namespace:  "ns",
+				Command:    []string{"somecommand"},
+				DevicePath: "/mnt/dev",
 			},
 			errChecker: IsNil,
 			podChecker: NotNil,
@@ -567,16 +666,30 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 		if pod != nil && err == nil {
 			_, ok := pod.Labels[createdByLabel]
 			c.Assert(ok, Equals, true)
-			c.Assert(pod.GenerateName, Equals, tc.args.GenerateName)
+			if tc.args.GenerateName != "" {
+				c.Assert(pod.GenerateName, Equals, tc.args.GenerateName)
+				c.Assert(pod.Spec.Containers[0].Name, Equals, tc.args.GenerateName)
+			} else {
+				c.Assert(pod.Name, Equals, tc.args.Name)
+				c.Assert(pod.Spec.Containers[0].Name, Equals, tc.args.Name)
+			}
 			c.Assert(pod.Namespace, Equals, tc.args.Namespace)
 			c.Assert(len(pod.Spec.Containers), Equals, 1)
-			c.Assert(pod.Spec.Containers[0].Name, Equals, tc.args.GenerateName)
 			c.Assert(pod.Spec.Containers[0].Command, DeepEquals, tc.args.Command)
 			c.Assert(pod.Spec.Containers[0].Args, DeepEquals, tc.args.ContainerArgs)
-			c.Assert(pod.Spec.Containers[0].VolumeMounts, DeepEquals, []v1.VolumeMount{{
-				Name:      "persistent-storage",
-				MountPath: tc.args.MountPath,
-			}})
+			if tc.args.MountPath != "" {
+				c.Assert(pod.Spec.Containers[0].VolumeMounts, DeepEquals, []v1.VolumeMount{{
+					Name:      "persistent-storage",
+					MountPath: tc.args.MountPath,
+				}})
+				c.Assert(pod.Spec.Containers[0].VolumeDevices, IsNil)
+			} else {
+				c.Assert(pod.Spec.Containers[0].VolumeDevices, DeepEquals, []v1.VolumeDevice{{
+					Name:       "persistent-storage",
+					DevicePath: tc.args.DevicePath,
+				}})
+				c.Assert(pod.Spec.Containers[0].VolumeMounts, IsNil)
+			}
 			c.Assert(pod.Spec.Volumes, DeepEquals, []v1.Volume{{
 				Name: "persistent-storage",
 				VolumeSource: v1.VolumeSource{
@@ -948,9 +1061,7 @@ func (s *CSITestSuite) TestDeletePVC(c *C) {
 			errChecker: NotNil,
 		},
 	} {
-		cleaner := &cleanse{
-			kubeCli: tc.cli,
-		}
+		cleaner := NewCleaner(tc.cli, nil)
 		err := cleaner.DeletePVC(ctx, tc.pvcName, tc.namespace)
 		c.Check(err, tc.errChecker)
 	}
@@ -1152,9 +1263,7 @@ func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
 			errChecker:   NotNil,
 		},
 	} {
-		cleaner := &cleanse{
-			dynCli: tc.cli,
-		}
+		cleaner := NewCleaner(nil, tc.cli)
 		err := cleaner.DeleteSnapshot(ctx, tc.snapshotName, tc.namespace, tc.groupVersion)
 		c.Check(err, tc.errChecker)
 	}
@@ -1245,5 +1354,74 @@ func (s *CSITestSuite) getPVC(ns, pvc string, phase v1.PersistentVolumeClaimPhas
 		Status: v1.PersistentVolumeClaimStatus{
 			Phase: phase,
 		},
+	}
+}
+
+func (s *CSITestSuite) TestWaitForPodReady(c *C) {
+	ctx := context.Background()
+	const ns = "ns"
+	const podName = "pod"
+	readyPod := &v1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Namespace: ns,
+			Name:      podName,
+		},
+		Spec: v1.PodSpec{
+			Containers: []v1.Container{
+				{Name: "container-0"},
+			},
+		},
+		Status: v1.PodStatus{
+			Phase: v1.PodRunning,
+		},
+	}
+	warningEvent := v1.Event{
+		Type:    v1.EventTypeWarning,
+		Message: "warning event",
+	}
+
+	for _, tc := range []struct {
+		description string
+		cli         kubernetes.Interface
+		eventsList  []v1.Event
+		errChecker  Checker
+		errString   string
+	}{
+		{
+			description: "Happy path",
+			cli:         fake.NewSimpleClientset(readyPod),
+			errChecker:  IsNil,
+		},
+		{
+			description: "Not found",
+			cli:         fake.NewSimpleClientset(),
+			errChecker:  NotNil,
+			errString:   "not found",
+		},
+		{
+			description: "Pod events",
+			cli:         fake.NewSimpleClientset(),
+			errChecker:  NotNil,
+			errString:   "had issues creating Pod",
+			eventsList:  []v1.Event{warningEvent},
+		},
+		{
+			description: "No CLI",
+			errChecker:  NotNil,
+			errString:   "kubeCli not initialized",
+		},
+	} {
+		fmt.Println("TestWaitForPodReady:", tc.description)
+		creator := &applicationCreate{kubeCli: tc.cli}
+		if len(tc.eventsList) > 0 {
+			creator.kubeCli.(*fake.Clientset).PrependReactor("list", "events", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+				return true, &v1.EventList{Items: tc.eventsList}, nil
+			})
+		}
+		err := creator.WaitForPodReady(ctx, ns, podName)
+		c.Check(err, tc.errChecker)
+		if err != nil {
+			c.Assert(strings.Contains(err.Error(), tc.errString), Equals, true)
+		}
 	}
 }

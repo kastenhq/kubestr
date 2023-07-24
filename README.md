@@ -14,21 +14,24 @@ Kubestr can assist in the following ways-
 [![asciicast](https://asciinema.org/a/7iJTbWKwdhPHNWYV00LIgx7gn.svg)](https://asciinema.org/a/7iJTbWKwdhPHNWYV00LIgx7gn)
 
 ## Using Kubestr
-### To install the tool -  
+### To install the tool -
 - Ensure that the kubernetes context is set and the cluster is accessible through your terminal. (Does [kubectl](https://kubernetes.io/docs/tasks/tools/install-kubectl/) work?)
-- Download the latest release [here](https://github.com/kastenhq/kubestr/releases/latest). 
+- Download the latest release [here](https://github.com/kastenhq/kubestr/releases/latest).
 - Unpack the tool and make it an executable `chmod +x kubestr`.
 
 ### To discover available storage options -
 - Run `./kubestr`
 
-### To run an FIO test - 
+### To run an FIO test -
 - Run `./kubestr fio -s <storage class>`
 - Additional options like `--size` and `--fiofile` can be specified.
 - For more information visit our [fio](https://github.com/kastenhq/kubestr/blob/master/FIO.md) page.
 
-### To check a CSI drivers snapshot and restore capabilities - 
+### To check a CSI drivers snapshot and restore capabilities -
 - Run `./kubestr csicheck -s <storage class> -v <volume snapshot class>`
+
+### To check if a StorageClass supports a block mount -
+- Run `./kubestr blockmount -s StorageClass`
 
 ## Roadmap
 - In the future we plan to allow users to post their FIO results and compare to others.
