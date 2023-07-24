@@ -115,7 +115,7 @@ The checker works as follows:
 - If the pod is successfully created then the test passes.
 - If the pod fails or times out then the test fails.
 
-In case of failure, re-run the checker with the "-c" flag and examine the
+In case of failure, re-run the checker with the "-c=false" flag and examine the
 failed PVC and Pod: it may be necessary to adjust the default values used for
 the PVC size, the pod wait timeout, etc. Clean up the failed resources by
 running the checker with the "--cleanup-only" flag.
@@ -128,7 +128,7 @@ running the checker with the "--cleanup-only" flag.
 			checkerArgs := block.BlockMountCheckerArgs{
 				StorageClass:          storageClass,
 				Namespace:             namespace,
-				Cleanup:               !blockMountCleanup, // invert
+				Cleanup:               blockMountCleanup,
 				RunAsUser:             blockMountRunAsUser,
 				ContainerImage:        containerImage,
 				K8sObjectReadyTimeout: (time.Second * time.Duration(blockMountWaitTimeoutSeconds)),
@@ -176,7 +176,7 @@ func init() {
 	_ = blockMountCmd.MarkFlagRequired("storageclass")
 	blockMountCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace used to run the check.")
 	blockMountCmd.Flags().StringVarP(&containerImage, "image", "i", "", "The container image used to create a pod.")
-	blockMountCmd.Flags().BoolVarP(&blockMountCleanup, "no-cleanup", "c", false, "Do not clean up the objects created by the check.")
+	blockMountCmd.Flags().BoolVarP(&blockMountCleanup, "cleanup", "c", true, "Clean up the objects created by the check.")
 	blockMountCmd.Flags().BoolVarP(&blockMountCleanupOnly, "cleanup-only", "", false, "Do not run the checker, but just clean up resources left from a previous invocation.")
 	blockMountCmd.Flags().Int64VarP(&blockMountRunAsUser, "runAsUser", "u", 0, "Runs the block mount check pod with the specified user ID (int)")
 	blockMountCmd.Flags().Uint32VarP(&blockMountWaitTimeoutSeconds, "wait-timeout", "w", 60, "Max time in seconds to wait for the check pod to become ready")
