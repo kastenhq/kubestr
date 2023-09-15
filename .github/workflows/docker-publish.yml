@@ -2,15 +2,14 @@ name: Docker
 
 on:
   push:
-    # Publish `master` as Docker `latest` image.
     branches:
-      - master
+    - main
+    - master
 
     # Publish `v1.2.3` tags as releases.
     tags:
-      - v*
+    - v*
   pull_request:
-    branches: [ master ]
 
 env:
   REGISTRY: ghcr.io
