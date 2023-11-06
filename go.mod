@@ -11,7 +11,7 @@ require (
 	github.com/kanisterio/kanister v0.0.0-20230711223016-1ed0c605326b
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.2.0
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/cobra v1.7.0
+	github.com/spf13/cobra v1.8.0
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c
 	k8s.io/api v0.26.3
 	k8s.io/apimachinery v0.26.3
