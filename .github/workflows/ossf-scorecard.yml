@@ -9,6 +9,12 @@ on:
   # https://github.com/ossf/scorecard/blob/main/docs/checks.md#maintained
   schedule:
     - cron: '25 6 * * 5'
+  workflow_dispatch:
+    inputs:
+      ref:
+        description: 'branch or git ref to use for the build'
+        required: true
+        default: 'master'
 
 # Declare default permissions as read only.
 permissions: read-all
