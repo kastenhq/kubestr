@@ -242,7 +242,7 @@ func (s *fioStepper) createPVC(ctx context.Context, storageclass, size, namespac
 		Spec: v1.PersistentVolumeClaimSpec{
 			StorageClassName: &storageclass,
 			AccessModes:      []v1.PersistentVolumeAccessMode{v1.ReadWriteOnce},
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceName(v1.ResourceStorage): sizeResource,
 				},
