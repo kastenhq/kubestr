@@ -1,4 +1,4 @@
-FROM golang:1.19-alpine3.18 AS builder
+FROM golang:1.21.6-alpine3.19 AS builder
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
@@ -17,7 +17,7 @@ COPY . .
 
 RUN go install -ldflags="-w -s" .
 
-FROM alpine:3.18
+FROM alpine:3.19
 
 RUN apk --no-cache add fio
 
