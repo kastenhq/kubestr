@@ -413,7 +413,7 @@ func (s *snapshotDataSourceFGValidator) validate(ctx context.Context) (bool, err
 				Kind:     snapshotKind,
 				Name:     "fakeSnap",
 			},
-			Resources: v1.ResourceRequirements{
+			Resources: v1.VolumeResourceRequirements{
 				Requests: v1.ResourceList{
 					v1.ResourceStorage: resource.MustParse("1Gi"),
 				},

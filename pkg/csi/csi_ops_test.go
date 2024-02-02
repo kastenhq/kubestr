@@ -26,6 +26,7 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func (s *CSITestSuite) TestGetDriverNameFromUVSC(c *C) {
@@ -485,13 +486,13 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 			c.Assert(*pvc.Spec.StorageClassName, Equals, tc.args.StorageClass)
 			c.Assert(pvc.Spec.DataSource, DeepEquals, tc.args.DataSource)
 			if tc.args.RestoreSize != nil {
-				c.Assert(pvc.Spec.Resources, DeepEquals, v1.ResourceRequirements{
+				c.Assert(pvc.Spec.Resources, DeepEquals, v1.VolumeResourceRequirements{
 					Requests: v1.ResourceList{
 						v1.ResourceStorage: *tc.args.RestoreSize,
 					},
 				})
 			} else {
-				c.Assert(pvc.Spec.Resources, DeepEquals, v1.ResourceRequirements{
+				c.Assert(pvc.Spec.Resources, DeepEquals, v1.VolumeResourceRequirements{
 					Requests: v1.ResourceList{
 						v1.ResourceStorage: resource.MustParse("1Gi"),
 					},
@@ -980,6 +981,13 @@ type fakeSnapshotter struct {
 	gsErr error
 
 	cfsErr error
+}
+
+func (f *fakeSnapshotter) GroupVersion(ctx context.Context) schema.GroupVersion {
+	return schema.GroupVersion{
+		Group:   common.SnapGroupName,
+		Version: "v1",
+	}
 }
 
 func (f *fakeSnapshotter) GetVolumeSnapshotClass(ctx context.Context, annotationKey, annotationValue, storageClassName string) (string, error) {
