@@ -954,7 +954,7 @@ type fakeKubeExecutor struct {
 	keInCommand       []string
 }
 
-func (fk *fakeKubeExecutor) exec(namespace, podName, containerName string, command []string) (string, string, error) {
+func (fk *fakeKubeExecutor) exec(_ context.Context, namespace, podName, containerName string, command []string) (string, string, error) {
 	fk.keInNS = namespace
 	fk.keInPodName = podName
 	fk.keInContainerName = containerName

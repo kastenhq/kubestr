@@ -203,7 +203,7 @@ func (s *snapshotRestoreSteps) CreateApplication(ctx context.Context, args *type
 }
 
 func (s *snapshotRestoreSteps) ValidateData(ctx context.Context, pod *v1.Pod, data string) error {
-	podData, err := s.dataValidatorOps.FetchPodData(pod.Name, pod.Namespace)
+	podData, err := s.dataValidatorOps.FetchPodData(ctx, pod.Name, pod.Namespace)
 	if err != nil {
 		return errors.Wrap(err, "Failed to fetch data from pod. Failure may be due to permissions issues. Try again with runAsUser=1000 option.")
 	}

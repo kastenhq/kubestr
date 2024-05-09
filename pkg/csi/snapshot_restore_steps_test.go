@@ -904,7 +904,7 @@ func (s *CSITestSuite) TestValidateData(c *C) {
 			data: "somedata",
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.validatorOps.EXPECT().FetchPodData("pod", "ns").Return("somedata", nil),
+					f.validatorOps.EXPECT().FetchPodData(context.Background(), "pod", "ns").Return("somedata", nil),
 				)
 			},
 			errChecker: IsNil,
@@ -919,7 +919,7 @@ func (s *CSITestSuite) TestValidateData(c *C) {
 			data: "somedata",
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.validatorOps.EXPECT().FetchPodData("pod", "ns").Return("someotherdata", nil),
+					f.validatorOps.EXPECT().FetchPodData(context.Background(), "pod", "ns").Return("someotherdata", nil),
 				)
 			},
 			errChecker: NotNil,
@@ -934,7 +934,7 @@ func (s *CSITestSuite) TestValidateData(c *C) {
 			data: "somedata",
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.validatorOps.EXPECT().FetchPodData("pod", "ns").Return("", fmt.Errorf("error")),
+					f.validatorOps.EXPECT().FetchPodData(context.Background(), "pod", "ns").Return("", fmt.Errorf("error")),
 				)
 			},
 			errChecker: NotNil,
