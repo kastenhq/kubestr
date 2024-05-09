@@ -1,6 +1,8 @@
 module github.com/kastenhq/kubestr
 
-go 1.21.9
+go 1.22
+
+toolchain go1.22.2
 
 replace github.com/graymeta/stow => github.com/kastenhq/stow v0.1.2-kasten
 
