@@ -5,6 +5,7 @@
 package mocks
 
 import (
+	context "context"
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
@@ -34,16 +35,16 @@ func (m *MockDataValidator) EXPECT() *MockDataValidatorMockRecorder {
 }
 
 // FetchPodData mocks base method.
-func (m *MockDataValidator) FetchPodData(arg0, arg1 string) (string, error) {
+func (m *MockDataValidator) FetchPodData(arg0 context.Context, arg1, arg2 string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FetchPodData", arg0, arg1)
+	ret := m.ctrl.Call(m, "FetchPodData", arg0, arg1, arg2)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // FetchPodData indicates an expected call of FetchPodData.
-func (mr *MockDataValidatorMockRecorder) FetchPodData(arg0, arg1 interface{}) *gomock.Call {
+func (mr *MockDataValidatorMockRecorder) FetchPodData(arg0, arg1, arg2 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchPodData", reflect.TypeOf((*MockDataValidator)(nil).FetchPodData), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchPodData", reflect.TypeOf((*MockDataValidator)(nil).FetchPodData), arg0, arg1, arg2)
 }

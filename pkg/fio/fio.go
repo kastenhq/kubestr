@@ -334,7 +334,7 @@ func (s *fioStepper) runFIOCommand(ctx context.Context, podName, containerName, 
 	var err error
 	timestart := time.Now()
 	go func() {
-		stdout, stderr, err = s.kubeExecutor.exec(namespace, podName, containerName, command)
+		stdout, stderr, err = s.kubeExecutor.exec(ctx, namespace, podName, containerName, command)
 		if err != nil || stderr != "" {
 			if err == nil {
 				err = fmt.Errorf("stderr when running FIO")
@@ -393,13 +393,13 @@ func (p *podReadyChecker) waitForPodReady(ctx context.Context, namespace, name s
 }
 
 type kubeExecInterface interface {
-	exec(namespace, podName, containerName string, command []string) (string, string, error)
+	exec(ctx context.Context, namespace, podName, containerName string, command []string) (string, string, error)
 }
 
 type kubeExecutor struct {
 	cli kubernetes.Interface
 }
 
-func (k *kubeExecutor) exec(namespace, podName, containerName string, command []string) (string, string, error) {
-	return kankube.Exec(k.cli, namespace, podName, containerName, command, nil)
+func (k *kubeExecutor) exec(ctx context.Context, namespace, podName, containerName string, command []string) (string, string, error) {
+	return kankube.Exec(ctx, k.cli, namespace, podName, containerName, command, nil)
 }

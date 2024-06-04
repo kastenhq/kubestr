@@ -475,18 +475,18 @@ func (p *apiVersionFetch) GetCSISnapshotGroupVersion() (*metav1.GroupVersionForD
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_data_validator.go -package=mocks . DataValidator
 type DataValidator interface {
-	FetchPodData(podName string, podNamespace string) (string, error)
+	FetchPodData(ctx context.Context, podName string, podNamespace string) (string, error)
 }
 
 type validateData struct {
 	kubeCli kubernetes.Interface
 }
 
-func (p *validateData) FetchPodData(podName string, podNamespace string) (string, error) {
+func (p *validateData) FetchPodData(ctx context.Context, podName string, podNamespace string) (string, error) {
 	if p.kubeCli == nil {
 		return "", fmt.Errorf("kubeCli not initialized")
 	}
-	stdout, _, err := kankube.Exec(p.kubeCli, podNamespace, podName, "", []string{"sh", "-c", "cat /data/out.txt"}, nil)
+	stdout, _, err := kankube.Exec(ctx, p.kubeCli, podNamespace, podName, "", []string{"sh", "-c", "cat /data/out.txt"}, nil)
 	return stdout, err
 }
 
