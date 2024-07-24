@@ -109,6 +109,21 @@ var (
 		},
 	}
 
+	browseSnapshotCmd = &cobra.Command{
+		Use:   "snapshot [Snapshot name]",
+		Short: "Browse the contents of a CSI VolumeSnapshot via file browser",
+		Long:  "Browse the contents of a CSI provisioned VolumeSnapshot by cloning the volume and mounting it with a file browser.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return CsiSnapshotBrowse(context.Background(), args[0],
+				namespace,
+				storageClass,
+				csiCheckRunAsUser,
+				browseLocalPort,
+			)
+		},
+	}
+
 	blockMountRunAsUser          int64
 	blockMountCleanup            bool
 	blockMountCleanupOnly        bool
@@ -188,8 +203,15 @@ func init() {
 	browsePvcCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
 	browsePvcCmd.Flags().IntVarP(&browseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
 
+	browseCmd.AddCommand(browseSnapshotCmd)
+	browseSnapshotCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a StorageClass. (Required)")
+	_ = browseSnapshotCmd.MarkFlagRequired("storageclass")
+	browseSnapshotCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of the VolumeSnapshot.")
+	browseSnapshotCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
+	browseSnapshotCmd.Flags().IntVarP(&browseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
+
 	rootCmd.AddCommand(blockMountCmd)
-	blockMountCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a Storageclass. (Required)")
+	blockMountCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a StorageClass. (Required)")
 	_ = blockMountCmd.MarkFlagRequired("storageclass")
 	blockMountCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace used to run the check.")
 	blockMountCmd.Flags().StringVarP(&containerImage, "image", "i", "", "The container image used to create a pod.")
@@ -371,6 +393,40 @@ func CsiPvcBrowse(ctx context.Context,
 	})
 	if err != nil {
 		fmt.Printf("Failed to run PVC browser (%s)\n", err.Error())
+	}
+	return err
+}
+
+func CsiSnapshotBrowse(ctx context.Context,
+	snapshotName string,
+	namespace string,
+	storageClass string,
+	runAsUser int64,
+	localPort int,
+) error {
+	kubecli, err := kubestr.LoadKubeCli()
+	if err != nil {
+		fmt.Printf("Failed to load kubeCli (%s)", err.Error())
+		return err
+	}
+	dyncli, err := kubestr.LoadDynCli()
+	if err != nil {
+		fmt.Printf("Failed to load dynCli (%s)", err.Error())
+		return err
+	}
+	browseRunner := &csi.SnapshotBrowseRunner{
+		KubeCli: kubecli,
+		DynCli:  dyncli,
+	}
+	err = browseRunner.RunSnapshotBrowse(ctx, &csitypes.SnapshotBrowseArgs{
+		SnapshotName:     snapshotName,
+		Namespace:        namespace,
+		StorageClassName: storageClass,
+		RunAsUser:        runAsUser,
+		LocalPort:        localPort,
+	})
+	if err != nil {
+		fmt.Printf("Failed to run Snapshot browser (%s)\n", err.Error())
 	}
 	return err
 }
