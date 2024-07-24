@@ -94,6 +94,8 @@ var (
 		},
 	}
 
+	showTree bool
+
 	browsePvcCmd = &cobra.Command{
 		Use:   "pvc [PVC name]",
 		Short: "Browse the contents of a CSI PVC via file browser",
@@ -202,6 +204,7 @@ func init() {
 	browsePvcCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of the PersistentVolumeClaim.")
 	browsePvcCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
 	browsePvcCmd.Flags().IntVarP(&browseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
+	browsePvcCmd.Flags().BoolVarP(&showTree, "show-tree", "t", false, "Prints the contents of PVC")
 
 	browseCmd.AddCommand(browseSnapshotCmd)
 	browseSnapshotCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a StorageClass. (Required)")
@@ -209,6 +212,7 @@ func init() {
 	browseSnapshotCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of the VolumeSnapshot.")
 	browseSnapshotCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
 	browseSnapshotCmd.Flags().IntVarP(&browseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
+	browseSnapshotCmd.Flags().BoolVarP(&showTree, "show-tree", "t", false, "Prints the contents of VolumeSnapshot")
 
 	rootCmd.AddCommand(blockMountCmd)
 	blockMountCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a StorageClass. (Required)")
@@ -390,6 +394,7 @@ func CsiPvcBrowse(ctx context.Context,
 		VolumeSnapshotClass: volumeSnapshotClass,
 		RunAsUser:           runAsUser,
 		LocalPort:           localPort,
+		ShowTree:            showTree,
 	})
 	if err != nil {
 		fmt.Printf("Failed to run PVC browser (%s)\n", err.Error())
@@ -424,6 +429,7 @@ func CsiSnapshotBrowse(ctx context.Context,
 		StorageClassName: storageClass,
 		RunAsUser:        runAsUser,
 		LocalPort:        localPort,
+		ShowTree:         showTree,
 	})
 	if err != nil {
 		fmt.Printf("Failed to run Snapshot browser (%s)\n", err.Error())
