@@ -55,7 +55,7 @@ func (r *SnapshotBrowseRunner) RunSnapshotBrowse(ctx context.Context, args *type
 func (r *SnapshotBrowseRunner) RunSnapshotBrowseHelper(ctx context.Context, args *types.SnapshotBrowseArgs) error {
 	defer func() {
 		fmt.Println("Cleaning up resources.")
-		r.browserSteps.Cleanup(ctx, r.pvc, r.pod, r.snapshot)
+		r.browserSteps.Cleanup(ctx, r.pvc, r.pod)
 	}()
 
 	if r.KubeCli == nil || r.DynCli == nil {
@@ -94,7 +94,7 @@ type SnapshotBrowserStepper interface {
 	FetchVS(ctx context.Context, args *types.SnapshotBrowseArgs) (*snapv1.VolumeSnapshot, error)
 	CreateInspectorApplication(ctx context.Context, args *types.SnapshotBrowseArgs, snapshot *snapv1.VolumeSnapshot, storageClass *sv1.StorageClass) (*v1.Pod, *v1.PersistentVolumeClaim, error)
 	PortForwardAPod(ctx context.Context, pod *v1.Pod, localPort int) error
-	Cleanup(ctx context.Context, pvc *v1.PersistentVolumeClaim, pod *v1.Pod, snapshot *snapv1.VolumeSnapshot)
+	Cleanup(ctx context.Context, pvc *v1.PersistentVolumeClaim, pod *v1.Pod)
 }
 
 type snapshotBrowserSteps struct {
@@ -236,7 +236,7 @@ func (s *snapshotBrowserSteps) PortForwardAPod(ctx context.Context, pod *v1.Pod,
 	return nil
 }
 
-func (s *snapshotBrowserSteps) Cleanup(ctx context.Context, pvc *v1.PersistentVolumeClaim, pod *v1.Pod, snapshot *snapv1.VolumeSnapshot) {
+func (s *snapshotBrowserSteps) Cleanup(ctx context.Context, pvc *v1.PersistentVolumeClaim, pod *v1.Pod) {
 	if pvc != nil {
 		err := s.cleanerOps.DeletePVC(ctx, pvc.Name, pvc.Namespace)
 		if err != nil {
