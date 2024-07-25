@@ -20,13 +20,13 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	discoveryfake "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/dynamic"
 	fakedynamic "k8s.io/client-go/dynamic/fake"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/kubernetes/fake"
 	k8stesting "k8s.io/client-go/testing"
-	"k8s.io/apimachinery/pkg/runtime/schema"
 )
 
 func (s *CSITestSuite) TestGetDriverNameFromUVSC(c *C) {
@@ -996,7 +996,7 @@ func (f *fakeSnapshotter) GetVolumeSnapshotClass(ctx context.Context, annotation
 func (f *fakeSnapshotter) CloneVolumeSnapshotClass(ctx context.Context, sourceClassName, targetClassName, newDeletionPolicy string, excludeAnnotations []string) error {
 	return f.cvsErr
 }
-func (f *fakeSnapshotter) Create(ctx context.Context, name, namespace, pvcName string, snapshotClass *string, waitForReady bool, labels map[string]string) error {
+func (f *fakeSnapshotter) Create(ctx context.Context, name, namespace, pvcName string, snapshotClass *string, waitForReady bool, labels map[string]string, annotations map[string]string) error {
 	return f.createErr
 }
 func (f *fakeSnapshotter) Get(ctx context.Context, name, namespace string) (*snapv1.VolumeSnapshot, error) {
@@ -1006,16 +1006,16 @@ func (f *fakeSnapshotter) Delete(ctx context.Context, name, namespace string) (*
 	return nil, nil
 }
 func (f *fakeSnapshotter) DeleteContent(ctx context.Context, name string) error { return nil }
-func (f *fakeSnapshotter) Clone(ctx context.Context, name, namespace, cloneName, cloneNamespace string, waitForReady bool, labels map[string]string) error {
+func (f *fakeSnapshotter) Clone(ctx context.Context, name, namespace, cloneName, cloneNamespace string, waitForReady bool, labels map[string]string, annotations map[string]interface{}) error {
 	return nil
 }
 func (f *fakeSnapshotter) GetSource(ctx context.Context, snapshotName, namespace string) (*kansnapshot.Source, error) {
 	return f.gsSrc, f.gsErr
 }
-func (f *fakeSnapshotter) CreateFromSource(ctx context.Context, source *kansnapshot.Source, snapshotName, namespace string, waitForReady bool, labels map[string]string) error {
+func (f *fakeSnapshotter) CreateFromSource(ctx context.Context, source *kansnapshot.Source, snapshotName, namespace string, waitForReady bool, labels map[string]string, annotations map[string]interface{}) error {
 	return f.cfsErr
 }
-func (f *fakeSnapshotter) CreateContentFromSource(ctx context.Context, source *kansnapshot.Source, contentName, snapshotName, namespace, deletionPolicy string) error {
+func (f *fakeSnapshotter) CreateContentFromSource(ctx context.Context, source *kansnapshot.Source, contentName, snapshotName, namespace, deletionPolicy string, annotations map[string]string) error {
 	return nil
 }
 func (f *fakeSnapshotter) WaitOnReadyToUse(ctx context.Context, snapshotName, namespace string) error {
