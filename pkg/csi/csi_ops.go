@@ -568,3 +568,20 @@ func (p *portforward) PortForwardAPod(req *types.PortForwardAPodRequest) error {
 func (p *portforward) FetchRestConfig() (*rest.Config, error) {
 	return kube.LoadConfig()
 }
+
+//go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_kube_executor.go -package=mocks . KubeExecutor
+type KubeExecutor interface {
+	Exec(ctx context.Context, namespace string, podName string, ContainerName string, command []string) (string, error)
+}
+
+type kubeExec struct {
+	kubeCli kubernetes.Interface
+}
+
+func (k *kubeExec) Exec(ctx context.Context, namespace string, podName string, ContainerName string, command []string) (string, error) {
+	if k.kubeCli == nil {
+		return "", fmt.Errorf("kubeCli not initialized")
+	}
+	stdout, _, err := kankube.Exec(ctx, k.kubeCli, namespace, podName, ContainerName, command, nil)
+	return stdout, err
+}
