@@ -49,14 +49,13 @@ func (r *PVCBrowseRunner) RunPVCBrowse(ctx context.Context, args *types.PVCBrows
 			dynCli:  r.DynCli,
 		},
 		portForwardOps: &portforward{},
+		kubeExecutor: &kubeExec{
+			kubeCli: r.KubeCli,
+		},
 		cleanerOps: &cleanse{
 			kubeCli: r.KubeCli,
 			dynCli:  r.DynCli,
 		},
-	}
-	if args.ShowTree {
-		fmt.Println("Show Tree works for PVC!")
-		return nil
 	}
 	return r.RunPVCBrowseHelper(ctx, args)
 }
@@ -74,17 +73,27 @@ func (r *PVCBrowseRunner) RunPVCBrowseHelper(ctx context.Context, args *types.PV
 		return errors.Wrap(err, "Failed to validate arguments.")
 	}
 
-	fmt.Println("Taking a snapshot")
+	fmt.Println("Taking a snapshot.")
 	snapName := snapshotPrefix + time.Now().Format("20060102150405")
 	r.snapshot, err = r.browserSteps.SnapshotPVC(ctx, args, snapName)
 	if err != nil {
 		return errors.Wrap(err, "Failed to snapshot PVC.")
 	}
 
-	fmt.Println("Creating the file browser application.")
+	fmt.Println("Creating the browser pod.")
 	r.pod, r.pvc, err = r.browserSteps.CreateInspectorApplication(ctx, args, r.snapshot, sc)
 	if err != nil {
 		return errors.Wrap(err, "Failed to create inspector application.")
+	}
+
+	if args.ShowTree {
+		fmt.Println("Printing the tree structure from root directory.")
+		stdout, err := r.browserSteps.ExecuteTreeCommand(ctx, args, r.pod)
+		if err != nil {
+			return errors.Wrap(err, "Failed to execute tree command in pod.")
+		}
+		fmt.Println(stdout)
+		return nil
 	}
 
 	fmt.Println("Forwarding the port.")
@@ -101,6 +110,7 @@ type PVCBrowserStepper interface {
 	ValidateArgs(ctx context.Context, args *types.PVCBrowseArgs) (*sv1.StorageClass, error)
 	SnapshotPVC(ctx context.Context, args *types.PVCBrowseArgs, snapshotName string) (*snapv1.VolumeSnapshot, error)
 	CreateInspectorApplication(ctx context.Context, args *types.PVCBrowseArgs, snapshot *snapv1.VolumeSnapshot, storageClass *sv1.StorageClass) (*v1.Pod, *v1.PersistentVolumeClaim, error)
+	ExecuteTreeCommand(ctx context.Context, args *types.PVCBrowseArgs, pod *v1.Pod) (string, error)
 	PortForwardAPod(ctx context.Context, pod *v1.Pod, localPort int) error
 	Cleanup(ctx context.Context, pvc *v1.PersistentVolumeClaim, pod *v1.Pod, snapshot *snapv1.VolumeSnapshot)
 }
@@ -112,6 +122,7 @@ type pvcBrowserSteps struct {
 	snapshotCreateOps    SnapshotCreator
 	portForwardOps       PortForwarder
 	cleanerOps           Cleaner
+	kubeExecutor         KubeExecutor
 	SnapshotGroupVersion *metav1.GroupVersionForDiscovery
 }
 
@@ -199,16 +210,37 @@ func (p *pvcBrowserSteps) CreateInspectorApplication(ctx context.Context, args *
 		RunAsUser:      args.RunAsUser,
 		ContainerImage: "filebrowser/filebrowser:v2",
 		ContainerArgs:  []string{"--noauth", "-r", "/data"},
-		MountPath:      "/data",
+		MountPath:      "/pvc-data",
+	}
+	if args.ShowTree {
+		podArgs = &types.CreatePodArgs{
+			GenerateName:   clonedPodGenerateName,
+			PVCName:        pvc.Name,
+			Namespace:      args.Namespace,
+			RunAsUser:      args.RunAsUser,
+			ContainerImage: "alpine:3.19",
+			Command:        []string{"/bin/sh"},
+			ContainerArgs:  []string{"-c", "while true; do sleep 3600; done"},
+			MountPath:      "/pvc-data",
+		}
 	}
 	pod, err := p.createAppOps.CreatePod(ctx, podArgs)
 	if err != nil {
-		return nil, pvc, errors.Wrap(err, "Failed to create restored Pod")
+		return nil, pvc, errors.Wrap(err, "Failed to create browse Pod")
 	}
 	if err = p.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
 		return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
 	}
 	return pod, pvc, nil
+}
+
+func (p *pvcBrowserSteps) ExecuteTreeCommand(ctx context.Context, args *types.PVCBrowseArgs, pod *v1.Pod) (string, error) {
+	command := []string{"tree", "/pvc-data"}
+	stdout, err := p.kubeExecutor.Exec(ctx, args.Namespace, pod.Name, pod.Spec.Containers[0].Name, command)
+	if err != nil {
+		return "", errors.Wrapf(err, "Error running command:(%v)", command)
+	}
+	return stdout, nil
 }
 
 func (p *pvcBrowserSteps) PortForwardAPod(ctx context.Context, pod *v1.Pod, localPort int) error {
