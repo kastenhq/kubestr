@@ -66,6 +66,21 @@ func (mr *MockSnapshotBrowserStepperMockRecorder) CreateInspectorApplication(arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInspectorApplication", reflect.TypeOf((*MockSnapshotBrowserStepper)(nil).CreateInspectorApplication), arg0, arg1, arg2, arg3)
 }
 
+// ExecuteTreeCommand mocks base method.
+func (m *MockSnapshotBrowserStepper) ExecuteTreeCommand(arg0 context.Context, arg1 *types.SnapshotBrowseArgs, arg2 *v10.Pod) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExecuteTreeCommand", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExecuteTreeCommand indicates an expected call of ExecuteTreeCommand.
+func (mr *MockSnapshotBrowserStepperMockRecorder) ExecuteTreeCommand(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteTreeCommand", reflect.TypeOf((*MockSnapshotBrowserStepper)(nil).ExecuteTreeCommand), arg0, arg1, arg2)
+}
+
 // FetchVS mocks base method.
 func (m *MockSnapshotBrowserStepper) FetchVS(arg0 context.Context, arg1 *types.SnapshotBrowseArgs) (*v1.VolumeSnapshot, error) {
 	m.ctrl.T.Helper()
