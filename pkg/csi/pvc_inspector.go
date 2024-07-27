@@ -92,7 +92,7 @@ func (r *PVCBrowseRunner) RunPVCBrowseHelper(ctx context.Context, args *types.PV
 		if err != nil {
 			return errors.Wrap(err, "Failed to execute tree command in pod.")
 		}
-		fmt.Println(stdout)
+		fmt.Printf("\n%s\n\n", stdout)
 		return nil
 	}
 
