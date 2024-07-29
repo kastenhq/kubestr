@@ -85,10 +85,11 @@ var (
 
 	browseLocalPort int
 	browseCmd       = &cobra.Command{
-		Use:   "browse",
-		Short: "Browse the contents of PVC or VolumeSnapshot",
-		Long:  "Browse the contents of a CSI provisioned PVC or a CSI provisioned VolumeSnapshot.",
-		Args:  cobra.ExactArgs(1),
+		Use:        "browse",
+		Short:      "Browse the contents of PVC or VolumeSnapshot",
+		Long:       "Browse the contents of a CSI provisioned PVC or a CSI provisioned VolumeSnapshot.",
+		Deprecated: "we recommend you to use command 'browse pvc' instead. Command 'browse pvc' will support newer updates for browsing through the contents of a PVC.",
+		Args:       cobra.ExactArgs(1),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return browsePvcCmd.RunE(cmd, args)
 		},
