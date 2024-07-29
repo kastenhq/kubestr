@@ -486,7 +486,7 @@ func (s *CSITestSuite) TestPvcBrowseSnapshotPVC(c *C) {
 	}
 }
 
-func (s *CSITestSuite) TestCreateInspectorApplication(c *C) {
+func (s *CSITestSuite) TestCreateInspectorApplicationForPVC(c *C) {
 	ctx := context.Background()
 	resourceQuantity := resource.MustParse("1Gi")
 	snapshotAPIGroup := "snapshot.storage.k8s.io"
