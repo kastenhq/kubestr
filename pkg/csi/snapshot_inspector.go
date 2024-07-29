@@ -190,7 +190,7 @@ func (s *snapshotBrowserSteps) CreateInspectorApplication(ctx context.Context, a
 		Namespace:      args.Namespace,
 		RunAsUser:      args.RunAsUser,
 		ContainerImage: "filebrowser/filebrowser:v2",
-		ContainerArgs:  []string{"--noauth", "-r", "/data"},
+		ContainerArgs:  []string{"--noauth", "-r", "/snapshot-data"},
 		MountPath:      "/snapshot-data",
 	}
 	if args.ShowTree {

@@ -209,7 +209,7 @@ func (p *pvcBrowserSteps) CreateInspectorApplication(ctx context.Context, args *
 		Namespace:      args.Namespace,
 		RunAsUser:      args.RunAsUser,
 		ContainerImage: "filebrowser/filebrowser:v2",
-		ContainerArgs:  []string{"--noauth", "-r", "/data"},
+		ContainerArgs:  []string{"--noauth", "-r", "/pvc-data"},
 		MountPath:      "/pvc-data",
 	}
 	if args.ShowTree {
