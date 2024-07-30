@@ -996,7 +996,7 @@ func (f *fakeSnapshotter) GetVolumeSnapshotClass(ctx context.Context, annotation
 func (f *fakeSnapshotter) CloneVolumeSnapshotClass(ctx context.Context, sourceClassName, targetClassName, newDeletionPolicy string, excludeAnnotations []string) error {
 	return f.cvsErr
 }
-func (f *fakeSnapshotter) Create(ctx context.Context, pvcName string, snapshotClass *string, waitForReady bool, snapshotMeta kansnapshot.SnapshotMeta) error {
+func (f *fakeSnapshotter) Create(ctx context.Context, pvcName string, snapshotClass *string, waitForReady bool, snapshotMeta kansnapshot.ObjectMeta) error {
 	return f.createErr
 }
 func (f *fakeSnapshotter) Get(ctx context.Context, name, namespace string) (*snapv1.VolumeSnapshot, error) {
@@ -1006,16 +1006,16 @@ func (f *fakeSnapshotter) Delete(ctx context.Context, name, namespace string) (*
 	return nil, nil
 }
 func (f *fakeSnapshotter) DeleteContent(ctx context.Context, name string) error { return nil }
-func (f *fakeSnapshotter) Clone(ctx context.Context, name, namespace string, waitForReady bool, snapshotMeta, contentMeta kansnapshot.SnapshotMeta) error {
+func (f *fakeSnapshotter) Clone(ctx context.Context, name, namespace string, waitForReady bool, snapshotMeta, contentMeta kansnapshot.ObjectMeta) error {
 	return nil
 }
 func (f *fakeSnapshotter) GetSource(ctx context.Context, snapshotName, namespace string) (*kansnapshot.Source, error) {
 	return f.gsSrc, f.gsErr
 }
-func (f *fakeSnapshotter) CreateFromSource(ctx context.Context, source *kansnapshot.Source, waitForReady bool, snapshotMeta, contentMeta kansnapshot.SnapshotMeta) error {
+func (f *fakeSnapshotter) CreateFromSource(ctx context.Context, source *kansnapshot.Source, waitForReady bool, snapshotMeta, contentMeta kansnapshot.ObjectMeta) error {
 	return f.cfsErr
 }
-func (f *fakeSnapshotter) CreateContentFromSource(ctx context.Context, source *kansnapshot.Source, deletionPolicy string, snapshotMeta, contentMeta kansnapshot.SnapshotMeta) error {
+func (f *fakeSnapshotter) CreateContentFromSource(ctx context.Context, source *kansnapshot.Source, deletionPolicy string, snapshotMeta, contentMeta kansnapshot.ObjectMeta) error {
 	return nil
 }
 func (f *fakeSnapshotter) WaitOnReadyToUse(ctx context.Context, snapshotName, namespace string) error {

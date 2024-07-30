@@ -346,7 +346,7 @@ func (c *snapshotCreate) CreateSnapshot(ctx context.Context, snapshotter kansnap
 	if err := args.Validate(); err != nil {
 		return nil, err
 	}
-	snapshotMeta := kansnapshot.SnapshotMeta{
+	snapshotMeta := kansnapshot.ObjectMeta{
 		Name:      args.SnapshotName,
 		Namespace: args.Namespace,
 	}
@@ -401,11 +401,11 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 		Driver:                  snapSrc.Driver,
 		VolumeSnapshotClassName: targetSnapClassName,
 	}
-	snapshotMeta := kansnapshot.SnapshotMeta{
+	snapshotMeta := kansnapshot.ObjectMeta{
 		Name:      snapshotCFSCloneName,
 		Namespace: args.Namespace,
 	}
-	err = snapshotter.CreateFromSource(ctx, src, true, snapshotMeta, kansnapshot.SnapshotMeta{})
+	err = snapshotter.CreateFromSource(ctx, src, true, snapshotMeta, kansnapshot.ObjectMeta{})
 	if err != nil {
 		return errors.Wrapf(err, "Failed to clone snapshot from source (%s)", snapshotCFSCloneName)
 	}
