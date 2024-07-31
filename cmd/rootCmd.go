@@ -118,7 +118,6 @@ var (
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return CsiSnapshotBrowse(context.Background(), args[0],
 				namespace,
-				storageClass,
 				csiCheckRunAsUser,
 				browseLocalPort,
 			)
@@ -202,8 +201,6 @@ func init() {
 	_ = browsePvcCmd.MarkFlagRequired("volumesnapshotclass")
 
 	browseCmd.AddCommand(browseSnapshotCmd)
-	browseSnapshotCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a StorageClass. (Required)")
-	_ = browseSnapshotCmd.MarkFlagRequired("storageclass")
 
 	rootCmd.AddCommand(blockMountCmd)
 	blockMountCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a StorageClass. (Required)")
@@ -395,7 +392,6 @@ func CsiPvcBrowse(ctx context.Context,
 func CsiSnapshotBrowse(ctx context.Context,
 	snapshotName string,
 	namespace string,
-	storageClass string,
 	runAsUser int64,
 	localPort int,
 ) error {
@@ -414,11 +410,10 @@ func CsiSnapshotBrowse(ctx context.Context,
 		DynCli:  dyncli,
 	}
 	err = browseRunner.RunSnapshotBrowse(ctx, &csitypes.SnapshotBrowseArgs{
-		SnapshotName:     snapshotName,
-		Namespace:        namespace,
-		StorageClassName: storageClass,
-		RunAsUser:        runAsUser,
-		LocalPort:        localPort,
+		SnapshotName: snapshotName,
+		Namespace:    namespace,
+		RunAsUser:    runAsUser,
+		LocalPort:    localPort,
 	})
 	if err != nil {
 		fmt.Printf("Failed to run Snapshot browser (%s)\n", err.Error())

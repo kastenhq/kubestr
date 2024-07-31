@@ -135,15 +135,14 @@ func (p *PVCBrowseArgs) Validate() error {
 }
 
 type SnapshotBrowseArgs struct {
-	SnapshotName     string
-	Namespace        string
-	StorageClassName string
-	RunAsUser        int64
-	LocalPort        int
+	SnapshotName string
+	Namespace    string
+	RunAsUser    int64
+	LocalPort    int
 }
 
 func (p *SnapshotBrowseArgs) Validate() error {
-	if p.SnapshotName == "" || p.Namespace == "" || p.StorageClassName == "" {
+	if p.SnapshotName == "" || p.Namespace == "" {
 		return fmt.Errorf("Invalid SnapshotBrowseArgs (%v)", p)
 	}
 	return nil

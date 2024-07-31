@@ -39,24 +39,10 @@ func (s *CSITestSuite) TestRunSnapshotBrowseHelper(c *C) {
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(
-						&sv1.StorageClass{}, nil,
-					),
-					f.stepperOps.EXPECT().FetchVS(gomock.Any(), gomock.Any()).Return(
-						&snapv1.VolumeSnapshot{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "snap1",
-								Namespace: "ns",
-							},
-						},
-						nil,
+						&snapv1.VolumeSnapshot{}, &sv1.StorageClass{}, nil,
 					),
 					f.stepperOps.EXPECT().CreateInspectorApplication(gomock.Any(), gomock.Any(),
-						&snapv1.VolumeSnapshot{
-							ObjectMeta: metav1.ObjectMeta{
-								Name:      "snap1",
-								Namespace: "ns",
-							},
-						}, &sv1.StorageClass{},
+						&snapv1.VolumeSnapshot{}, &sv1.StorageClass{},
 					).Return(
 						&v1.Pod{
 							ObjectMeta: metav1.ObjectMeta{
@@ -105,8 +91,7 @@ func (s *CSITestSuite) TestRunSnapshotBrowseHelper(c *C) {
 			args:    &types.SnapshotBrowseArgs{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil),
-					f.stepperOps.EXPECT().FetchVS(gomock.Any(), gomock.Any()).Return(nil, nil),
+					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, nil),
 					f.stepperOps.EXPECT().CreateInspectorApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, nil),
 					f.stepperOps.EXPECT().PortForwardAPod(gomock.Any(), gomock.Any(), gomock.Any()).Return(fmt.Errorf("portforward error")),
 					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any()),
@@ -121,8 +106,7 @@ func (s *CSITestSuite) TestRunSnapshotBrowseHelper(c *C) {
 			args:    &types.SnapshotBrowseArgs{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil),
-					f.stepperOps.EXPECT().FetchVS(gomock.Any(), gomock.Any()).Return(nil, nil),
+					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, nil),
 					f.stepperOps.EXPECT().CreateInspectorApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, fmt.Errorf("createapp error")),
 					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any()),
 				)
@@ -136,8 +120,7 @@ func (s *CSITestSuite) TestRunSnapshotBrowseHelper(c *C) {
 			args:    &types.SnapshotBrowseArgs{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil),
-					f.stepperOps.EXPECT().FetchVS(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("snapshot error")),
+					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, fmt.Errorf("snapshot error")),
 					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any()),
 				)
 			},
@@ -150,7 +133,7 @@ func (s *CSITestSuite) TestRunSnapshotBrowseHelper(c *C) {
 			args:    &types.SnapshotBrowseArgs{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("snapshot error")),
+					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, fmt.Errorf("validate error")),
 					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any()),
 				)
 			},

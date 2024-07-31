@@ -66,21 +66,6 @@ func (mr *MockSnapshotBrowserStepperMockRecorder) CreateInspectorApplication(arg
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInspectorApplication", reflect.TypeOf((*MockSnapshotBrowserStepper)(nil).CreateInspectorApplication), arg0, arg1, arg2, arg3)
 }
 
-// FetchVS mocks base method.
-func (m *MockSnapshotBrowserStepper) FetchVS(arg0 context.Context, arg1 *types.SnapshotBrowseArgs) (*v1.VolumeSnapshot, error) {
-	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "FetchVS", arg0, arg1)
-	ret0, _ := ret[0].(*v1.VolumeSnapshot)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
-}
-
-// FetchVS indicates an expected call of FetchVS.
-func (mr *MockSnapshotBrowserStepperMockRecorder) FetchVS(arg0, arg1 interface{}) *gomock.Call {
-	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "FetchVS", reflect.TypeOf((*MockSnapshotBrowserStepper)(nil).FetchVS), arg0, arg1)
-}
-
 // PortForwardAPod mocks base method.
 func (m *MockSnapshotBrowserStepper) PortForwardAPod(arg0 context.Context, arg1 *v10.Pod, arg2 int) error {
 	m.ctrl.T.Helper()
@@ -96,12 +81,13 @@ func (mr *MockSnapshotBrowserStepperMockRecorder) PortForwardAPod(arg0, arg1, ar
 }
 
 // ValidateArgs mocks base method.
-func (m *MockSnapshotBrowserStepper) ValidateArgs(arg0 context.Context, arg1 *types.SnapshotBrowseArgs) (*v11.StorageClass, error) {
+func (m *MockSnapshotBrowserStepper) ValidateArgs(arg0 context.Context, arg1 *types.SnapshotBrowseArgs) (*v1.VolumeSnapshot, *v11.StorageClass, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateArgs", arg0, arg1)
-	ret0, _ := ret[0].(*v11.StorageClass)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(*v1.VolumeSnapshot)
+	ret1, _ := ret[1].(*v11.StorageClass)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // ValidateArgs indicates an expected call of ValidateArgs.

@@ -19,6 +19,7 @@ import (
 
 func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 	ctx := context.Background()
+	scName := "sc"
 	vscName := "vsc"
 	pvcName := "pvc"
 	type fields struct {
@@ -32,17 +33,12 @@ func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 	}{
 		{ // valid args
 			args: &types.SnapshotBrowseArgs{
-				SnapshotName:     "vs",
-				StorageClassName: "sc",
-				Namespace:        "ns",
+				SnapshotName: "vs",
+				Namespace:    "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.validateOps.EXPECT().ValidateNamespace(gomock.Any(), "ns").Return(nil),
-					f.validateOps.EXPECT().ValidateStorageClass(gomock.Any(), "sc").Return(
-						&sv1.StorageClass{
-							Provisioner: "p1",
-						}, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
 							GroupVersion: common.SnapshotAlphaVersion,
@@ -61,6 +57,22 @@ func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 							},
 						}, nil,
 					),
+					f.validateOps.EXPECT().ValidatePVC(gomock.Any(), "pvc", "ns").Return(
+						&v1.PersistentVolumeClaim{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "pvc",
+								Namespace: "ns",
+							},
+							Spec: v1.PersistentVolumeClaimSpec{
+								VolumeName:       "vol",
+								StorageClassName: &scName,
+							},
+						}, nil,
+					),
+					f.validateOps.EXPECT().ValidateStorageClass(gomock.Any(), scName).Return(
+						&sv1.StorageClass{
+							Provisioner: "p1",
+						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), "vsc", &metav1.GroupVersionForDiscovery{
 						GroupVersion: common.SnapshotAlphaVersion,
 					}).Return(&unstructured.Unstructured{
@@ -74,17 +86,12 @@ func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 		},
 		{ // driver mismatch
 			args: &types.SnapshotBrowseArgs{
-				SnapshotName:     "vs",
-				StorageClassName: "sc",
-				Namespace:        "ns",
+				SnapshotName: "vs",
+				Namespace:    "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.validateOps.EXPECT().ValidateNamespace(gomock.Any(), "ns").Return(nil),
-					f.validateOps.EXPECT().ValidateStorageClass(gomock.Any(), gomock.Any()).Return(
-						&sv1.StorageClass{
-							Provisioner: "p1",
-						}, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
 							GroupVersion: common.SnapshotAlphaVersion,
@@ -103,6 +110,22 @@ func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 							},
 						}, nil,
 					),
+					f.validateOps.EXPECT().ValidatePVC(gomock.Any(), "pvc", "ns").Return(
+						&v1.PersistentVolumeClaim{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "pvc",
+								Namespace: "ns",
+							},
+							Spec: v1.PersistentVolumeClaimSpec{
+								VolumeName:       "vol",
+								StorageClassName: &scName,
+							},
+						}, nil,
+					),
+					f.validateOps.EXPECT().ValidateStorageClass(gomock.Any(), gomock.Any()).Return(
+						&sv1.StorageClass{
+							Provisioner: "p1",
+						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), "vsc", &metav1.GroupVersionForDiscovery{
 						GroupVersion: common.SnapshotAlphaVersion,
 					}).Return(&unstructured.Unstructured{
@@ -116,14 +139,12 @@ func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 		},
 		{ // vsc error
 			args: &types.SnapshotBrowseArgs{
-				SnapshotName:     "vs",
-				StorageClassName: "sc",
-				Namespace:        "ns",
+				SnapshotName: "vs",
+				Namespace:    "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.validateOps.EXPECT().ValidateNamespace(gomock.Any(), "ns").Return(nil),
-					f.validateOps.EXPECT().ValidateStorageClass(gomock.Any(), gomock.Any()).Return(nil, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(nil, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshot(gomock.Any(), "vs", "ns", gomock.Any()).Return(
 						&snapv1.VolumeSnapshot{
@@ -139,6 +160,19 @@ func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 							},
 						}, nil,
 					),
+					f.validateOps.EXPECT().ValidatePVC(gomock.Any(), "pvc", "ns").Return(
+						&v1.PersistentVolumeClaim{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "pvc",
+								Namespace: "ns",
+							},
+							Spec: v1.PersistentVolumeClaimSpec{
+								VolumeName:       "vol",
+								StorageClassName: &scName,
+							},
+						}, nil,
+					),
+					f.validateOps.EXPECT().ValidateStorageClass(gomock.Any(), gomock.Any()).Return(nil, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("vsc error")),
 				)
 			},
@@ -146,14 +180,12 @@ func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 		},
 		{ // get driver versionn error
 			args: &types.SnapshotBrowseArgs{
-				SnapshotName:     "vs",
-				StorageClassName: "sc",
-				Namespace:        "ns",
+				SnapshotName: "vs",
+				Namespace:    "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.validateOps.EXPECT().ValidateNamespace(gomock.Any(), "ns").Return(nil),
-					f.validateOps.EXPECT().ValidateStorageClass(gomock.Any(), gomock.Any()).Return(nil, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(nil, fmt.Errorf("driver version error")),
 				)
 			},
@@ -161,13 +193,39 @@ func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 		},
 		{ // sc error
 			args: &types.SnapshotBrowseArgs{
-				SnapshotName:     "vs",
-				StorageClassName: "sc",
-				Namespace:        "ns",
+				SnapshotName: "vs",
+				Namespace:    "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.validateOps.EXPECT().ValidateNamespace(gomock.Any(), "ns").Return(nil),
+					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(nil, nil),
+					f.validateOps.EXPECT().ValidateVolumeSnapshot(gomock.Any(), "vs", "ns", gomock.Any()).Return(
+						&snapv1.VolumeSnapshot{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "vs",
+								Namespace: "ns",
+							},
+							Spec: snapv1.VolumeSnapshotSpec{
+								Source: snapv1.VolumeSnapshotSource{
+									PersistentVolumeClaimName: &pvcName,
+								},
+								VolumeSnapshotClassName: &vscName,
+							},
+						}, nil,
+					),
+					f.validateOps.EXPECT().ValidatePVC(gomock.Any(), "pvc", "ns").Return(
+						&v1.PersistentVolumeClaim{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "pvc",
+								Namespace: "ns",
+							},
+							Spec: v1.PersistentVolumeClaimSpec{
+								VolumeName:       "vol",
+								StorageClassName: &scName,
+							},
+						}, nil,
+					),
 					f.validateOps.EXPECT().ValidateStorageClass(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("sc error")),
 				)
 			},
@@ -175,14 +233,12 @@ func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 		},
 		{ // validate vs error
 			args: &types.SnapshotBrowseArgs{
-				SnapshotName:     "vs",
-				StorageClassName: "sc",
-				Namespace:        "ns",
+				SnapshotName: "vs",
+				Namespace:    "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.validateOps.EXPECT().ValidateNamespace(gomock.Any(), "ns").Return(nil),
-					f.validateOps.EXPECT().ValidateStorageClass(gomock.Any(), gomock.Any()).Return(nil, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(nil, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshot(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("validate vs error")),
 				)
@@ -191,9 +247,8 @@ func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 		},
 		{ // validate ns error
 			args: &types.SnapshotBrowseArgs{
-				SnapshotName:     "vs",
-				StorageClassName: "sc",
-				Namespace:        "ns",
+				SnapshotName: "vs",
+				Namespace:    "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
@@ -204,25 +259,15 @@ func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 		},
 		{ // validate vs error
 			args: &types.SnapshotBrowseArgs{
-				SnapshotName:     "",
-				StorageClassName: "sc",
-				Namespace:        "ns",
-			},
-			errChecker: NotNil,
-		},
-		{ // validate vsc error
-			args: &types.SnapshotBrowseArgs{
-				SnapshotName:     "dfd",
-				StorageClassName: "",
-				Namespace:        "ns",
+				SnapshotName: "",
+				Namespace:    "ns",
 			},
 			errChecker: NotNil,
 		},
 		{ // validate ns error
 			args: &types.SnapshotBrowseArgs{
-				SnapshotName:     "dfd",
-				StorageClassName: "ddd",
-				Namespace:        "",
+				SnapshotName: "dfd",
+				Namespace:    "",
 			},
 			errChecker: NotNil,
 		},
@@ -240,97 +285,8 @@ func (s *CSITestSuite) TestSnapshotBrowseValidateArgs(c *C) {
 			validateOps:     f.validateOps,
 			versionFetchOps: f.versionOps,
 		}
-		_, err := stepper.ValidateArgs(ctx, tc.args)
+		_, _, err := stepper.ValidateArgs(ctx, tc.args)
 		c.Check(err, tc.errChecker)
-	}
-}
-
-func (s *CSITestSuite) TestSnapshotBrowseFetchVS(c *C) {
-	ctx := context.Background()
-	snapshotter := &fakeSnapshotter{name: "snapshotter"}
-	groupversion := &metav1.GroupVersionForDiscovery{
-		GroupVersion: "gv",
-		Version:      "v",
-	}
-	type fields struct {
-		snapshotOps *mocks.MockSnapshotFetcher
-	}
-	for _, tc := range []struct {
-		args        *types.SnapshotBrowseArgs
-		prepare     func(f *fields)
-		errChecker  Checker
-		snapChecker Checker
-	}{
-		{
-			args: &types.SnapshotBrowseArgs{
-				Namespace:        "ns",
-				StorageClassName: "sc",
-				SnapshotName:     "vs",
-			},
-			prepare: func(f *fields) {
-				gomock.InOrder(
-					f.snapshotOps.EXPECT().NewSnapshotter().Return(snapshotter, nil),
-					f.snapshotOps.EXPECT().GetVolumeSnapshot(gomock.Any(), snapshotter, &types.FetchSnapshotArgs{
-						Namespace:    "ns",
-						SnapshotName: "vs",
-					}).Return(&snapv1.VolumeSnapshot{
-						ObjectMeta: metav1.ObjectMeta{
-							Name: "vs",
-						},
-					}, nil),
-				)
-			},
-			errChecker:  IsNil,
-			snapChecker: NotNil,
-		},
-		{
-			args: &types.SnapshotBrowseArgs{
-				Namespace:        "ns",
-				StorageClassName: "sc",
-				SnapshotName:     "vs",
-			},
-			prepare: func(f *fields) {
-				gomock.InOrder(
-					f.snapshotOps.EXPECT().NewSnapshotter().Return(snapshotter, nil),
-					f.snapshotOps.EXPECT().GetVolumeSnapshot(gomock.Any(), snapshotter, &types.FetchSnapshotArgs{
-						Namespace:    "ns",
-						SnapshotName: "vs",
-					}).Return(nil, fmt.Errorf("error")),
-				)
-			},
-			errChecker:  NotNil,
-			snapChecker: IsNil,
-		},
-		{
-			args: &types.SnapshotBrowseArgs{
-				Namespace:        "ns",
-				StorageClassName: "sc",
-				SnapshotName:     "vs",
-			},
-			prepare: func(f *fields) {
-				gomock.InOrder(
-					f.snapshotOps.EXPECT().NewSnapshotter().Return(nil, fmt.Errorf("error")),
-				)
-			},
-			errChecker:  NotNil,
-			snapChecker: IsNil,
-		},
-	} {
-		ctrl := gomock.NewController(c)
-		defer ctrl.Finish()
-		f := fields{
-			snapshotOps: mocks.NewMockSnapshotFetcher(ctrl),
-		}
-		if tc.prepare != nil {
-			tc.prepare(&f)
-		}
-		stepper := &snapshotBrowserSteps{
-			snapshotFetchOps:     f.snapshotOps,
-			SnapshotGroupVersion: groupversion,
-		}
-		snapshot, err := stepper.FetchVS(ctx, tc.args)
-		c.Check(err, tc.errChecker)
-		c.Check(snapshot, tc.snapChecker)
 	}
 }
 
