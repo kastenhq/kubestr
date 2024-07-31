@@ -120,7 +120,6 @@ var (
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return CsiSnapshotBrowse(context.Background(), args[0],
 				namespace,
-				storageClass,
 				csiCheckRunAsUser,
 				browseLocalPort,
 			)
@@ -205,8 +204,6 @@ func init() {
 	browsePvcCmd.Flags().BoolVarP(&showTree, "show-tree", "t", false, "Prints the contents of PVC")
 
 	browseCmd.AddCommand(browseSnapshotCmd)
-	browseSnapshotCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a StorageClass. (Required)")
-	_ = browseSnapshotCmd.MarkFlagRequired("storageclass")
 	browseSnapshotCmd.Flags().BoolVarP(&showTree, "show-tree", "t", false, "Prints the contents of VolumeSnapshot")
 
 	rootCmd.AddCommand(blockMountCmd)
@@ -400,7 +397,6 @@ func CsiPvcBrowse(ctx context.Context,
 func CsiSnapshotBrowse(ctx context.Context,
 	snapshotName string,
 	namespace string,
-	storageClass string,
 	runAsUser int64,
 	localPort int,
 ) error {
@@ -419,12 +415,11 @@ func CsiSnapshotBrowse(ctx context.Context,
 		DynCli:  dyncli,
 	}
 	err = browseRunner.RunSnapshotBrowse(ctx, &csitypes.SnapshotBrowseArgs{
-		SnapshotName:     snapshotName,
-		Namespace:        namespace,
-		StorageClassName: storageClass,
-		RunAsUser:        runAsUser,
-		LocalPort:        localPort,
-		ShowTree:         showTree,
+		SnapshotName: snapshotName,
+		Namespace:    namespace,
+		RunAsUser:    runAsUser,
+		LocalPort:    localPort,
+		ShowTree:     showTree,
 	})
 	if err != nil {
 		fmt.Printf("Failed to run Snapshot browser (%s)\n", err.Error())

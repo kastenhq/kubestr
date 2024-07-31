@@ -111,12 +111,13 @@ func (mr *MockSnapshotBrowserStepperMockRecorder) PortForwardAPod(arg0, arg1, ar
 }
 
 // ValidateArgs mocks base method.
-func (m *MockSnapshotBrowserStepper) ValidateArgs(arg0 context.Context, arg1 *types.SnapshotBrowseArgs) (*v11.StorageClass, error) {
+func (m *MockSnapshotBrowserStepper) ValidateArgs(arg0 context.Context, arg1 *types.SnapshotBrowseArgs) (*v1.VolumeSnapshot, *v11.StorageClass, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateArgs", arg0, arg1)
-	ret0, _ := ret[0].(*v11.StorageClass)
-	ret1, _ := ret[1].(error)
-	return ret0, ret1
+	ret0, _ := ret[0].(*v1.VolumeSnapshot)
+	ret1, _ := ret[1].(*v11.StorageClass)
+	ret2, _ := ret[2].(error)
+	return ret0, ret1, ret2
 }
 
 // ValidateArgs indicates an expected call of ValidateArgs.

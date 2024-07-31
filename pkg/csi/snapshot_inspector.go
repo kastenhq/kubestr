@@ -69,16 +69,12 @@ func (r *SnapshotBrowseRunner) RunSnapshotBrowseHelper(ctx context.Context, args
 		return fmt.Errorf("cli uninitialized")
 	}
 
-	sc, err := r.browserSteps.ValidateArgs(ctx, args)
+	fmt.Println("Fetching the snapshot.")
+	vs, sc, err := r.browserSteps.ValidateArgs(ctx, args)
 	if err != nil {
 		return errors.Wrap(err, "Failed to validate arguments.")
 	}
-
-	fmt.Println("Fetching the snapshot.")
-	r.snapshot, err = r.browserSteps.FetchVS(ctx, args)
-	if err != nil {
-		return errors.Wrap(err, "Failed to fetch VolumeSnapshot.")
-	}
+	r.snapshot = vs
 
 	fmt.Println("Creating the browser pod.")
 	r.pod, r.pvc, err = r.browserSteps.CreateInspectorApplication(ctx, args, r.snapshot, sc)
@@ -107,8 +103,7 @@ func (r *SnapshotBrowseRunner) RunSnapshotBrowseHelper(ctx context.Context, args
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_snapshot_browser_stepper.go -package=mocks . SnapshotBrowserStepper
 type SnapshotBrowserStepper interface {
-	ValidateArgs(ctx context.Context, args *types.SnapshotBrowseArgs) (*sv1.StorageClass, error)
-	FetchVS(ctx context.Context, args *types.SnapshotBrowseArgs) (*snapv1.VolumeSnapshot, error)
+	ValidateArgs(ctx context.Context, args *types.SnapshotBrowseArgs) (*snapv1.VolumeSnapshot, *sv1.StorageClass, error)
 	CreateInspectorApplication(ctx context.Context, args *types.SnapshotBrowseArgs, snapshot *snapv1.VolumeSnapshot, storageClass *sv1.StorageClass) (*v1.Pod, *v1.PersistentVolumeClaim, error)
 	ExecuteTreeCommand(ctx context.Context, args *types.SnapshotBrowseArgs, pod *v1.Pod) (string, error)
 	PortForwardAPod(ctx context.Context, pod *v1.Pod, localPort int) error
@@ -126,47 +121,39 @@ type snapshotBrowserSteps struct {
 	SnapshotGroupVersion *metav1.GroupVersionForDiscovery
 }
 
-func (s *snapshotBrowserSteps) ValidateArgs(ctx context.Context, args *types.SnapshotBrowseArgs) (*sv1.StorageClass, error) {
+func (s *snapshotBrowserSteps) ValidateArgs(ctx context.Context, args *types.SnapshotBrowseArgs) (*snapv1.VolumeSnapshot, *sv1.StorageClass, error) {
 	if err := args.Validate(); err != nil {
-		return nil, errors.Wrap(err, "Failed to validate input arguments")
+		return nil, nil, errors.Wrap(err, "Failed to validate input arguments")
 	}
 	if err := s.validateOps.ValidateNamespace(ctx, args.Namespace); err != nil {
-		return nil, errors.Wrap(err, "Failed to validate Namespace")
-	}
-	sc, err := s.validateOps.ValidateStorageClass(ctx, args.StorageClassName)
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to validate SC")
+		return nil, nil, errors.Wrap(err, "Failed to validate Namespace")
 	}
 	groupVersion, err := s.versionFetchOps.GetCSISnapshotGroupVersion()
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to fetch groupVersion")
+		return nil, nil, errors.Wrap(err, "Failed to fetch groupVersion")
 	}
 	s.SnapshotGroupVersion = groupVersion
 	snapshot, err := s.validateOps.ValidateVolumeSnapshot(ctx, args.SnapshotName, args.Namespace, groupVersion)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to validate VolumeSnapshot")
+		return nil, nil, errors.Wrap(err, "Failed to validate VolumeSnapshot")
+	}
+	pvc, err := s.validateOps.ValidatePVC(ctx, *snapshot.Spec.Source.PersistentVolumeClaimName, args.Namespace)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+	}
+	sc, err := s.validateOps.ValidateStorageClass(ctx, *pvc.Spec.StorageClassName)
+	if err != nil {
+		return nil, nil, errors.Wrap(err, "Failed to validate SC")
 	}
 	uVSC, err := s.validateOps.ValidateVolumeSnapshotClass(ctx, *snapshot.Spec.VolumeSnapshotClassName, groupVersion)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to validate VolumeSnapshotClass")
+		return nil, nil, errors.Wrap(err, "Failed to validate VolumeSnapshotClass")
 	}
 	vscDriver := getDriverNameFromUVSC(*uVSC, groupVersion.GroupVersion)
 	if sc.Provisioner != vscDriver {
-		return nil, fmt.Errorf("StorageClass provisioner (%s) and VolumeSnapshotClass driver (%s) are different.", sc.Provisioner, vscDriver)
+		return nil, nil, fmt.Errorf("StorageClass provisioner (%s) and VolumeSnapshotClass driver (%s) are different.", sc.Provisioner, vscDriver)
 	}
-	return sc, nil
-}
-
-func (s *snapshotBrowserSteps) FetchVS(ctx context.Context, args *types.SnapshotBrowseArgs) (*snapv1.VolumeSnapshot, error) {
-	snapshotter, err := s.snapshotFetchOps.NewSnapshotter()
-	if err != nil {
-		return nil, errors.Wrap(err, "Failed to load snapshotter")
-	}
-	snapArgs := &types.FetchSnapshotArgs{
-		Namespace:    args.Namespace,
-		SnapshotName: args.SnapshotName,
-	}
-	return s.snapshotFetchOps.GetVolumeSnapshot(ctx, snapshotter, snapArgs)
+	return snapshot, sc, nil
 }
 
 func (s *snapshotBrowserSteps) CreateInspectorApplication(ctx context.Context, args *types.SnapshotBrowseArgs, snapshot *snapv1.VolumeSnapshot, storageClass *sv1.StorageClass) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
