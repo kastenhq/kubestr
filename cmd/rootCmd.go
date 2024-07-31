@@ -193,7 +193,7 @@ func init() {
 	rootCmd.AddCommand(browseCmd)
 	browseCmd.Flags().StringVarP(&csiCheckVolumeSnapshotClass, "volumesnapshotclass", "v", "", "The name of a VolumeSnapshotClass. (Required)")
 	_ = browseCmd.MarkFlagRequired("volumesnapshotclass")
-	browseCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of the PersistentVolumeClaim.")
+	browseCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of the above resource.")
 	browseCmd.PersistentFlags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
 	browseCmd.PersistentFlags().IntVarP(&browseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
 
@@ -204,9 +204,6 @@ func init() {
 	browseCmd.AddCommand(browseSnapshotCmd)
 	browseSnapshotCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a StorageClass. (Required)")
 	_ = browseSnapshotCmd.MarkFlagRequired("storageclass")
-	browseSnapshotCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of the VolumeSnapshot.")
-	browseSnapshotCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
-	browseSnapshotCmd.Flags().IntVarP(&browseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
 
 	rootCmd.AddCommand(blockMountCmd)
 	blockMountCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a StorageClass. (Required)")
