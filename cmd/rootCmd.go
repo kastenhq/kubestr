@@ -108,6 +108,7 @@ var (
 				csiCheckVolumeSnapshotClass,
 				csiCheckRunAsUser,
 				browseLocalPort,
+				showTree,
 			)
 		},
 	}
@@ -122,6 +123,7 @@ var (
 				namespace,
 				csiCheckRunAsUser,
 				browseLocalPort,
+				showTree,
 			)
 		},
 	}
@@ -365,6 +367,7 @@ func CsiPvcBrowse(ctx context.Context,
 	volumeSnapshotClass string,
 	runAsUser int64,
 	localPort int,
+	showTree bool,
 ) error {
 	kubecli, err := kubestr.LoadKubeCli()
 	if err != nil {
@@ -399,6 +402,7 @@ func CsiSnapshotBrowse(ctx context.Context,
 	namespace string,
 	runAsUser int64,
 	localPort int,
+	showTree bool,
 ) error {
 	kubecli, err := kubestr.LoadKubeCli()
 	if err != nil {
