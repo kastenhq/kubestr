@@ -1015,7 +1015,7 @@ func (f *fakeSnapshotter) GetSource(ctx context.Context, snapshotName, namespace
 func (f *fakeSnapshotter) CreateFromSource(ctx context.Context, source *kansnapshot.Source, waitForReady bool, snapshotMeta, contentMeta kansnapshot.ObjectMeta) error {
 	return f.cfsErr
 }
-func (f *fakeSnapshotter) CreateContentFromSource(ctx context.Context, source *kansnapshot.Source, deletionPolicy string, snapshotMeta, contentMeta kansnapshot.ObjectMeta) error {
+func (f *fakeSnapshotter) CreateContentFromSource(ctx context.Context, source *kansnapshot.Source, snapshotName, snapshotNs, deletionPolicy string, contentMeta kansnapshot.ObjectMeta) error {
 	return nil
 }
 func (f *fakeSnapshotter) WaitOnReadyToUse(ctx context.Context, snapshotName, namespace string) error {

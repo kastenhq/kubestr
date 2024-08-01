@@ -253,14 +253,8 @@ github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/kanisterio/errkit v0.0.2 h1:3v3HGz9lHIbZR6Jr9qIJpRjaqUX0rsJSLMEQGsMHiUk=
 github.com/kanisterio/errkit v0.0.2/go.mod h1:ViQ6kPJ2gTJDEvRytmwde7pzG9/sndObF9BPZoEZixc=
-github.com/kanisterio/kanister v0.0.0-20240725120146-fae441e8481b h1:RhBqEQev5X9C9R9wnTRzy2PG/PlVKreWIWNLRP/C230=
-github.com/kanisterio/kanister v0.0.0-20240725120146-fae441e8481b/go.mod h1:Ip0FYa0gHtjNHlzH4wSwXcW4nxb90wR7ASFiGfD4smA=
-github.com/kanisterio/kanister v0.0.0-20240726192033-216a9ef59cc0 h1:pPboYUxH2zqpD25l+cOr+AseUvJ0vyobnQAwcTjhEcA=
-github.com/kanisterio/kanister v0.0.0-20240726192033-216a9ef59cc0/go.mod h1:Ip0FYa0gHtjNHlzH4wSwXcW4nxb90wR7ASFiGfD4smA=
-github.com/kanisterio/kanister v0.0.0-20240730045409-e03ba2789f25 h1:0GmFyPysv8r1Ip/rt4YHqQXXiSlOKcZEggrv8XYrF84=
-github.com/kanisterio/kanister v0.0.0-20240730045409-e03ba2789f25/go.mod h1:Ip0FYa0gHtjNHlzH4wSwXcW4nxb90wR7ASFiGfD4smA=
-github.com/kanisterio/kanister v0.0.0-20240730063013-3de7196eac6e h1:+XJWakF+bOKxeFVhdfMiXccGNou+CxSSKn1TJyQCLXg=
-github.com/kanisterio/kanister v0.0.0-20240730063013-3de7196eac6e/go.mod h1:Ip0FYa0gHtjNHlzH4wSwXcW4nxb90wR7ASFiGfD4smA=
+github.com/kanisterio/kanister v0.0.0-20240801123115-043d6a6e30b2 h1:SFqF2W6WJePvxCedwTgJVsYx3Z1L5HVrnBSal/qqQAA=
+github.com/kanisterio/kanister v0.0.0-20240801123115-043d6a6e30b2/go.mod h1:Ip0FYa0gHtjNHlzH4wSwXcW4nxb90wR7ASFiGfD4smA=
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=
