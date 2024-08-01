@@ -199,14 +199,13 @@ func init() {
 	browseCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "Namespace of the resources provided in command.")
 	browseCmd.PersistentFlags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
 	browseCmd.PersistentFlags().IntVarP(&browseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
+	browseCmd.PersistentFlags().BoolVarP(&showTree, "show-tree", "t", false, "Prints the contents of given PVC or VolumeSnapshot")
 
 	browseCmd.AddCommand(browsePvcCmd)
 	browsePvcCmd.Flags().StringVarP(&csiCheckVolumeSnapshotClass, "volumesnapshotclass", "v", "", "The name of a VolumeSnapshotClass. (Required)")
 	_ = browsePvcCmd.MarkFlagRequired("volumesnapshotclass")
-	browsePvcCmd.Flags().BoolVarP(&showTree, "show-tree", "t", false, "Prints the contents of PVC")
 
 	browseCmd.AddCommand(browseSnapshotCmd)
-	browseSnapshotCmd.Flags().BoolVarP(&showTree, "show-tree", "t", false, "Prints the contents of VolumeSnapshot")
 
 	rootCmd.AddCommand(blockMountCmd)
 	blockMountCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a StorageClass. (Required)")
