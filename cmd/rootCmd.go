@@ -204,10 +204,8 @@ func init() {
 	browseCmd.AddCommand(browsePvcCmd)
 	browsePvcCmd.Flags().StringVarP(&csiCheckVolumeSnapshotClass, "volumesnapshotclass", "v", "", "The name of a VolumeSnapshotClass. (Required)")
 	_ = browsePvcCmd.MarkFlagRequired("volumesnapshotclass")
-	browsePvcCmd.Flags().BoolVarP(&showTree, "show-tree", "t", false, "Prints the contents of PVC")
 
 	browseCmd.AddCommand(browseSnapshotCmd)
-	browseSnapshotCmd.Flags().BoolVarP(&showTree, "show-tree", "t", false, "Prints the contents of VolumeSnapshot")
 
 	rootCmd.AddCommand(blockMountCmd)
 	blockMountCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a StorageClass. (Required)")
