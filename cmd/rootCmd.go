@@ -128,20 +128,6 @@ var (
 		},
 	}
 
-	browseSnapshotCmd = &cobra.Command{
-		Use:   "snapshot [Snapshot name]",
-		Short: "Browse the contents of a CSI VolumeSnapshot via file browser",
-		Long:  "Browse the contents of a CSI provisioned VolumeSnapshot by cloning the volume and mounting it with a file browser.",
-		Args:  cobra.ExactArgs(1),
-		RunE: func(cmd *cobra.Command, args []string) error {
-			return CsiSnapshotBrowse(context.Background(), args[0],
-				namespace,
-				csiCheckRunAsUser,
-				browseLocalPort,
-			)
-		},
-	}
-
 	blockMountRunAsUser          int64
 	blockMountCleanup            bool
 	blockMountCleanupOnly        bool
