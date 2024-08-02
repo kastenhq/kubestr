@@ -66,6 +66,21 @@ func (mr *MockPVCBrowserStepperMockRecorder) CreateInspectorApplication(arg0, ar
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInspectorApplication", reflect.TypeOf((*MockPVCBrowserStepper)(nil).CreateInspectorApplication), arg0, arg1, arg2, arg3)
 }
 
+// ExecuteTreeCommand mocks base method.
+func (m *MockPVCBrowserStepper) ExecuteTreeCommand(arg0 context.Context, arg1 *types.PVCBrowseArgs, arg2 *v10.Pod) (string, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ExecuteTreeCommand", arg0, arg1, arg2)
+	ret0, _ := ret[0].(string)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ExecuteTreeCommand indicates an expected call of ExecuteTreeCommand.
+func (mr *MockPVCBrowserStepperMockRecorder) ExecuteTreeCommand(arg0, arg1, arg2 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteTreeCommand", reflect.TypeOf((*MockPVCBrowserStepper)(nil).ExecuteTreeCommand), arg0, arg1, arg2)
+}
+
 // PortForwardAPod mocks base method.
 func (m *MockPVCBrowserStepper) PortForwardAPod(arg0 context.Context, arg1 *v10.Pod, arg2 int) error {
 	m.ctrl.T.Helper()

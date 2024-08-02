@@ -345,8 +345,8 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForSnapshot(c *C) {
 						GenerateName:   clonedPodGenerateName,
 						PVCName:        "pvc",
 						Namespace:      "ns",
-						ContainerArgs:  []string{"--noauth", "-r", "/data"},
-						MountPath:      "/data",
+						ContainerArgs:  []string{"--noauth", "-r", "/snapshot-data"},
+						MountPath:      "/snapshot-data",
 						RunAsUser:      100,
 						ContainerImage: "filebrowser/filebrowser:v2",
 					}).Return(&v1.Pod{
@@ -400,8 +400,8 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForSnapshot(c *C) {
 						GenerateName:   clonedPodGenerateName,
 						PVCName:        "pvc",
 						Namespace:      "ns",
-						ContainerArgs:  []string{"--noauth", "-r", "/data"},
-						MountPath:      "/data",
+						ContainerArgs:  []string{"--noauth", "-r", "/snapshot-data"},
+						MountPath:      "/snapshot-data",
 						RunAsUser:      100,
 						ContainerImage: "filebrowser/filebrowser:v2",
 					}).Return(&v1.Pod{

@@ -125,6 +125,7 @@ type PVCBrowseArgs struct {
 	VolumeSnapshotClass string
 	RunAsUser           int64
 	LocalPort           int
+	ShowTree            bool
 }
 
 func (p *PVCBrowseArgs) Validate() error {
@@ -139,6 +140,7 @@ type SnapshotBrowseArgs struct {
 	Namespace    string
 	RunAsUser    int64
 	LocalPort    int
+	ShowTree     bool
 }
 
 func (p *SnapshotBrowseArgs) Validate() error {

@@ -95,6 +95,8 @@ var (
 		},
 	}
 
+	showTree bool
+
 	browsePvcCmd = &cobra.Command{
 		Use:   "pvc [PVC name]",
 		Short: "Browse the contents of a CSI PVC via file browser",
@@ -106,6 +108,7 @@ var (
 				csiCheckVolumeSnapshotClass,
 				csiCheckRunAsUser,
 				browseLocalPort,
+				showTree,
 			)
 		},
 	}
@@ -120,6 +123,7 @@ var (
 				namespace,
 				csiCheckRunAsUser,
 				browseLocalPort,
+				showTree,
 			)
 		},
 	}
@@ -195,6 +199,7 @@ func init() {
 	browseCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of the resource to browse.")
 	browseCmd.PersistentFlags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
 	browseCmd.PersistentFlags().IntVarP(&browseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
+	browseCmd.PersistentFlags().BoolVarP(&showTree, "show-tree", "t", false, "Prints the contents of given PVC or VolumeSnapshot")
 
 	browseCmd.AddCommand(browsePvcCmd)
 	browsePvcCmd.Flags().StringVarP(&csiCheckVolumeSnapshotClass, "volumesnapshotclass", "v", "", "The name of a VolumeSnapshotClass. (Required)")
@@ -361,6 +366,7 @@ func CsiPvcBrowse(ctx context.Context,
 	volumeSnapshotClass string,
 	runAsUser int64,
 	localPort int,
+	showTree bool,
 ) error {
 	kubecli, err := kubestr.LoadKubeCli()
 	if err != nil {
@@ -382,6 +388,7 @@ func CsiPvcBrowse(ctx context.Context,
 		VolumeSnapshotClass: volumeSnapshotClass,
 		RunAsUser:           runAsUser,
 		LocalPort:           localPort,
+		ShowTree:            showTree,
 	})
 	if err != nil {
 		fmt.Printf("Failed to run PVC browser (%s)\n", err.Error())
@@ -394,6 +401,7 @@ func CsiSnapshotBrowse(ctx context.Context,
 	namespace string,
 	runAsUser int64,
 	localPort int,
+	showTree bool,
 ) error {
 	kubecli, err := kubestr.LoadKubeCli()
 	if err != nil {
@@ -414,6 +422,7 @@ func CsiSnapshotBrowse(ctx context.Context,
 		Namespace:    namespace,
 		RunAsUser:    runAsUser,
 		LocalPort:    localPort,
+		ShowTree:     showTree,
 	})
 	if err != nil {
 		fmt.Printf("Failed to run Snapshot browser (%s)\n", err.Error())
