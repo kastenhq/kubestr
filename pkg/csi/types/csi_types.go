@@ -94,6 +94,18 @@ func (c *CreateSnapshotArgs) Validate() error {
 	return nil
 }
 
+type FetchSnapshotArgs struct {
+	Namespace    string
+	SnapshotName string
+}
+
+func (c *FetchSnapshotArgs) Validate() error {
+	if c.Namespace == "" || c.SnapshotName == "" {
+		return fmt.Errorf("Invalid FetchSnapshotArgs (%v)", c)
+	}
+	return nil
+}
+
 type CreateFromSourceCheckArgs struct {
 	VolumeSnapshotClass string
 	SnapshotName        string
@@ -118,6 +130,20 @@ type PVCBrowseArgs struct {
 func (p *PVCBrowseArgs) Validate() error {
 	if p.PVCName == "" || p.Namespace == "" || p.VolumeSnapshotClass == "" {
 		return fmt.Errorf("Invalid PVCBrowseArgs (%v)", p)
+	}
+	return nil
+}
+
+type SnapshotBrowseArgs struct {
+	SnapshotName string
+	Namespace    string
+	RunAsUser    int64
+	LocalPort    int
+}
+
+func (p *SnapshotBrowseArgs) Validate() error {
+	if p.SnapshotName == "" || p.Namespace == "" {
+		return fmt.Errorf("Invalid SnapshotBrowseArgs (%v)", p)
 	}
 	return nil
 }

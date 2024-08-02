@@ -9,9 +9,10 @@ import (
 	reflect "reflect"
 
 	gomock "github.com/golang/mock/gomock"
-	v1 "k8s.io/api/core/v1"
-	v10 "k8s.io/api/storage/v1"
-	v11 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	v1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
+	v10 "k8s.io/api/core/v1"
+	v11 "k8s.io/api/storage/v1"
+	v12 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	unstructured "k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
 
@@ -39,10 +40,10 @@ func (m *MockArgumentValidator) EXPECT() *MockArgumentValidatorMockRecorder {
 }
 
 // FetchPV mocks base method.
-func (m *MockArgumentValidator) FetchPV(arg0 context.Context, arg1 string) (*v1.PersistentVolume, error) {
+func (m *MockArgumentValidator) FetchPV(arg0 context.Context, arg1 string) (*v10.PersistentVolume, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "FetchPV", arg0, arg1)
-	ret0, _ := ret[0].(*v1.PersistentVolume)
+	ret0, _ := ret[0].(*v10.PersistentVolume)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -68,10 +69,10 @@ func (mr *MockArgumentValidatorMockRecorder) ValidateNamespace(arg0, arg1 interf
 }
 
 // ValidatePVC mocks base method.
-func (m *MockArgumentValidator) ValidatePVC(arg0 context.Context, arg1, arg2 string) (*v1.PersistentVolumeClaim, error) {
+func (m *MockArgumentValidator) ValidatePVC(arg0 context.Context, arg1, arg2 string) (*v10.PersistentVolumeClaim, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidatePVC", arg0, arg1, arg2)
-	ret0, _ := ret[0].(*v1.PersistentVolumeClaim)
+	ret0, _ := ret[0].(*v10.PersistentVolumeClaim)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -83,10 +84,10 @@ func (mr *MockArgumentValidatorMockRecorder) ValidatePVC(arg0, arg1, arg2 interf
 }
 
 // ValidateStorageClass mocks base method.
-func (m *MockArgumentValidator) ValidateStorageClass(arg0 context.Context, arg1 string) (*v10.StorageClass, error) {
+func (m *MockArgumentValidator) ValidateStorageClass(arg0 context.Context, arg1 string) (*v11.StorageClass, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateStorageClass", arg0, arg1)
-	ret0, _ := ret[0].(*v10.StorageClass)
+	ret0, _ := ret[0].(*v11.StorageClass)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -97,8 +98,23 @@ func (mr *MockArgumentValidatorMockRecorder) ValidateStorageClass(arg0, arg1 int
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateStorageClass", reflect.TypeOf((*MockArgumentValidator)(nil).ValidateStorageClass), arg0, arg1)
 }
 
+// ValidateVolumeSnapshot mocks base method.
+func (m *MockArgumentValidator) ValidateVolumeSnapshot(arg0 context.Context, arg1, arg2 string, arg3 *v12.GroupVersionForDiscovery) (*v1.VolumeSnapshot, error) {
+	m.ctrl.T.Helper()
+	ret := m.ctrl.Call(m, "ValidateVolumeSnapshot", arg0, arg1, arg2, arg3)
+	ret0, _ := ret[0].(*v1.VolumeSnapshot)
+	ret1, _ := ret[1].(error)
+	return ret0, ret1
+}
+
+// ValidateVolumeSnapshot indicates an expected call of ValidateVolumeSnapshot.
+func (mr *MockArgumentValidatorMockRecorder) ValidateVolumeSnapshot(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
+	mr.mock.ctrl.T.Helper()
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ValidateVolumeSnapshot", reflect.TypeOf((*MockArgumentValidator)(nil).ValidateVolumeSnapshot), arg0, arg1, arg2, arg3)
+}
+
 // ValidateVolumeSnapshotClass mocks base method.
-func (m *MockArgumentValidator) ValidateVolumeSnapshotClass(arg0 context.Context, arg1 string, arg2 *v11.GroupVersionForDiscovery) (*unstructured.Unstructured, error) {
+func (m *MockArgumentValidator) ValidateVolumeSnapshotClass(arg0 context.Context, arg1 string, arg2 *v12.GroupVersionForDiscovery) (*unstructured.Unstructured, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateVolumeSnapshotClass", arg0, arg1, arg2)
 	ret0, _ := ret[0].(*unstructured.Unstructured)
