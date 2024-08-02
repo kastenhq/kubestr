@@ -128,6 +128,20 @@ var (
 		},
 	}
 
+	browseSnapshotCmd = &cobra.Command{
+		Use:   "snapshot [Snapshot name]",
+		Short: "Browse the contents of a CSI VolumeSnapshot via file browser",
+		Long:  "Browse the contents of a CSI provisioned VolumeSnapshot by cloning the volume and mounting it with a file browser.",
+		Args:  cobra.ExactArgs(1),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return CsiSnapshotBrowse(context.Background(), args[0],
+				namespace,
+				csiCheckRunAsUser,
+				browseLocalPort,
+			)
+		},
+	}
+
 	blockMountRunAsUser          int64
 	blockMountCleanup            bool
 	blockMountCleanupOnly        bool
@@ -196,7 +210,7 @@ func init() {
 	rootCmd.AddCommand(browseCmd)
 	browseCmd.Flags().StringVarP(&csiCheckVolumeSnapshotClass, "volumesnapshotclass", "v", "", "The name of a VolumeSnapshotClass. (Required)")
 	_ = browseCmd.MarkFlagRequired("volumesnapshotclass")
-	browseCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "Namespace of the resources provided in command.")
+	browseCmd.PersistentFlags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of the resource to browse.")
 	browseCmd.PersistentFlags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
 	browseCmd.PersistentFlags().IntVarP(&browseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
 	browseCmd.PersistentFlags().BoolVarP(&showTree, "show-tree", "t", false, "Prints the contents of given PVC or VolumeSnapshot")
