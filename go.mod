@@ -10,7 +10,7 @@ require (
 	github.com/briandowns/spinner v1.23.1
 	github.com/frankban/quicktest v1.14.6
 	github.com/golang/mock v1.6.0
-	github.com/kanisterio/kanister v0.0.0-20240801123115-043d6a6e30b2
+	github.com/kanisterio/kanister v0.0.0-20240801165651-0a455e999b8c
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.8.1
