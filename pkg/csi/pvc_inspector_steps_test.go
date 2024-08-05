@@ -486,7 +486,7 @@ func (s *CSITestSuite) TestPvcBrowseSnapshotPVC(c *C) {
 	}
 }
 
-func (s *CSITestSuite) TestCreateInspectorApplication(c *C) {
+func (s *CSITestSuite) TestCreateInspectorApplicationForPVC(c *C) {
 	ctx := context.Background()
 	resourceQuantity := resource.MustParse("1Gi")
 	snapshotAPIGroup := "snapshot.storage.k8s.io"
@@ -541,8 +541,8 @@ func (s *CSITestSuite) TestCreateInspectorApplication(c *C) {
 						GenerateName:   clonedPodGenerateName,
 						PVCName:        "pvc1",
 						Namespace:      "ns",
-						ContainerArgs:  []string{"--noauth", "-r", "/data"},
-						MountPath:      "/data",
+						ContainerArgs:  []string{"--noauth", "-r", "/pvc-data"},
+						MountPath:      "/pvc-data",
 						RunAsUser:      100,
 						ContainerImage: "filebrowser/filebrowser:v2",
 					}).Return(&v1.Pod{
@@ -596,8 +596,8 @@ func (s *CSITestSuite) TestCreateInspectorApplication(c *C) {
 						GenerateName:   clonedPodGenerateName,
 						PVCName:        "pvc1",
 						Namespace:      "ns",
-						ContainerArgs:  []string{"--noauth", "-r", "/data"},
-						MountPath:      "/data",
+						ContainerArgs:  []string{"--noauth", "-r", "/pvc-data"},
+						MountPath:      "/pvc-data",
 						RunAsUser:      100,
 						ContainerImage: "filebrowser/filebrowser:v2",
 					}).Return(&v1.Pod{

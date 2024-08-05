@@ -5,6 +5,8 @@ package csi
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/runtime"
+	"log"
 	"net/http"
 	"net/url"
 	"strings"
@@ -44,6 +46,7 @@ type ArgumentValidator interface {
 	//Rename
 	ValidatePVC(ctx context.Context, pvcName, namespace string) (*v1.PersistentVolumeClaim, error)
 	FetchPV(ctx context.Context, pvName string) (*v1.PersistentVolume, error)
+	ValidateVolumeSnapshot(ctx context.Context, snapshotName, namespace string, groupVersion *metav1.GroupVersionForDiscovery) (*snapv1.VolumeSnapshot, error)
 	ValidateNamespace(ctx context.Context, namespace string) error
 	ValidateStorageClass(ctx context.Context, storageClass string) (*sv1.StorageClass, error)
 	ValidateVolumeSnapshotClass(ctx context.Context, volumeSnapshotClass string, groupVersion *metav1.GroupVersionForDiscovery) (*unstructured.Unstructured, error)
@@ -66,6 +69,17 @@ func (o *validateOperations) ValidatePVC(ctx context.Context, pvcName, namespace
 		return nil, fmt.Errorf("kubeCli not initialized")
 	}
 	return o.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
+}
+
+func (o *validateOperations) ValidateVolumeSnapshot(ctx context.Context, snapshotName, namespace string, groupVersion *metav1.GroupVersionForDiscovery) (*snapv1.VolumeSnapshot, error) {
+	VolSnapGVR := schema.GroupVersionResource{Group: snapv1.GroupName, Version: groupVersion.Version, Resource: common.VolumeSnapshotResourcePlural}
+	uVS, err := o.dynCli.Resource(VolSnapGVR).Namespace(namespace).Get(ctx, snapshotName, metav1.GetOptions{})
+	if err != nil {
+		log.Fatalf("Failed to get VolumeSnapshot: %v", err)
+	}
+	volumeSnapshot := &snapv1.VolumeSnapshot{}
+	err = runtime.DefaultUnstructuredConverter.FromUnstructured(uVS.UnstructuredContent(), volumeSnapshot)
+	return volumeSnapshot, err
 }
 
 func (o *validateOperations) FetchPV(ctx context.Context, pvName string) (*v1.PersistentVolume, error) {
@@ -317,6 +331,41 @@ func (c *applicationCreate) getErrorFromEvents(ctx context.Context, namespace, n
 	return nil
 }
 
+//go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_snapshot_fetcher.go -package=mocks . SnapshotFetcher
+type SnapshotFetcher interface {
+	NewSnapshotter() (kansnapshot.Snapshotter, error)
+	GetVolumeSnapshot(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.FetchSnapshotArgs) (*snapv1.VolumeSnapshot, error)
+}
+
+type snapshotFetch struct {
+	kubeCli kubernetes.Interface
+	dynCli  dynamic.Interface
+}
+
+func (f *snapshotFetch) NewSnapshotter() (kansnapshot.Snapshotter, error) {
+	if f.kubeCli == nil {
+		return nil, fmt.Errorf("kubeCli not initialized")
+	}
+	if f.dynCli == nil {
+		return nil, fmt.Errorf("dynCli not initialized")
+	}
+	return kansnapshot.NewSnapshotter(f.kubeCli, f.dynCli)
+}
+
+func (f *snapshotFetch) GetVolumeSnapshot(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.FetchSnapshotArgs) (*snapv1.VolumeSnapshot, error) {
+	if snapshotter == nil || args == nil {
+		return nil, fmt.Errorf("snapshotter or args are empty")
+	}
+	if err := args.Validate(); err != nil {
+		return nil, err
+	}
+	snap, err := snapshotter.Get(ctx, args.SnapshotName, args.Namespace)
+	if err != nil {
+		return nil, errors.Wrapf(err, "Failed to get CSI snapshot (%s) in Namespace (%s)", args.SnapshotName, args.Namespace)
+	}
+	return snap, nil
+}
+
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_snapshot_creator.go -package=mocks . SnapshotCreator
 type SnapshotCreator interface {
 	NewSnapshotter() (kansnapshot.Snapshotter, error)
@@ -526,4 +575,21 @@ func (p *portforward) PortForwardAPod(req *types.PortForwardAPodRequest) error {
 
 func (p *portforward) FetchRestConfig() (*rest.Config, error) {
 	return kube.LoadConfig()
+}
+
+//go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_kube_executor.go -package=mocks . KubeExecutor
+type KubeExecutor interface {
+	Exec(ctx context.Context, namespace string, podName string, ContainerName string, command []string) (string, error)
+}
+
+type kubeExec struct {
+	kubeCli kubernetes.Interface
+}
+
+func (k *kubeExec) Exec(ctx context.Context, namespace string, podName string, ContainerName string, command []string) (string, error) {
+	if k.kubeCli == nil {
+		return "", fmt.Errorf("kubeCli not initialized")
+	}
+	stdout, _, err := kankube.Exec(ctx, k.kubeCli, namespace, podName, ContainerName, command, nil)
+	return stdout, err
 }
