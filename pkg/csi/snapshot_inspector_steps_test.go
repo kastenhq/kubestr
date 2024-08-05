@@ -343,10 +343,10 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForSnapshot(c *C) {
 					}, nil),
 					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
 						GenerateName:   clonedPodGenerateName,
-						PVCName:        "pvc",
+						PVCName:        []string{"pvc"},
 						Namespace:      "ns",
 						ContainerArgs:  []string{"--noauth", "-r", "/snapshot-data"},
-						MountPath:      "/snapshot-data",
+						MountPath:      []string{"/snapshot-data"},
 						RunAsUser:      100,
 						ContainerImage: "filebrowser/filebrowser:v2",
 					}).Return(&v1.Pod{
@@ -398,10 +398,10 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForSnapshot(c *C) {
 					}, nil),
 					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
 						GenerateName:   clonedPodGenerateName,
-						PVCName:        "pvc",
+						PVCName:        []string{"pvc"},
 						Namespace:      "ns",
 						ContainerArgs:  []string{"--noauth", "-r", "/snapshot-data"},
-						MountPath:      "/snapshot-data",
+						MountPath:      []string{"/snapshot-data"},
 						RunAsUser:      100,
 						ContainerImage: "filebrowser/filebrowser:v2",
 					}).Return(&v1.Pod{

@@ -59,22 +59,22 @@ func (c *CreatePVCArgs) Validate() error {
 type CreatePodArgs struct {
 	Name           string // Only one of Name or
 	GenerateName   string // GenerateName should be specified.
-	PVCName        string
+	PVCName        []string
 	Namespace      string
 	RunAsUser      int64
 	ContainerImage string
 	Command        []string
 	ContainerArgs  []string
-	MountPath      string // Only one of MountPath or
-	DevicePath     string // DevicePath should be specified.
+	MountPath      []string // Only one of MountPath or
+	DevicePath     []string // DevicePath should be specified.
 }
 
 func (c *CreatePodArgs) Validate() error {
 	if (c.GenerateName == "" && c.Name == "") ||
 		(c.GenerateName != "" && c.Name != "") ||
-		(c.MountPath == "" && c.DevicePath == "") ||
-		(c.MountPath != "" && c.DevicePath != "") ||
-		c.PVCName == "" || c.Namespace == "" {
+		(len(c.MountPath) == 0 && len(c.DevicePath) == 0) ||
+		(len(c.MountPath) != 0 && len(c.DevicePath) != 0) ||
+		len(c.PVCName) == 0 || c.Namespace == "" {
 		return fmt.Errorf("Invalid CreatePodArgs (%#v)", c)
 	}
 	return nil

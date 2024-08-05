@@ -48,7 +48,7 @@ func (r *SnapshotRestoreRunner) RunSnapshotRestore(ctx context.Context, args *ty
 			kubeCli: r.KubeCli,
 		},
 		createAppOps: &applicationCreate{
-			kubeCli: r.KubeCli,
+			kubeCli:               r.KubeCli,
 			k8sObjectReadyTimeout: args.K8sObjectReadyTimeout,
 		},
 		dataValidatorOps: &validateData{
@@ -179,13 +179,13 @@ func (s *snapshotRestoreSteps) CreateApplication(ctx context.Context, args *type
 	}
 	podArgs := &types.CreatePodArgs{
 		GenerateName:   originalPodGenerateName,
-		PVCName:        pvc.Name,
+		PVCName:        []string{pvc.Name},
 		Namespace:      args.Namespace,
 		RunAsUser:      args.RunAsUser,
 		ContainerImage: args.ContainerImage,
 		Command:        []string{"/bin/sh"},
 		ContainerArgs:  []string{"-c", fmt.Sprintf("echo '%s' >> /data/out.txt; sync; tail -f /dev/null", genString)},
-		MountPath:      "/data",
+		MountPath:      []string{"/data"},
 	}
 	pod, err := s.createAppOps.CreatePod(ctx, podArgs)
 	if err != nil {
@@ -262,13 +262,13 @@ func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *typ
 	}
 	podArgs := &types.CreatePodArgs{
 		GenerateName:   clonedPodGenerateName,
-		PVCName:        pvc.Name,
+		PVCName:        []string{pvc.Name},
 		Namespace:      args.Namespace,
 		RunAsUser:      args.RunAsUser,
 		ContainerImage: args.ContainerImage,
 		Command:        []string{"/bin/sh"},
 		ContainerArgs:  []string{"-c", "tail -f /dev/null"},
-		MountPath:      "/data",
+		MountPath:      []string{"/data"},
 	}
 	pod, err := s.createAppOps.CreatePod(ctx, podArgs)
 	if err != nil {

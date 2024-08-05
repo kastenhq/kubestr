@@ -133,13 +133,13 @@ func (b *blockMountChecker) Mount(ctx context.Context) (*BlockMountCheckerResult
 	tB = time.Now()
 	_, err = b.appCreator.CreatePod(ctx, &types.CreatePodArgs{
 		Name:           b.podName,
-		PVCName:        b.pvcName,
+		PVCName:        []string{b.pvcName},
 		Namespace:      b.args.Namespace,
 		RunAsUser:      b.args.RunAsUser,
 		ContainerImage: b.args.ContainerImage,
 		Command:        []string{"/bin/sh"},
 		ContainerArgs:  []string{"-c", "tail -f /dev/null"},
-		DevicePath:     "/mnt/block",
+		DevicePath:     []string{"/mnt/block"},
 	})
 	if err != nil {
 		fmt.Printf(" -> Failed to create Pod (%v)\n", err)

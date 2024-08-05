@@ -539,10 +539,10 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForPVC(c *C) {
 					}, nil),
 					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
 						GenerateName:   clonedPodGenerateName,
-						PVCName:        "pvc1",
+						PVCName:        []string{"pvc1"},
 						Namespace:      "ns",
 						ContainerArgs:  []string{"--noauth", "-r", "/pvc-data"},
-						MountPath:      "/pvc-data",
+						MountPath:      []string{"/pvc-data"},
 						RunAsUser:      100,
 						ContainerImage: "filebrowser/filebrowser:v2",
 					}).Return(&v1.Pod{
@@ -594,10 +594,10 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForPVC(c *C) {
 					}, nil),
 					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
 						GenerateName:   clonedPodGenerateName,
-						PVCName:        "pvc1",
+						PVCName:        []string{"pvc1"},
 						Namespace:      "ns",
 						ContainerArgs:  []string{"--noauth", "-r", "/pvc-data"},
-						MountPath:      "/pvc-data",
+						MountPath:      []string{"/pvc-data"},
 						RunAsUser:      100,
 						ContainerImage: "filebrowser/filebrowser:v2",
 					}).Return(&v1.Pod{

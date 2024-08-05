@@ -299,13 +299,13 @@ func TestBlockMountCheckerMount(t *testing.T) {
 	createPodArgs := func(b *blockMountChecker) *types.CreatePodArgs {
 		return &types.CreatePodArgs{
 			Name:           b.podName,
-			PVCName:        b.pvcName,
+			PVCName:        []string{b.pvcName},
 			Namespace:      b.args.Namespace,
 			RunAsUser:      b.args.RunAsUser,
 			ContainerImage: b.args.ContainerImage,
 			Command:        []string{"/bin/sh"},
 			ContainerArgs:  []string{"-c", "tail -f /dev/null"},
-			DevicePath:     "/mnt/block",
+			DevicePath:     []string{"/mnt/block"},
 		}
 	}
 	createPod := func(b *blockMountChecker) *v1.Pod {
