@@ -395,7 +395,11 @@ func (c *snapshotCreate) CreateSnapshot(ctx context.Context, snapshotter kansnap
 	if err := args.Validate(); err != nil {
 		return nil, err
 	}
-	err := snapshotter.Create(ctx, args.SnapshotName, args.Namespace, args.PVCName, &args.VolumeSnapshotClass, true, nil)
+	snapshotMeta := kansnapshot.ObjectMeta{
+		Name:      args.SnapshotName,
+		Namespace: args.Namespace,
+	}
+	err := snapshotter.Create(ctx, args.PVCName, &args.VolumeSnapshotClass, true, snapshotMeta)
 	if err != nil {
 		return nil, errors.Wrapf(err, "CSI Driver failed to create snapshot for PVC (%s) in Namespace (%s)", args.PVCName, args.Namespace)
 	}
@@ -446,7 +450,11 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 		Driver:                  snapSrc.Driver,
 		VolumeSnapshotClassName: targetSnapClassName,
 	}
-	err = snapshotter.CreateFromSource(ctx, src, snapshotCFSCloneName, args.Namespace, true, nil)
+	snapshotMeta := kansnapshot.ObjectMeta{
+		Name:      snapshotCFSCloneName,
+		Namespace: args.Namespace,
+	}
+	err = snapshotter.CreateFromSource(ctx, src, true, snapshotMeta, kansnapshot.ObjectMeta{})
 	if err != nil {
 		return errors.Wrapf(err, "Failed to clone snapshot from source (%s)", snapshotCFSCloneName)
 	}
