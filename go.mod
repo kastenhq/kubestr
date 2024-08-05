@@ -10,7 +10,7 @@ require (
 	github.com/briandowns/spinner v1.23.1
 	github.com/frankban/quicktest v1.14.6
 	github.com/golang/mock v1.6.0
-	github.com/kanisterio/kanister v0.0.0-20240805054132-3d62652d253d
+	github.com/kanisterio/kanister v0.0.0-20240805080534-ea6cb88542d6
 	github.com/kubernetes-csi/external-snapshotter/client/v4 v4.2.0
 	github.com/pkg/errors v0.9.1
 	github.com/spf13/cobra v1.8.1
@@ -84,7 +84,7 @@ require (
 	go.starlark.net v0.0.0-20230525235612-a134d8f9ddca // indirect
 	golang.org/x/mod v0.17.0 // indirect
 	golang.org/x/net v0.27.0 // indirect
-	golang.org/x/oauth2 v0.21.0 // indirect
+	golang.org/x/oauth2 v0.22.0 // indirect
 	golang.org/x/sync v0.7.0 // indirect
 	golang.org/x/sys v0.22.0 // indirect
 	golang.org/x/term v0.22.0 // indirect
