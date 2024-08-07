@@ -82,11 +82,11 @@ func (c *CreatePodArgs) Validate() error {
 		if pvcName == "" {
 			return fmt.Errorf("PVC Name not set")
 		}
-		if path.DevicePath != "" && path.MountPath != "" {
-			return fmt.Errorf("Both MountPath & DevicePath are set. Only one is allowed")
-		}
 		if path.DevicePath == "" && path.MountPath == "" {
-			return fmt.Errorf("Both DevicePath and MountPath are not set. One is required")
+			return fmt.Errorf("Neither DevicePath nor MountPath are set. One is required.")
+		}
+		if path.DevicePath != "" && path.MountPath != "" {
+			return fmt.Errorf("Both MountPath and DevicePath are set. Only one must be set.")
 		}
 	}
 	return nil
