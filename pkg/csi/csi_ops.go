@@ -210,24 +210,24 @@ func (c *applicationCreate) CreatePod(ctx context.Context, args *types.CreatePod
 			}},
 		},
 	}
-	for index, pvcName := range args.PVCName {
+	for pvcName, path := range args.PVCMap {
 		pod.Spec.Volumes = append(pod.Spec.Volumes, v1.Volume{
-			Name: fmt.Sprintf("%s-%d", volumeNameInPod, index),
+			Name: fmt.Sprintf("%s-%s", volumeNameInPod, pvcName),
 			VolumeSource: v1.VolumeSource{
 				PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
 					ClaimName: pvcName,
 				},
 			},
 		})
-		if len(args.MountPath) != 0 {
+		if len(path.MountPath) != 0 {
 			pod.Spec.Containers[0].VolumeMounts = append(pod.Spec.Containers[0].VolumeMounts, v1.VolumeMount{
-				Name:      fmt.Sprintf("%s-%d", volumeNameInPod, index),
-				MountPath: args.MountPath[index],
+				Name:      fmt.Sprintf("%s-%s", volumeNameInPod, pvcName),
+				MountPath: path.MountPath,
 			})
-		} else { // args.DevicePath
+		} else {
 			pod.Spec.Containers[0].VolumeDevices = append(pod.Spec.Containers[0].VolumeDevices, v1.VolumeDevice{
-				Name:       fmt.Sprintf("%s-%d", volumeNameInPod, index),
-				DevicePath: args.DevicePath[index],
+				Name:       fmt.Sprintf("%s-%s", volumeNameInPod, pvcName),
+				DevicePath: path.DevicePath,
 			})
 		}
 	}

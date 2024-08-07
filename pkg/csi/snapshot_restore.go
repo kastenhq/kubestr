@@ -179,13 +179,16 @@ func (s *snapshotRestoreSteps) CreateApplication(ctx context.Context, args *type
 	}
 	podArgs := &types.CreatePodArgs{
 		GenerateName:   originalPodGenerateName,
-		PVCName:        []string{pvc.Name},
 		Namespace:      args.Namespace,
 		RunAsUser:      args.RunAsUser,
 		ContainerImage: args.ContainerImage,
 		Command:        []string{"/bin/sh"},
 		ContainerArgs:  []string{"-c", fmt.Sprintf("echo '%s' >> /data/out.txt; sync; tail -f /dev/null", genString)},
-		MountPath:      []string{"/data"},
+		PVCMap: map[string]types.VolumePath{
+			pvc.Name: {
+				MountPath: "/data",
+			},
+		},
 	}
 	pod, err := s.createAppOps.CreatePod(ctx, podArgs)
 	if err != nil {
@@ -262,13 +265,16 @@ func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *typ
 	}
 	podArgs := &types.CreatePodArgs{
 		GenerateName:   clonedPodGenerateName,
-		PVCName:        []string{pvc.Name},
 		Namespace:      args.Namespace,
 		RunAsUser:      args.RunAsUser,
 		ContainerImage: args.ContainerImage,
 		Command:        []string{"/bin/sh"},
 		ContainerArgs:  []string{"-c", "tail -f /dev/null"},
-		MountPath:      []string{"/data"},
+		PVCMap: map[string]types.VolumePath{
+			pvc.Name: {
+				MountPath: "/data",
+			},
+		},
 	}
 	pod, err := s.createAppOps.CreatePod(ctx, podArgs)
 	if err != nil {
