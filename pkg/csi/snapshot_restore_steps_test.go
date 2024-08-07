@@ -230,13 +230,16 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 					}, nil),
 					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
 						GenerateName:   originalPodGenerateName,
-						PVCName:        "pvc1",
 						Namespace:      "ns",
 						Command:        []string{"/bin/sh"},
 						ContainerArgs:  []string{"-c", "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null"},
 						RunAsUser:      100,
 						ContainerImage: "image",
-						MountPath:      "/data",
+						PVCMap: map[string]types.VolumePath{
+							"pvc1": {
+								MountPath: "/data",
+							},
+						},
 					}).Return(&v1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "pod1",
@@ -271,13 +274,16 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 					}, nil),
 					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
 						GenerateName:   originalPodGenerateName,
-						PVCName:        "pvc1",
 						Namespace:      "ns",
 						Command:        []string{"/bin/sh"},
 						ContainerArgs:  []string{"-c", "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null"},
 						RunAsUser:      100,
 						ContainerImage: "image",
-						MountPath:      "/data",
+						PVCMap: map[string]types.VolumePath{
+							"pvc1": {
+								MountPath: "/data",
+							},
+						},
 					}).Return(&v1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "pod1",
@@ -351,13 +357,16 @@ func (s *CSITestSuite) TestCreateApplication(c *C) {
 					}, nil),
 					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
 						GenerateName:   originalPodGenerateName,
-						PVCName:        "pvc1",
 						Namespace:      "ns",
 						Command:        []string{"/bin/sh"},
 						ContainerArgs:  []string{"-c", "echo 'some string' >> /data/out.txt; sync; tail -f /dev/null"},
 						RunAsUser:      100,
 						ContainerImage: "image",
-						MountPath:      "/data",
+						PVCMap: map[string]types.VolumePath{
+							"pvc1": {
+								MountPath: "/data",
+							},
+						},
 					}).Return(&v1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "pod1",
@@ -618,13 +627,16 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 					}, nil),
 					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
 						GenerateName:   clonedPodGenerateName,
-						PVCName:        "pvc1",
 						Namespace:      "ns",
 						Command:        []string{"/bin/sh"},
 						ContainerArgs:  []string{"-c", "tail -f /dev/null"},
-						MountPath:      "/data",
 						RunAsUser:      100,
 						ContainerImage: "image",
+						PVCMap: map[string]types.VolumePath{
+							"pvc1": {
+								MountPath: "/data",
+							},
+						},
 					}).Return(&v1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "pod1",
@@ -672,13 +684,16 @@ func (s *CSITestSuite) TestRestoreApplication(c *C) {
 					}, nil),
 					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
 						GenerateName:   clonedPodGenerateName,
-						PVCName:        "pvc1",
 						Namespace:      "ns",
 						Command:        []string{"/bin/sh"},
 						ContainerArgs:  []string{"-c", "tail -f /dev/null"},
-						MountPath:      "/data",
 						RunAsUser:      100,
 						ContainerImage: "image",
+						PVCMap: map[string]types.VolumePath{
+							"pvc1": {
+								MountPath: "/data",
+							},
+						},
 					}).Return(&v1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "pod1",

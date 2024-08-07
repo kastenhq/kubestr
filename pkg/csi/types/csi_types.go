@@ -56,26 +56,38 @@ func (c *CreatePVCArgs) Validate() error {
 	return nil
 }
 
+type VolumePath struct {
+	MountPath  string // Only one of MountPath or
+	DevicePath string // DevicePath should be specified.
+}
+
 type CreatePodArgs struct {
 	Name           string // Only one of Name or
 	GenerateName   string // GenerateName should be specified.
-	PVCName        string
+	PVCMap         map[string]VolumePath
 	Namespace      string
 	RunAsUser      int64
 	ContainerImage string
 	Command        []string
 	ContainerArgs  []string
-	MountPath      string // Only one of MountPath or
-	DevicePath     string // DevicePath should be specified.
 }
 
 func (c *CreatePodArgs) Validate() error {
 	if (c.GenerateName == "" && c.Name == "") ||
 		(c.GenerateName != "" && c.Name != "") ||
-		(c.MountPath == "" && c.DevicePath == "") ||
-		(c.MountPath != "" && c.DevicePath != "") ||
-		c.PVCName == "" || c.Namespace == "" {
+		(c.Namespace == "") || (c.PVCMap == nil) {
 		return fmt.Errorf("Invalid CreatePodArgs (%#v)", c)
+	}
+	for pvcName, path := range c.PVCMap {
+		if pvcName == "" {
+			return fmt.Errorf("PVC Name not set")
+		}
+		if path.DevicePath == "" && path.MountPath == "" {
+			return fmt.Errorf("Neither DevicePath nor MountPath are set. One is required.")
+		}
+		if path.DevicePath != "" && path.MountPath != "" {
+			return fmt.Errorf("Both MountPath and DevicePath are set. Only one must be set.")
+		}
 	}
 	return nil
 }
