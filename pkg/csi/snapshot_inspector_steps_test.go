@@ -343,12 +343,15 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForSnapshot(c *C) {
 					}, nil),
 					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
 						GenerateName:   clonedPodGenerateName,
-						PVCName:        "pvc",
 						Namespace:      "ns",
 						ContainerArgs:  []string{"--noauth", "-r", "/snapshot-data"},
-						MountPath:      "/snapshot-data",
 						RunAsUser:      100,
 						ContainerImage: "filebrowser/filebrowser:v2",
+						PVCMap: map[string]types.VolumePath{
+							"pvc": {
+								MountPath: "/snapshot-data",
+							},
+						},
 					}).Return(&v1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "pod",
@@ -398,12 +401,15 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForSnapshot(c *C) {
 					}, nil),
 					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
 						GenerateName:   clonedPodGenerateName,
-						PVCName:        "pvc",
 						Namespace:      "ns",
 						ContainerArgs:  []string{"--noauth", "-r", "/snapshot-data"},
-						MountPath:      "/snapshot-data",
 						RunAsUser:      100,
 						ContainerImage: "filebrowser/filebrowser:v2",
+						PVCMap: map[string]types.VolumePath{
+							"pvc": {
+								MountPath: "/snapshot-data",
+							},
+						},
 					}).Return(&v1.Pod{
 						ObjectMeta: metav1.ObjectMeta{
 							Name: "pod",

@@ -517,12 +517,15 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName:   "name",
-				PVCName:        "pvcname",
 				Namespace:      "ns",
 				Command:        []string{"somecommand"},
 				RunAsUser:      1000,
 				ContainerImage: "containerimage",
-				MountPath:      "/mnt/fs",
+				PVCMap: map[string]types.VolumePath{
+					"pvcname": {
+						MountPath: "/mnt/fs",
+					},
+				},
 			},
 			errChecker: IsNil,
 			podChecker: NotNil,
@@ -532,10 +535,13 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
-				PVCName:      "pvcname",
 				Namespace:    "ns",
 				Command:      []string{"somecommand"},
-				MountPath:    "/mnt/fs",
+				PVCMap: map[string]types.VolumePath{
+					"pvcname": {
+						MountPath: "/mnt/fs",
+					},
+				},
 			},
 			failCreates: true,
 			errChecker:  NotNil,
@@ -546,10 +552,13 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "",
-				PVCName:      "pvcname",
 				Namespace:    "ns",
 				Command:      []string{"somecommand"},
-				MountPath:    "/mnt/fs",
+				PVCMap: map[string]types.VolumePath{
+					"pvcname": {
+						MountPath: "/mnt/fs",
+					},
+				},
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
@@ -560,10 +569,13 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
 				Name:         "name",
-				PVCName:      "pvcname",
 				Namespace:    "ns",
 				Command:      []string{"somecommand"},
-				MountPath:    "/mnt/fs",
+				PVCMap: map[string]types.VolumePath{
+					"pvcname": {
+						MountPath: "/mnt/fs",
+					},
+				},
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
@@ -573,9 +585,9 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
-				PVCName:      "",
 				Namespace:    "ns",
 				Command:      []string{"somecommand"},
+				PVCMap:       map[string]types.VolumePath{"pvcname": {}},
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
@@ -585,11 +597,14 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
-				PVCName:      "",
 				Namespace:    "ns",
 				Command:      []string{"somecommand"},
-				MountPath:    "/mnt/fs",
-				DevicePath:   "/mnt/dev",
+				PVCMap: map[string]types.VolumePath{
+					"pvcname": {
+						MountPath:  "/mnt/fs",
+						DevicePath: "/mnt/dev",
+					},
+				},
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
@@ -599,10 +614,9 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
-				PVCName:      "",
 				Namespace:    "ns",
 				Command:      []string{"somecommand"},
-				MountPath:    "/mnt/fs",
+				PVCMap:       map[string]types.VolumePath{"": {MountPath: "/mnt/fs"}},
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
@@ -612,10 +626,13 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
-				PVCName:      "pvcname",
 				Namespace:    "",
 				Command:      []string{"somecommand"},
-				MountPath:    "/mnt/fs",
+				PVCMap: map[string]types.VolumePath{
+					"pvcname": {
+						MountPath: "/mnt/fs",
+					},
+				},
 			},
 			errChecker: NotNil,
 			podChecker: IsNil,
@@ -625,10 +642,13 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
 				GenerateName: "name",
-				PVCName:      "pvcname",
 				Namespace:    "ns",
 				Command:      []string{"somecommand"},
-				MountPath:    "/mnt/fs",
+				PVCMap: map[string]types.VolumePath{
+					"pvcname": {
+						MountPath: "/mnt/fs",
+					},
+				},
 			},
 			errChecker: IsNil,
 			podChecker: NotNil,
@@ -637,11 +657,14 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			description: "ns namespace pod is created (Name/DevicePath)",
 			cli:         fake.NewSimpleClientset(),
 			args: &types.CreatePodArgs{
-				Name:       "name",
-				PVCName:    "pvcname",
-				Namespace:  "ns",
-				Command:    []string{"somecommand"},
-				DevicePath: "/mnt/dev",
+				Name:      "name",
+				Namespace: "ns",
+				Command:   []string{"somecommand"},
+				PVCMap: map[string]types.VolumePath{
+					"pvcname": {
+						DevicePath: "/mnt/dev",
+					},
+				},
 			},
 			errChecker: IsNil,
 			podChecker: NotNil,
@@ -678,27 +701,31 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			c.Assert(len(pod.Spec.Containers), Equals, 1)
 			c.Assert(pod.Spec.Containers[0].Command, DeepEquals, tc.args.Command)
 			c.Assert(pod.Spec.Containers[0].Args, DeepEquals, tc.args.ContainerArgs)
-			if tc.args.MountPath != "" {
-				c.Assert(pod.Spec.Containers[0].VolumeMounts, DeepEquals, []v1.VolumeMount{{
-					Name:      "persistent-storage",
-					MountPath: tc.args.MountPath,
-				}})
-				c.Assert(pod.Spec.Containers[0].VolumeDevices, IsNil)
-			} else {
-				c.Assert(pod.Spec.Containers[0].VolumeDevices, DeepEquals, []v1.VolumeDevice{{
-					Name:       "persistent-storage",
-					DevicePath: tc.args.DevicePath,
-				}})
-				c.Assert(pod.Spec.Containers[0].VolumeMounts, IsNil)
-			}
-			c.Assert(pod.Spec.Volumes, DeepEquals, []v1.Volume{{
-				Name: "persistent-storage",
-				VolumeSource: v1.VolumeSource{
-					PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
-						ClaimName: tc.args.PVCName,
+			index := 0
+			for pvcName, path := range tc.args.PVCMap {
+				if len(path.MountPath) != 0 {
+					c.Assert(pod.Spec.Containers[0].VolumeMounts[index], DeepEquals, v1.VolumeMount{
+						Name:      fmt.Sprintf("persistent-storage-%s", pvcName),
+						MountPath: path.MountPath,
+					})
+					c.Assert(pod.Spec.Containers[0].VolumeDevices, IsNil)
+				} else {
+					c.Assert(pod.Spec.Containers[0].VolumeDevices[index], DeepEquals, v1.VolumeDevice{
+						Name:       fmt.Sprintf("persistent-storage-%s", pvcName),
+						DevicePath: path.DevicePath,
+					})
+					c.Assert(pod.Spec.Containers[0].VolumeMounts, IsNil)
+				}
+				c.Assert(pod.Spec.Volumes[index], DeepEquals, v1.Volume{
+					Name: fmt.Sprintf("persistent-storage-%s", pvcName),
+					VolumeSource: v1.VolumeSource{
+						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
+							ClaimName: pvcName,
+						},
 					},
-				}},
-			})
+				})
+				index++
+			}
 			if tc.args.ContainerImage == "" {
 				c.Assert(pod.Spec.Containers[0].Image, Equals, common.DefaultPodImage)
 			} else {

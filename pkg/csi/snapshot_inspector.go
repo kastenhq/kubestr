@@ -177,23 +177,29 @@ func (s *snapshotBrowserSteps) CreateInspectorApplication(ctx context.Context, a
 	}
 	podArgs := &types.CreatePodArgs{
 		GenerateName:   clonedPodGenerateName,
-		PVCName:        pvc.Name,
 		Namespace:      args.Namespace,
 		RunAsUser:      args.RunAsUser,
 		ContainerImage: "filebrowser/filebrowser:v2",
 		ContainerArgs:  []string{"--noauth", "-r", "/snapshot-data"},
-		MountPath:      "/snapshot-data",
+		PVCMap: map[string]types.VolumePath{
+			pvc.Name: {
+				MountPath: "/snapshot-data",
+			},
+		},
 	}
 	if args.ShowTree {
 		podArgs = &types.CreatePodArgs{
 			GenerateName:   clonedPodGenerateName,
-			PVCName:        pvc.Name,
 			Namespace:      args.Namespace,
 			RunAsUser:      args.RunAsUser,
 			ContainerImage: "alpine:3.19",
 			Command:        []string{"/bin/sh"},
 			ContainerArgs:  []string{"-c", "while true; do sleep 3600; done"},
-			MountPath:      "/snapshot-data",
+			PVCMap: map[string]types.VolumePath{
+				pvc.Name: {
+					MountPath: "/snapshot-data",
+				},
+			},
 		}
 	}
 	pod, err := s.createAppOps.CreatePod(ctx, podArgs)
