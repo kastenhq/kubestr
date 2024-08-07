@@ -64,7 +64,6 @@ type VolumePath struct {
 type CreatePodArgs struct {
 	Name           string // Only one of Name or
 	GenerateName   string // GenerateName should be specified.
-	PVCName        []string
 	PVCMap         map[string]VolumePath
 	Namespace      string
 	RunAsUser      int64
