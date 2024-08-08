@@ -52,10 +52,6 @@ func (r *SnapshotBrowseRunner) RunSnapshotBrowse(ctx context.Context, args *type
 			dynCli:  r.DynCli,
 		},
 	}
-	if args.ShowTree {
-		fmt.Println("Show Tree works for VS!")
-		return nil
-	}
 	return r.RunSnapshotBrowseHelper(ctx, args)
 }
 
