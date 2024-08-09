@@ -57,6 +57,10 @@ func (r *PVCBrowseRunner) RunPVCBrowse(ctx context.Context, args *types.PVCBrows
 			dynCli:  r.DynCli,
 		},
 	}
+	if args.ShowTree {
+		fmt.Println("Show Tree works for PVC!")
+		return nil
+	}
 	return r.RunPVCBrowseHelper(ctx, args)
 }
 
