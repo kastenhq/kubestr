@@ -39,10 +39,6 @@ func (r *SnapshotBrowseRunner) RunSnapshotBrowse(ctx context.Context, args *type
 		createAppOps: &applicationCreate{
 			kubeCli: r.KubeCli,
 		},
-		snapshotFetchOps: &snapshotFetch{
-			kubeCli: r.KubeCli,
-			dynCli:  r.DynCli,
-		},
 		portForwardOps: &portforward{},
 		kubeExecutor: &kubeExec{
 			kubeCli: r.KubeCli,
@@ -109,7 +105,6 @@ type SnapshotBrowserStepper interface {
 type snapshotBrowserSteps struct {
 	validateOps          ArgumentValidator
 	versionFetchOps      ApiVersionFetcher
-	snapshotFetchOps     SnapshotFetcher
 	createAppOps         ApplicationCreator
 	portForwardOps       PortForwarder
 	cleanerOps           Cleaner
