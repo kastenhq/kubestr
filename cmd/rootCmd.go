@@ -128,6 +128,23 @@ var (
 		},
 	}
 
+	fromSnapshot   string
+	path           string
+	restoreFileCmd = &cobra.Command{
+		Use:   "file-restore",
+		Short: "Restore file(s) from a VolumeSnapshot to it's source PVC",
+		Long:  "Restore file(s) from a given CSI provisioned VolumeSnapshot to the contents of it's source PVC.",
+		Args:  cobra.ExactArgs(0),
+		RunE: func(cmd *cobra.Command, args []string) error {
+			return FileRestore(context.Background(),
+				fromSnapshot,
+				namespace,
+				csiCheckRunAsUser,
+				browseLocalPort,
+				path)
+		},
+	}
+
 	blockMountRunAsUser          int64
 	blockMountCleanup            bool
 	blockMountCleanupOnly        bool
@@ -206,6 +223,14 @@ func init() {
 	_ = browsePvcCmd.MarkFlagRequired("volumesnapshotclass")
 
 	browseCmd.AddCommand(browseSnapshotCmd)
+
+	rootCmd.AddCommand(restoreFileCmd)
+	restoreFileCmd.Flags().StringVarP(&fromSnapshot, "fromSnapshot", "f", "", "The name of a VolumeSnapshot. (Required)")
+	_ = restoreFileCmd.MarkFlagRequired("fromSnapshot")
+	restoreFileCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of both the given PVC & VS.")
+	restoreFileCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
+	restoreFileCmd.Flags().IntVarP(&browseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
+	restoreFileCmd.Flags().StringVarP(&path, "path", "p", "", "Path of a file or directory that needs to be restored")
 
 	rootCmd.AddCommand(blockMountCmd)
 	blockMountCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a StorageClass. (Required)")
@@ -426,6 +451,40 @@ func CsiSnapshotBrowse(ctx context.Context,
 	})
 	if err != nil {
 		fmt.Printf("Failed to run Snapshot browser (%s)\n", err.Error())
+	}
+	return err
+}
+
+func FileRestore(ctx context.Context,
+	snapshotName string,
+	namespace string,
+	runAsUser int64,
+	localPort int,
+	path string,
+) error {
+	kubecli, err := kubestr.LoadKubeCli()
+	if err != nil {
+		fmt.Printf("Failed to load kubeCli (%s)", err.Error())
+		return err
+	}
+	dyncli, err := kubestr.LoadDynCli()
+	if err != nil {
+		fmt.Printf("Failed to load dynCli (%s)", err.Error())
+		return err
+	}
+	fileRestoreRunner := &csi.FileRestoreRunner{
+		KubeCli: kubecli,
+		DynCli:  dyncli,
+	}
+	err = fileRestoreRunner.RunFileRestore(ctx, &csitypes.FileRestoreArgs{
+		SnapshotName: snapshotName,
+		Namespace:    namespace,
+		RunAsUser:    runAsUser,
+		LocalPort:    localPort,
+		Path:         path,
+	})
+	if err != nil {
+		fmt.Printf("Failed to run file-restore (%s)\n", err.Error())
 	}
 	return err
 }

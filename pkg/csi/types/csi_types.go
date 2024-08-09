@@ -162,6 +162,21 @@ func (p *SnapshotBrowseArgs) Validate() error {
 	return nil
 }
 
+type FileRestoreArgs struct {
+	SnapshotName string
+	Namespace    string
+	RunAsUser    int64
+	LocalPort    int
+	Path         string
+}
+
+func (f *FileRestoreArgs) Validate() error {
+	if f.SnapshotName == "" || f.Namespace == "" {
+		return fmt.Errorf("Invalid FileRestoreArgs (%v)", f)
+	}
+	return nil
+}
+
 type PortForwardAPodRequest struct {
 	// RestConfig is the kubernetes config
 	RestConfig *rest.Config
