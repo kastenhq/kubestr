@@ -128,12 +128,22 @@ func (f *fileRestoreSteps) ValidateArgs(ctx context.Context, args *types.FileRes
 	if err != nil {
 		return nil, nil, nil, errors.Wrap(err, "Failed to validate VolumeSnapshot")
 	}
-	if *snapshot.Spec.Source.PersistentVolumeClaimName == "" {
-		return nil, nil, nil, errors.Wrap(err, "Failed to fetch source PVC. VolumeSnapshot does not have a PVC as it's source")
-	}
-	sourcePVC, err := f.validateOps.ValidatePVC(ctx, *snapshot.Spec.Source.PersistentVolumeClaimName, args.Namespace)
-	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+	var sourcePVC *v1.PersistentVolumeClaim
+	if args.PVCName == "" {
+		fmt.Println("Fetching the source PVC from snapshot.")
+		if *snapshot.Spec.Source.PersistentVolumeClaimName == "" {
+			return nil, nil, nil, errors.Wrap(err, "Failed to fetch source PVC. VolumeSnapshot does not have a PVC as it's source")
+		}
+		sourcePVC, err = f.validateOps.ValidatePVC(ctx, *snapshot.Spec.Source.PersistentVolumeClaimName, args.Namespace)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+		}
+	} else {
+		fmt.Println("Fetching the source PVC.")
+		sourcePVC, err = f.validateOps.ValidatePVC(ctx, args.PVCName, args.Namespace)
+		if err != nil {
+			return nil, nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+		}
 	}
 	for _, sourceAccessMode := range sourcePVC.Spec.AccessModes {
 		if sourceAccessMode == v1.ReadWriteOnce || sourceAccessMode == v1.ReadWriteOncePod {

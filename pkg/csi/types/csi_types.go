@@ -164,6 +164,7 @@ func (p *SnapshotBrowseArgs) Validate() error {
 
 type FileRestoreArgs struct {
 	SnapshotName string
+	PVCName      string
 	Namespace    string
 	RunAsUser    int64
 	LocalPort    int

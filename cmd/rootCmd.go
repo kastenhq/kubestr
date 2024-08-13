@@ -129,6 +129,7 @@ var (
 	}
 
 	fromSnapshot   string
+	toPVC          string
 	path           string
 	restoreFileCmd = &cobra.Command{
 		Use:   "file-restore",
@@ -138,6 +139,7 @@ var (
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return FileRestore(context.Background(),
 				fromSnapshot,
+				toPVC,
 				namespace,
 				csiCheckRunAsUser,
 				browseLocalPort,
@@ -227,6 +229,7 @@ func init() {
 	rootCmd.AddCommand(restoreFileCmd)
 	restoreFileCmd.Flags().StringVarP(&fromSnapshot, "fromSnapshot", "f", "", "The name of a VolumeSnapshot. (Required)")
 	_ = restoreFileCmd.MarkFlagRequired("fromSnapshot")
+	restoreFileCmd.Flags().StringVarP(&toPVC, "toPVC", "t", "", "The name of a PersistentVolumeClaim.")
 	restoreFileCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of both the given PVC & VS.")
 	restoreFileCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
 	restoreFileCmd.Flags().IntVarP(&browseLocalPort, "localport", "l", 8080, "The local port to expose the inspector")
@@ -457,6 +460,7 @@ func CsiSnapshotBrowse(ctx context.Context,
 
 func FileRestore(ctx context.Context,
 	snapshotName string,
+	pvcName string,
 	namespace string,
 	runAsUser int64,
 	localPort int,
@@ -478,6 +482,7 @@ func FileRestore(ctx context.Context,
 	}
 	err = fileRestoreRunner.RunFileRestore(ctx, &csitypes.FileRestoreArgs{
 		SnapshotName: snapshotName,
+		PVCName:      pvcName,
 		Namespace:    namespace,
 		RunAsUser:    runAsUser,
 		LocalPort:    localPort,
