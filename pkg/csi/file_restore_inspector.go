@@ -146,7 +146,7 @@ func (f *fileRestoreSteps) ValidateArgs(ctx context.Context, args *types.FileRes
 		}
 	}
 	for _, sourceAccessMode := range sourcePVC.Spec.AccessModes {
-		if sourceAccessMode == v1.ReadWriteOnce || sourceAccessMode == v1.ReadWriteOncePod {
+		if sourceAccessMode == v1.ReadWriteOncePod {
 			return nil, nil, nil, fmt.Errorf("Unsupported %s AccessMode found in source PVC. Supported AccessModes are ReadOnlyMany & ReadWriteMany", sourceAccessMode)
 		}
 	}
