@@ -134,7 +134,7 @@ var (
 	restoreFileCmd = &cobra.Command{
 		Use:   "file-restore",
 		Short: "Restore file(s) from a VolumeSnapshot to it's source PVC",
-		Long:  "Restore file(s) from a given CSI provisioned VolumeSnapshot to the contents of it's source PVC.",
+		Long:  "Restore file(s) from a given CSI provisioned VolumeSnapshot to a PVC.",
 		Args:  cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return FileRestore(context.Background(),
