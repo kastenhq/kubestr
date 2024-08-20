@@ -332,41 +332,6 @@ func (c *applicationCreate) getErrorFromEvents(ctx context.Context, namespace, n
 	return nil
 }
 
-//go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_snapshot_fetcher.go -package=mocks . SnapshotFetcher
-type SnapshotFetcher interface {
-	NewSnapshotter() (kansnapshot.Snapshotter, error)
-	GetVolumeSnapshot(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.FetchSnapshotArgs) (*snapv1.VolumeSnapshot, error)
-}
-
-type snapshotFetch struct {
-	kubeCli kubernetes.Interface
-	dynCli  dynamic.Interface
-}
-
-func (f *snapshotFetch) NewSnapshotter() (kansnapshot.Snapshotter, error) {
-	if f.kubeCli == nil {
-		return nil, fmt.Errorf("kubeCli not initialized")
-	}
-	if f.dynCli == nil {
-		return nil, fmt.Errorf("dynCli not initialized")
-	}
-	return kansnapshot.NewSnapshotter(f.kubeCli, f.dynCli)
-}
-
-func (f *snapshotFetch) GetVolumeSnapshot(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.FetchSnapshotArgs) (*snapv1.VolumeSnapshot, error) {
-	if snapshotter == nil || args == nil {
-		return nil, fmt.Errorf("snapshotter or args are empty")
-	}
-	if err := args.Validate(); err != nil {
-		return nil, err
-	}
-	snap, err := snapshotter.Get(ctx, args.SnapshotName, args.Namespace)
-	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to get CSI snapshot (%s) in Namespace (%s)", args.SnapshotName, args.Namespace)
-	}
-	return snap, nil
-}
-
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_snapshot_creator.go -package=mocks . SnapshotCreator
 type SnapshotCreator interface {
 	NewSnapshotter() (kansnapshot.Snapshotter, error)
