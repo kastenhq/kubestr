@@ -53,7 +53,17 @@ Kubestr can assist in the following ways-
 
 ### To view the contents of a PersistentVolumeClaim in a graphical filesystem browser -
 - Run `./kubestr browse <pvc name> -n <namespace> -v <volume snapshot class>`
+- Run `./kubestr browse pvc <pvc name> -n <namespace> -v <volume snapshot class>`
+- Additional flag `--show-tree` can be specified to view contents on CLI.
 
+### To view the contents of a VolumeSnapshot in a graphical filesystem browser -
+- Run `./kubestr browse snapshot <snapshot name> -n <namespace> -s <storage class>`
+- Additional flag `--show-tree` can be specified to view contents on CLI.
+
+### To restore files from a VolumeSnapshot to a PersistentVolumeClaim using graphical filesystem browser -
+- Run `./kubestr file-restore --fromSnapshot <snapshot name> --toPVC <pvc name> -n <namespace>`
+- Run `./kubestr file-restore --fromSnapshot <snapshot name> -n <namespace>`
+- Additional option `--path` can be specified to restore a file from given path using CLI.
 
 ## Roadmap
 - For future work please refer to our GitHub issues [page](https://github.com/kastenhq/kubestr/issues).
