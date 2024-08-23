@@ -702,22 +702,23 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 			c.Assert(pod.Spec.Containers[0].Command, DeepEquals, tc.args.Command)
 			c.Assert(pod.Spec.Containers[0].Args, DeepEquals, tc.args.ContainerArgs)
 			index := 0
+			pvcCount := 1
 			for pvcName, path := range tc.args.PVCMap {
 				if len(path.MountPath) != 0 {
 					c.Assert(pod.Spec.Containers[0].VolumeMounts[index], DeepEquals, v1.VolumeMount{
-						Name:      fmt.Sprintf("persistent-storage-%s", pvcName),
+						Name:      fmt.Sprintf("persistent-storage-%d", pvcCount),
 						MountPath: path.MountPath,
 					})
 					c.Assert(pod.Spec.Containers[0].VolumeDevices, IsNil)
 				} else {
 					c.Assert(pod.Spec.Containers[0].VolumeDevices[index], DeepEquals, v1.VolumeDevice{
-						Name:       fmt.Sprintf("persistent-storage-%s", pvcName),
+						Name:       fmt.Sprintf("persistent-storage-%d", pvcCount),
 						DevicePath: path.DevicePath,
 					})
 					c.Assert(pod.Spec.Containers[0].VolumeMounts, IsNil)
 				}
 				c.Assert(pod.Spec.Volumes[index], DeepEquals, v1.Volume{
-					Name: fmt.Sprintf("persistent-storage-%s", pvcName),
+					Name: fmt.Sprintf("persistent-storage-%d", pvcCount),
 					VolumeSource: v1.VolumeSource{
 						PersistentVolumeClaim: &v1.PersistentVolumeClaimVolumeSource{
 							ClaimName: pvcName,
@@ -725,6 +726,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 					},
 				})
 				index++
+				pvcCount++
 			}
 			if tc.args.ContainerImage == "" {
 				c.Assert(pod.Spec.Containers[0].Image, Equals, common.DefaultPodImage)
