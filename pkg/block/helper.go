@@ -8,7 +8,7 @@ import (
 // resource name maxs lenght
 const maxResourceNameLength = 64
 
-// ResourceNameShortener shortens the resource name if it exceeds maxResourceNameLength.
+// ResourceNameShortener shortens the resource name if it exceeds maxResourceNameLength of 64.
 // It replaces the last 5 characters with the first 5 characters of a hash (base64 encoded).
 func ResourceNameShortener(name string) string {
 	if len(name) <= maxResourceNameLength {
