@@ -53,23 +53,22 @@ func (f *FileRestoreRunner) RunFileRestore(ctx context.Context, args *types.File
 
 func (f *FileRestoreRunner) RunFileRestoreHelper(ctx context.Context, args *types.FileRestoreArgs) error {
 	defer func() {
-		fmt.Println("Cleaning up browser pod & restored PVC.")
-		f.restoreSteps.Cleanup(ctx, f.restorePVC, f.pod)
+		f.restoreSteps.Cleanup(ctx, args, f.restorePVC, f.pod)
 	}()
 
 	if f.KubeCli == nil || f.DynCli == nil {
 		return fmt.Errorf("cli uninitialized")
 	}
 
-	fmt.Println("Fetching the snapshot.")
-	vs, sourcePVC, sc, err := f.restoreSteps.ValidateArgs(ctx, args)
+	fmt.Println("Fetching the snapshot or PVC.")
+	vs, restorePVC, sourcePVC, sc, err := f.restoreSteps.ValidateArgs(ctx, args)
 	if err != nil {
 		return errors.Wrap(err, "Failed to validate arguments.")
 	}
 	f.snapshot = vs
 
-	fmt.Println("Creating the restored PVC & browser Pod.")
-	f.pod, f.restorePVC, err = f.restoreSteps.CreateInspectorApplication(ctx, args, f.snapshot, sourcePVC, sc)
+	fmt.Println("Creating the browser pod & mounting the PVCs.")
+	f.pod, f.restorePVC, err = f.restoreSteps.CreateInspectorApplication(ctx, args, f.snapshot, restorePVC, sourcePVC, sc)
 	if err != nil {
 		return errors.Wrap(err, "Failed to create inspector application.")
 	}
@@ -95,11 +94,11 @@ func (f *FileRestoreRunner) RunFileRestoreHelper(ctx context.Context, args *type
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_file_restore_stepper.go -package=mocks . FileRestoreStepper
 type FileRestoreStepper interface {
-	ValidateArgs(ctx context.Context, args *types.FileRestoreArgs) (*snapv1.VolumeSnapshot, *v1.PersistentVolumeClaim, *sv1.StorageClass, error)
-	CreateInspectorApplication(ctx context.Context, args *types.FileRestoreArgs, snapshot *snapv1.VolumeSnapshot, sourcePVC *v1.PersistentVolumeClaim, storageClass *sv1.StorageClass) (*v1.Pod, *v1.PersistentVolumeClaim, error)
+	ValidateArgs(ctx context.Context, args *types.FileRestoreArgs) (*snapv1.VolumeSnapshot, *v1.PersistentVolumeClaim, *v1.PersistentVolumeClaim, *sv1.StorageClass, error)
+	CreateInspectorApplication(ctx context.Context, args *types.FileRestoreArgs, snapshot *snapv1.VolumeSnapshot, restorePVC *v1.PersistentVolumeClaim, sourcePVC *v1.PersistentVolumeClaim, storageClass *sv1.StorageClass) (*v1.Pod, *v1.PersistentVolumeClaim, error)
 	ExecuteCopyCommand(ctx context.Context, args *types.FileRestoreArgs, pod *v1.Pod) (string, error)
 	PortForwardAPod(pod *v1.Pod, localPort int) error
-	Cleanup(ctx context.Context, restorePVC *v1.PersistentVolumeClaim, pod *v1.Pod)
+	Cleanup(ctx context.Context, args *types.FileRestoreArgs, restorePVC *v1.PersistentVolumeClaim, pod *v1.Pod)
 }
 
 type fileRestoreSteps struct {
@@ -112,77 +111,107 @@ type fileRestoreSteps struct {
 	SnapshotGroupVersion *metav1.GroupVersionForDiscovery
 }
 
-func (f *fileRestoreSteps) ValidateArgs(ctx context.Context, args *types.FileRestoreArgs) (*snapv1.VolumeSnapshot, *v1.PersistentVolumeClaim, *sv1.StorageClass, error) {
+func (f *fileRestoreSteps) ValidateArgs(ctx context.Context, args *types.FileRestoreArgs) (*snapv1.VolumeSnapshot, *v1.PersistentVolumeClaim, *v1.PersistentVolumeClaim, *sv1.StorageClass, error) {
 	if err := args.Validate(); err != nil {
-		return nil, nil, nil, errors.Wrap(err, "Failed to validate input arguments")
+		return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate input arguments")
 	}
 	if err := f.validateOps.ValidateNamespace(ctx, args.Namespace); err != nil {
-		return nil, nil, nil, errors.Wrap(err, "Failed to validate Namespace")
+		return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate Namespace")
 	}
 	groupVersion, err := f.versionFetchOps.GetCSISnapshotGroupVersion()
 	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "Failed to fetch groupVersion")
+		return nil, nil, nil, nil, errors.Wrap(err, "Failed to fetch groupVersion")
 	}
 	f.SnapshotGroupVersion = groupVersion
-	snapshot, err := f.validateOps.ValidateVolumeSnapshot(ctx, args.SnapshotName, args.Namespace, groupVersion)
-	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "Failed to validate VolumeSnapshot")
-	}
-	var sourcePVC *v1.PersistentVolumeClaim
-	if args.PVCName == "" {
-		fmt.Println("Fetching the source PVC from snapshot.")
-		if *snapshot.Spec.Source.PersistentVolumeClaimName == "" {
-			return nil, nil, nil, errors.Wrap(err, "Failed to fetch source PVC. VolumeSnapshot does not have a PVC as it's source")
-		}
-		sourcePVC, err = f.validateOps.ValidatePVC(ctx, *snapshot.Spec.Source.PersistentVolumeClaimName, args.Namespace)
+	var snapshot *snapv1.VolumeSnapshot
+	var restorePVC, sourcePVC *v1.PersistentVolumeClaim
+	var sc *sv1.StorageClass
+	if args.FromSnapshotName != "" {
+		fmt.Println("Fetching the snapshot.")
+		snapshot, err := f.validateOps.ValidateVolumeSnapshot(ctx, args.FromSnapshotName, args.Namespace, groupVersion)
 		if err != nil {
-			return nil, nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate VolumeSnapshot")
+		}
+		if args.ToPVCName == "" {
+			fmt.Println("Fetching the source PVC from snapshot.")
+			if *snapshot.Spec.Source.PersistentVolumeClaimName == "" {
+				return nil, nil, nil, nil, errors.Wrap(err, "Failed to fetch source PVC. VolumeSnapshot does not have a PVC as it's source")
+			}
+			sourcePVC, err = f.validateOps.ValidatePVC(ctx, *snapshot.Spec.Source.PersistentVolumeClaimName, args.Namespace)
+			if err != nil {
+				return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+			}
+		} else {
+			fmt.Println("Fetching the source PVC.")
+			sourcePVC, err = f.validateOps.ValidatePVC(ctx, args.ToPVCName, args.Namespace)
+			if err != nil {
+				return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+			}
+		}
+		sc, err = f.validateOps.ValidateStorageClass(ctx, *sourcePVC.Spec.StorageClassName)
+		if err != nil {
+			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate StorageClass for source PVC")
+		}
+		uVSC, err := f.validateOps.ValidateVolumeSnapshotClass(ctx, *snapshot.Spec.VolumeSnapshotClassName, groupVersion)
+		if err != nil {
+			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate VolumeSnapshotClass")
+		}
+		vscDriver := getDriverNameFromUVSC(*uVSC, groupVersion.GroupVersion)
+		if sc.Provisioner != vscDriver {
+			return nil, nil, nil, nil, fmt.Errorf("StorageClass provisioner (%s) and VolumeSnapshotClass driver (%s) are different.", sc.Provisioner, vscDriver)
 		}
 	} else {
-		fmt.Println("Fetching the source PVC.")
-		sourcePVC, err = f.validateOps.ValidatePVC(ctx, args.PVCName, args.Namespace)
+		fmt.Println("Fetching the restore PVC.")
+		restorePVC, err = f.validateOps.ValidatePVC(ctx, args.FromPVCName, args.Namespace)
 		if err != nil {
-			return nil, nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate restore PVC")
+		}
+		fmt.Println("Fetching the source PVC.")
+		sourcePVC, err = f.validateOps.ValidatePVC(ctx, args.ToPVCName, args.Namespace)
+		if err != nil {
+			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+		}
+		sc, err = f.validateOps.ValidateStorageClass(ctx, *restorePVC.Spec.StorageClassName)
+		if err != nil {
+			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate StorageClass for restore PVC")
+		}
+		sc, err = f.validateOps.ValidateStorageClass(ctx, *sourcePVC.Spec.StorageClassName)
+		if err != nil {
+			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate StorageClass for source PVC")
 		}
 	}
 	for _, sourceAccessMode := range sourcePVC.Spec.AccessModes {
 		if sourceAccessMode == v1.ReadWriteOncePod {
-			return nil, nil, nil, fmt.Errorf("Unsupported %s AccessMode found in source PVC. Supported AccessModes are ReadOnlyMany & ReadWriteMany", sourceAccessMode)
+			return nil, nil, nil, nil, fmt.Errorf("Unsupported %s AccessMode found in source PVC. Supported AccessModes are ReadOnlyMany & ReadWriteMany", sourceAccessMode)
 		}
 	}
-	sc, err := f.validateOps.ValidateStorageClass(ctx, *sourcePVC.Spec.StorageClassName)
-	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "Failed to validate StorageClass")
-	}
-	uVSC, err := f.validateOps.ValidateVolumeSnapshotClass(ctx, *snapshot.Spec.VolumeSnapshotClassName, groupVersion)
-	if err != nil {
-		return nil, nil, nil, errors.Wrap(err, "Failed to validate VolumeSnapshotClass")
-	}
-	vscDriver := getDriverNameFromUVSC(*uVSC, groupVersion.GroupVersion)
-	if sc.Provisioner != vscDriver {
-		return nil, nil, nil, fmt.Errorf("StorageClass provisioner (%s) and VolumeSnapshotClass driver (%s) are different.", sc.Provisioner, vscDriver)
-	}
-	return snapshot, sourcePVC, sc, nil
+
+	return snapshot, restorePVC, sourcePVC, sc, nil
 }
 
-func (f *fileRestoreSteps) CreateInspectorApplication(ctx context.Context, args *types.FileRestoreArgs, snapshot *snapv1.VolumeSnapshot, sourcePVC *v1.PersistentVolumeClaim, storageClass *sv1.StorageClass) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
-	snapshotAPIGroup := "snapshot.storage.k8s.io"
-	snapshotKind := "VolumeSnapshot"
-	dataSource := &v1.TypedLocalObjectReference{
-		APIGroup: &snapshotAPIGroup,
-		Kind:     snapshotKind,
-		Name:     snapshot.Name,
-	}
-	pvcArgs := &types.CreatePVCArgs{
-		GenerateName: clonedPVCGenerateName,
-		StorageClass: storageClass.Name,
-		Namespace:    args.Namespace,
-		DataSource:   dataSource,
-		RestoreSize:  snapshot.Status.RestoreSize,
-	}
-	restorePVC, err := f.createAppOps.CreatePVC(ctx, pvcArgs)
-	if err != nil {
-		return nil, nil, errors.Wrap(err, "Failed to restore PVC")
+func (f *fileRestoreSteps) CreateInspectorApplication(ctx context.Context, args *types.FileRestoreArgs, snapshot *snapv1.VolumeSnapshot, restorePVC *v1.PersistentVolumeClaim, sourcePVC *v1.PersistentVolumeClaim, storageClass *sv1.StorageClass) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
+	restoreMountPath := "/srv/restore-pvc-data"
+	if args.FromSnapshotName != "" {
+		snapshotAPIGroup := "snapshot.storage.k8s.io"
+		snapshotKind := "VolumeSnapshot"
+		dataSource := &v1.TypedLocalObjectReference{
+			APIGroup: &snapshotAPIGroup,
+			Kind:     snapshotKind,
+			Name:     snapshot.Name,
+		}
+		pvcArgs := &types.CreatePVCArgs{
+			GenerateName: clonedPVCGenerateName,
+			StorageClass: storageClass.Name,
+			Namespace:    args.Namespace,
+			DataSource:   dataSource,
+			RestoreSize:  snapshot.Status.RestoreSize,
+		}
+		var err error
+		restorePVC, err = f.createAppOps.CreatePVC(ctx, pvcArgs)
+		if err != nil {
+			return nil, nil, errors.Wrap(err, "Failed to restore PVC")
+		}
+		restoreMountPath = "/srv/snapshot-data"
 	}
 	podArgs := &types.CreatePodArgs{
 		GenerateName:   clonedPodGenerateName,
@@ -192,7 +221,7 @@ func (f *fileRestoreSteps) CreateInspectorApplication(ctx context.Context, args 
 		ContainerArgs:  []string{"--noauth"},
 		PVCMap: map[string]types.VolumePath{
 			restorePVC.Name: {
-				MountPath: "/srv/snapshot-data",
+				MountPath: restoreMountPath,
 			},
 			sourcePVC.Name: {
 				MountPath: "/srv/source-data",
@@ -209,7 +238,7 @@ func (f *fileRestoreSteps) CreateInspectorApplication(ctx context.Context, args 
 			ContainerArgs:  []string{"-c", "while true; do sleep 3600; done"},
 			PVCMap: map[string]types.VolumePath{
 				restorePVC.Name: {
-					MountPath: "/snapshot-data",
+					MountPath: restoreMountPath,
 				},
 				sourcePVC.Name: {
 					MountPath: "/source-data",
@@ -284,13 +313,17 @@ func (f *fileRestoreSteps) PortForwardAPod(pod *v1.Pod, localPort int) error {
 	return nil
 }
 
-func (f *fileRestoreSteps) Cleanup(ctx context.Context, restorePVC *v1.PersistentVolumeClaim, pod *v1.Pod) {
-	if restorePVC != nil {
-		err := f.cleanerOps.DeletePVC(ctx, restorePVC.Name, restorePVC.Namespace)
-		if err != nil {
-			fmt.Println("Failed to delete restore PVC", restorePVC)
+func (f *fileRestoreSteps) Cleanup(ctx context.Context, args *types.FileRestoreArgs, restorePVC *v1.PersistentVolumeClaim, pod *v1.Pod) {
+	if args.FromSnapshotName != "" {
+		fmt.Println("Cleaning up restore PVC.")
+		if restorePVC != nil {
+			err := f.cleanerOps.DeletePVC(ctx, restorePVC.Name, restorePVC.Namespace)
+			if err != nil {
+				fmt.Println("Failed to delete restore PVC", restorePVC)
+			}
 		}
 	}
+	fmt.Println("Cleaning up browser pod.")
 	if pod != nil {
 		err := f.cleanerOps.DeletePod(ctx, pod.Name, pod.Namespace)
 		if err != nil {

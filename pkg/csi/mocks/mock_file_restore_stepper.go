@@ -39,21 +39,21 @@ func (m *MockFileRestoreStepper) EXPECT() *MockFileRestoreStepperMockRecorder {
 }
 
 // Cleanup mocks base method.
-func (m *MockFileRestoreStepper) Cleanup(arg0 context.Context, arg1 *v10.PersistentVolumeClaim, arg2 *v10.Pod) {
+func (m *MockFileRestoreStepper) Cleanup(arg0 context.Context, arg1 *types.FileRestoreArgs, arg2 *v10.PersistentVolumeClaim, arg3 *v10.Pod) {
 	m.ctrl.T.Helper()
-	m.ctrl.Call(m, "Cleanup", arg0, arg1, arg2)
+	m.ctrl.Call(m, "Cleanup", arg0, arg1, arg2, arg3)
 }
 
 // Cleanup indicates an expected call of Cleanup.
-func (mr *MockFileRestoreStepperMockRecorder) Cleanup(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockFileRestoreStepperMockRecorder) Cleanup(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockFileRestoreStepper)(nil).Cleanup), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "Cleanup", reflect.TypeOf((*MockFileRestoreStepper)(nil).Cleanup), arg0, arg1, arg2, arg3)
 }
 
 // CreateInspectorApplication mocks base method.
-func (m *MockFileRestoreStepper) CreateInspectorApplication(arg0 context.Context, arg1 *types.FileRestoreArgs, arg2 *v1.VolumeSnapshot, arg3 *v10.PersistentVolumeClaim, arg4 *v11.StorageClass) (*v10.Pod, *v10.PersistentVolumeClaim, error) {
+func (m *MockFileRestoreStepper) CreateInspectorApplication(arg0 context.Context, arg1 *types.FileRestoreArgs, arg2 *v1.VolumeSnapshot, arg3, arg4 *v10.PersistentVolumeClaim, arg5 *v11.StorageClass) (*v10.Pod, *v10.PersistentVolumeClaim, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateInspectorApplication", arg0, arg1, arg2, arg3, arg4)
+	ret := m.ctrl.Call(m, "CreateInspectorApplication", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(*v10.Pod)
 	ret1, _ := ret[1].(*v10.PersistentVolumeClaim)
 	ret2, _ := ret[2].(error)
@@ -61,9 +61,9 @@ func (m *MockFileRestoreStepper) CreateInspectorApplication(arg0 context.Context
 }
 
 // CreateInspectorApplication indicates an expected call of CreateInspectorApplication.
-func (mr *MockFileRestoreStepperMockRecorder) CreateInspectorApplication(arg0, arg1, arg2, arg3, arg4 interface{}) *gomock.Call {
+func (mr *MockFileRestoreStepperMockRecorder) CreateInspectorApplication(arg0, arg1, arg2, arg3, arg4, arg5 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInspectorApplication", reflect.TypeOf((*MockFileRestoreStepper)(nil).CreateInspectorApplication), arg0, arg1, arg2, arg3, arg4)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateInspectorApplication", reflect.TypeOf((*MockFileRestoreStepper)(nil).CreateInspectorApplication), arg0, arg1, arg2, arg3, arg4, arg5)
 }
 
 // ExecuteCopyCommand mocks base method.
@@ -96,14 +96,15 @@ func (mr *MockFileRestoreStepperMockRecorder) PortForwardAPod(arg0, arg1 interfa
 }
 
 // ValidateArgs mocks base method.
-func (m *MockFileRestoreStepper) ValidateArgs(arg0 context.Context, arg1 *types.FileRestoreArgs) (*v1.VolumeSnapshot, *v10.PersistentVolumeClaim, *v11.StorageClass, error) {
+func (m *MockFileRestoreStepper) ValidateArgs(arg0 context.Context, arg1 *types.FileRestoreArgs) (*v1.VolumeSnapshot, *v10.PersistentVolumeClaim, *v10.PersistentVolumeClaim, *v11.StorageClass, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ValidateArgs", arg0, arg1)
 	ret0, _ := ret[0].(*v1.VolumeSnapshot)
 	ret1, _ := ret[1].(*v10.PersistentVolumeClaim)
-	ret2, _ := ret[2].(*v11.StorageClass)
-	ret3, _ := ret[3].(error)
-	return ret0, ret1, ret2, ret3
+	ret2, _ := ret[2].(*v10.PersistentVolumeClaim)
+	ret3, _ := ret[3].(*v11.StorageClass)
+	ret4, _ := ret[4].(error)
+	return ret0, ret1, ret2, ret3, ret4
 }
 
 // ValidateArgs indicates an expected call of ValidateArgs.

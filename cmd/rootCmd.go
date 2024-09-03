@@ -129,16 +129,18 @@ var (
 	}
 
 	fromSnapshot   string
+	fromPVC        string
 	toPVC          string
 	path           string
 	restoreFileCmd = &cobra.Command{
 		Use:   "file-restore",
-		Short: "Restore file(s) from a VolumeSnapshot to it's source PVC",
-		Long:  "Restore file(s) from a given CSI provisioned VolumeSnapshot to a PVC.",
+		Short: "Restore file(s) from a Snapshot or PVC to it's source PVC",
+		Long:  "Restore file(s) from a given CSI provisioned VolumeSnapshot or PersistentVolumeClaim to another PersistentVolumeClaim.",
 		Args:  cobra.ExactArgs(0),
 		RunE: func(cmd *cobra.Command, args []string) error {
 			return FileRestore(context.Background(),
 				fromSnapshot,
+				fromPVC,
 				toPVC,
 				namespace,
 				csiCheckRunAsUser,
@@ -227,8 +229,8 @@ func init() {
 	browseCmd.AddCommand(browseSnapshotCmd)
 
 	rootCmd.AddCommand(restoreFileCmd)
-	restoreFileCmd.Flags().StringVarP(&fromSnapshot, "fromSnapshot", "f", "", "The name of a VolumeSnapshot. (Required)")
-	_ = restoreFileCmd.MarkFlagRequired("fromSnapshot")
+	restoreFileCmd.Flags().StringVarP(&fromSnapshot, "fromSnapshot", "f", "", "The name of a VolumeSnapshot.")
+	restoreFileCmd.Flags().StringVarP(&fromPVC, "fromPVC", "v", "", "The name of a PersistentVolumeClaim.")
 	restoreFileCmd.Flags().StringVarP(&toPVC, "toPVC", "t", "", "The name of a PersistentVolumeClaim.")
 	restoreFileCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of both the given PVC & VS.")
 	restoreFileCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
@@ -459,8 +461,9 @@ func CsiSnapshotBrowse(ctx context.Context,
 }
 
 func FileRestore(ctx context.Context,
-	snapshotName string,
-	pvcName string,
+	fromSnapshotName string,
+	fromPVCName string,
+	toPVCName string,
 	namespace string,
 	runAsUser int64,
 	localPort int,
@@ -481,12 +484,13 @@ func FileRestore(ctx context.Context,
 		DynCli:  dyncli,
 	}
 	err = fileRestoreRunner.RunFileRestore(ctx, &csitypes.FileRestoreArgs{
-		SnapshotName: snapshotName,
-		PVCName:      pvcName,
-		Namespace:    namespace,
-		RunAsUser:    runAsUser,
-		LocalPort:    localPort,
-		Path:         path,
+		FromSnapshotName: fromSnapshotName,
+		FromPVCName:      fromPVCName,
+		ToPVCName:        toPVCName,
+		Namespace:        namespace,
+		RunAsUser:        runAsUser,
+		LocalPort:        localPort,
+		Path:             path,
 	})
 	if err != nil {
 		fmt.Printf("Failed to run file-restore (%s)\n", err.Error())
