@@ -171,7 +171,7 @@ func (f *fileRestoreSteps) ValidateArgs(ctx context.Context, args *types.FileRes
 		if err != nil {
 			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate source PVC")
 		}
-		sc, err = f.validateOps.ValidateStorageClass(ctx, *restorePVC.Spec.StorageClassName)
+		_, err = f.validateOps.ValidateStorageClass(ctx, *restorePVC.Spec.StorageClassName)
 		if err != nil {
 			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate StorageClass for restore PVC")
 		}
