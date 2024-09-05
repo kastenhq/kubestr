@@ -231,6 +231,8 @@ func init() {
 	rootCmd.AddCommand(restoreFileCmd)
 	restoreFileCmd.Flags().StringVarP(&fromSnapshot, "fromSnapshot", "f", "", "The name of a VolumeSnapshot.")
 	restoreFileCmd.Flags().StringVarP(&fromPVC, "fromPVC", "v", "", "The name of a PersistentVolumeClaim.")
+	restoreFileCmd.MarkFlagsMutuallyExclusive("fromSnapshot", "fromPVC")
+	restoreFileCmd.MarkFlagsOneRequired("fromSnapshot", "fromPVC")
 	restoreFileCmd.Flags().StringVarP(&toPVC, "toPVC", "t", "", "The name of a PersistentVolumeClaim.")
 	restoreFileCmd.Flags().StringVarP(&namespace, "namespace", "n", fio.DefaultNS, "The namespace of both the given PVC & VS.")
 	restoreFileCmd.Flags().Int64VarP(&csiCheckRunAsUser, "runAsUser", "u", 0, "Runs the inspector pod as a user (int)")
