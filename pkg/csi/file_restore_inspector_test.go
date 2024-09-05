@@ -39,10 +39,10 @@ func (s *CSITestSuite) TestRunFileRestoreHelper(c *C) {
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(
-						&snapv1.VolumeSnapshot{}, &v1.PersistentVolumeClaim{}, &sv1.StorageClass{}, nil,
+						&snapv1.VolumeSnapshot{}, &v1.PersistentVolumeClaim{}, &v1.PersistentVolumeClaim{}, &sv1.StorageClass{}, nil,
 					),
 					f.stepperOps.EXPECT().CreateInspectorApplication(gomock.Any(), gomock.Any(),
-						&snapv1.VolumeSnapshot{}, &v1.PersistentVolumeClaim{}, &sv1.StorageClass{},
+						&snapv1.VolumeSnapshot{}, &v1.PersistentVolumeClaim{}, &v1.PersistentVolumeClaim{}, &sv1.StorageClass{},
 					).Return(
 						&v1.Pod{
 							ObjectMeta: metav1.ObjectMeta{
@@ -66,7 +66,7 @@ func (s *CSITestSuite) TestRunFileRestoreHelper(c *C) {
 							},
 						}, gomock.Any(),
 					).Return(nil),
-					f.stepperOps.EXPECT().Cleanup(gomock.Any(),
+					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(),
 						&v1.PersistentVolumeClaim{
 							ObjectMeta: metav1.ObjectMeta{
 								Name:      "pvc1",
@@ -91,10 +91,10 @@ func (s *CSITestSuite) TestRunFileRestoreHelper(c *C) {
 			args:    &types.FileRestoreArgs{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, nil, nil),
-					f.stepperOps.EXPECT().CreateInspectorApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, nil),
+					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, nil, nil, nil),
+					f.stepperOps.EXPECT().CreateInspectorApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, nil),
 					f.stepperOps.EXPECT().PortForwardAPod(gomock.Any(), gomock.Any()).Return(fmt.Errorf("portforward error")),
-					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any()),
+					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()),
 				)
 			},
 			errChecker: NotNil,
@@ -106,9 +106,9 @@ func (s *CSITestSuite) TestRunFileRestoreHelper(c *C) {
 			args:    &types.FileRestoreArgs{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, nil, nil),
-					f.stepperOps.EXPECT().CreateInspectorApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, fmt.Errorf("createapp error")),
-					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any()),
+					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, nil, nil, nil),
+					f.stepperOps.EXPECT().CreateInspectorApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, fmt.Errorf("createapp error")),
+					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()),
 				)
 			},
 			errChecker: NotNil,
@@ -120,8 +120,8 @@ func (s *CSITestSuite) TestRunFileRestoreHelper(c *C) {
 			args:    &types.FileRestoreArgs{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, nil, fmt.Errorf("snapshot error")),
-					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any()),
+					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, nil, nil, fmt.Errorf("snapshot error")),
+					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()),
 				)
 			},
 			errChecker: NotNil,
@@ -133,8 +133,8 @@ func (s *CSITestSuite) TestRunFileRestoreHelper(c *C) {
 			args:    &types.FileRestoreArgs{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, nil, fmt.Errorf("validate error")),
-					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any()),
+					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, nil, nil, fmt.Errorf("validate error")),
+					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()),
 				)
 			},
 			errChecker: NotNil,
@@ -146,7 +146,7 @@ func (s *CSITestSuite) TestRunFileRestoreHelper(c *C) {
 			args:    &types.FileRestoreArgs{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any()),
+					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()),
 				)
 			},
 			errChecker: NotNil,
@@ -158,7 +158,7 @@ func (s *CSITestSuite) TestRunFileRestoreHelper(c *C) {
 			args:    &types.FileRestoreArgs{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
-					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any()),
+					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()),
 				)
 			},
 			errChecker: NotNil,
@@ -187,6 +187,7 @@ func (s *CSITestSuite) TestFileRestoreRunner(c *C) {
 	r := &FileRestoreRunner{
 		restoreSteps: &fileRestoreSteps{},
 	}
-	err := r.RunFileRestoreHelper(ctx, nil)
+	args := types.FileRestoreArgs{}
+	err := r.RunFileRestoreHelper(ctx, &args)
 	c.Check(err, NotNil)
 }

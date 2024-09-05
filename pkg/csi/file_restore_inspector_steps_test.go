@@ -3,6 +3,7 @@ package csi
 import (
 	"context"
 	"fmt"
+	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/golang/mock/gomock"
 	"github.com/kastenhq/kubestr/pkg/common"
@@ -12,7 +13,6 @@ import (
 	. "gopkg.in/check.v1"
 	v1 "k8s.io/api/core/v1"
 	sv1 "k8s.io/api/storage/v1"
-	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 )
@@ -33,8 +33,8 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 	}{
 		{ // valid args
 			args: &types.FileRestoreArgs{
-				SnapshotName: "vs",
-				Namespace:    "ns",
+				FromSnapshotName: "vs",
+				Namespace:        "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
@@ -84,10 +84,59 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 			},
 			errChecker: IsNil,
 		},
+		{ // valid args
+			args: &types.FileRestoreArgs{
+				FromPVCName: "restorePVC",
+				ToPVCName:   "sourcePVC",
+				Namespace:   "ns",
+			},
+			prepare: func(f *fields) {
+				gomock.InOrder(
+					f.validateOps.EXPECT().ValidateNamespace(gomock.Any(), "ns").Return(nil),
+					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
+						&metav1.GroupVersionForDiscovery{
+							GroupVersion: common.SnapshotAlphaVersion,
+						}, nil),
+					f.validateOps.EXPECT().ValidatePVC(gomock.Any(), "restorePVC", "ns").Return(
+						&v1.PersistentVolumeClaim{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "restorePVC",
+								Namespace: "ns",
+							},
+							Spec: v1.PersistentVolumeClaimSpec{
+								VolumeName:       "vol",
+								StorageClassName: &scName,
+							},
+						}, nil,
+					),
+					f.validateOps.EXPECT().ValidatePVC(gomock.Any(), "sourcePVC", "ns").Return(
+						&v1.PersistentVolumeClaim{
+							ObjectMeta: metav1.ObjectMeta{
+								Name:      "sourcePVC",
+								Namespace: "ns",
+							},
+							Spec: v1.PersistentVolumeClaimSpec{
+								VolumeName:       "vol",
+								StorageClassName: &scName,
+							},
+						}, nil,
+					),
+					f.validateOps.EXPECT().ValidateStorageClass(gomock.Any(), scName).Return(
+						&sv1.StorageClass{
+							Provisioner: "p1",
+						}, nil),
+					f.validateOps.EXPECT().ValidateStorageClass(gomock.Any(), scName).Return(
+						&sv1.StorageClass{
+							Provisioner: "p1",
+						}, nil),
+				)
+			},
+			errChecker: IsNil,
+		},
 		{ // driver mismatch
 			args: &types.FileRestoreArgs{
-				SnapshotName: "vs",
-				Namespace:    "ns",
+				FromSnapshotName: "vs",
+				Namespace:        "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
@@ -139,8 +188,8 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 		},
 		{ // vsc error
 			args: &types.FileRestoreArgs{
-				SnapshotName: "vs",
-				Namespace:    "ns",
+				FromSnapshotName: "vs",
+				Namespace:        "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
@@ -180,8 +229,8 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 		},
 		{ // get driver versionn error
 			args: &types.FileRestoreArgs{
-				SnapshotName: "vs",
-				Namespace:    "ns",
+				FromSnapshotName: "vs",
+				Namespace:        "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
@@ -193,8 +242,8 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 		},
 		{ // sc error
 			args: &types.FileRestoreArgs{
-				SnapshotName: "vs",
-				Namespace:    "ns",
+				FromSnapshotName: "vs",
+				Namespace:        "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
@@ -233,8 +282,8 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 		},
 		{ // validate vs error
 			args: &types.FileRestoreArgs{
-				SnapshotName: "vs",
-				Namespace:    "ns",
+				FromSnapshotName: "vs",
+				Namespace:        "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
@@ -247,8 +296,8 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 		},
 		{ // validate ns error
 			args: &types.FileRestoreArgs{
-				SnapshotName: "vs",
-				Namespace:    "ns",
+				FromSnapshotName: "vs",
+				Namespace:        "ns",
 			},
 			prepare: func(f *fields) {
 				gomock.InOrder(
@@ -259,15 +308,15 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 		},
 		{ // validate vs error
 			args: &types.FileRestoreArgs{
-				SnapshotName: "",
-				Namespace:    "ns",
+				FromSnapshotName: "",
+				Namespace:        "ns",
 			},
 			errChecker: NotNil,
 		},
 		{ // validate ns error
 			args: &types.FileRestoreArgs{
-				SnapshotName: "dfd",
-				Namespace:    "",
+				FromSnapshotName: "dfd",
+				Namespace:        "",
 			},
 			errChecker: NotNil,
 		},
@@ -285,7 +334,7 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 			validateOps:     f.validateOps,
 			versionFetchOps: f.versionOps,
 		}
-		_, _, _, err := stepper.ValidateArgs(ctx, tc.args)
+		_, _, _, _, err := stepper.ValidateArgs(ctx, tc.args)
 		c.Check(err, tc.errChecker)
 	}
 }
@@ -298,25 +347,27 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForFileRestore(c *C) {
 		createAppOps *mocks.MockApplicationCreator
 	}
 	for _, tc := range []struct {
-		args       *types.FileRestoreArgs
-		snapshot   *snapv1.VolumeSnapshot
-		sc         *sv1.StorageClass
-		prepare    func(f *fields)
-		errChecker Checker
-		podChecker Checker
-		pvcChecker Checker
+		args         *types.FileRestoreArgs
+		fromSnapshot *snapv1.VolumeSnapshot
+		fromPVC      *v1.PersistentVolumeClaim
+		sc           *sv1.StorageClass
+		prepare      func(f *fields)
+		errChecker   Checker
+		podChecker   Checker
+		pvcChecker   Checker
 	}{
 		{
 			args: &types.FileRestoreArgs{
-				Namespace: "ns",
-				RunAsUser: 100,
+				Namespace:        "ns",
+				RunAsUser:        100,
+				FromSnapshotName: "vs",
 			},
 			sc: &sv1.StorageClass{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "sc",
 				},
 			},
-			snapshot: &snapv1.VolumeSnapshot{
+			fromSnapshot: &snapv1.VolumeSnapshot{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "vs",
 				},
@@ -324,6 +375,7 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForFileRestore(c *C) {
 					RestoreSize: &resourceQuantity,
 				},
 			},
+			fromPVC: &v1.PersistentVolumeClaim{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.createAppOps.EXPECT().CreatePVC(gomock.Any(), &types.CreatePVCArgs{
@@ -369,15 +421,61 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForFileRestore(c *C) {
 		},
 		{
 			args: &types.FileRestoreArgs{
-				Namespace: "ns",
-				RunAsUser: 100,
+				Namespace:   "ns",
+				RunAsUser:   100,
+				FromPVCName: "restorePVC",
 			},
 			sc: &sv1.StorageClass{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "sc",
 				},
 			},
-			snapshot: &snapv1.VolumeSnapshot{
+			fromSnapshot: &snapv1.VolumeSnapshot{},
+			fromPVC: &v1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "restorePVC",
+				},
+			},
+			prepare: func(f *fields) {
+				gomock.InOrder(
+					f.createAppOps.EXPECT().CreatePod(gomock.Any(), &types.CreatePodArgs{
+						GenerateName:   clonedPodGenerateName,
+						Namespace:      "ns",
+						ContainerArgs:  []string{"--noauth"},
+						RunAsUser:      100,
+						ContainerImage: "filebrowser/filebrowser:v2",
+						PVCMap: map[string]types.VolumePath{
+							"restorePVC": {
+								MountPath: "/srv/restore-pvc-data",
+							},
+							"sourcePVC": {
+								MountPath: "/srv/source-data",
+							},
+						},
+					}).Return(&v1.Pod{
+						ObjectMeta: metav1.ObjectMeta{
+							Name: "pod",
+						},
+					}, nil),
+					f.createAppOps.EXPECT().WaitForPodReady(gomock.Any(), "ns", "pod").Return(nil),
+				)
+			},
+			errChecker: IsNil,
+			podChecker: NotNil,
+			pvcChecker: NotNil,
+		},
+		{
+			args: &types.FileRestoreArgs{
+				Namespace:        "ns",
+				RunAsUser:        100,
+				FromSnapshotName: "vs",
+			},
+			sc: &sv1.StorageClass{
+				ObjectMeta: metav1.ObjectMeta{
+					Name: "sc",
+				},
+			},
+			fromSnapshot: &snapv1.VolumeSnapshot{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "vs",
 				},
@@ -385,6 +483,7 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForFileRestore(c *C) {
 					RestoreSize: &resourceQuantity,
 				},
 			},
+			fromPVC: &v1.PersistentVolumeClaim{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.createAppOps.EXPECT().CreatePVC(gomock.Any(), &types.CreatePVCArgs{
@@ -430,15 +529,16 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForFileRestore(c *C) {
 		},
 		{
 			args: &types.FileRestoreArgs{
-				Namespace: "ns",
-				RunAsUser: 100,
+				Namespace:        "ns",
+				RunAsUser:        100,
+				FromSnapshotName: "vs",
 			},
 			sc: &sv1.StorageClass{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "sc",
 				},
 			},
-			snapshot: &snapv1.VolumeSnapshot{
+			fromSnapshot: &snapv1.VolumeSnapshot{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "vs",
 				},
@@ -446,6 +546,7 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForFileRestore(c *C) {
 					RestoreSize: &resourceQuantity,
 				},
 			},
+			fromPVC: &v1.PersistentVolumeClaim{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.createAppOps.EXPECT().CreatePVC(gomock.Any(), gomock.Any()).Return(&v1.PersistentVolumeClaim{
@@ -462,15 +563,16 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForFileRestore(c *C) {
 		},
 		{
 			args: &types.FileRestoreArgs{
-				Namespace: "ns",
-				RunAsUser: 100,
+				Namespace:        "ns",
+				RunAsUser:        100,
+				FromSnapshotName: "vs",
 			},
 			sc: &sv1.StorageClass{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "sc",
 				},
 			},
-			snapshot: &snapv1.VolumeSnapshot{
+			fromSnapshot: &snapv1.VolumeSnapshot{
 				ObjectMeta: metav1.ObjectMeta{
 					Name: "vs",
 				},
@@ -478,6 +580,7 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForFileRestore(c *C) {
 					RestoreSize: &resourceQuantity,
 				},
 			},
+			fromPVC: &v1.PersistentVolumeClaim{},
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.createAppOps.EXPECT().CreatePVC(gomock.Any(), gomock.Any()).Return(nil, fmt.Errorf("error")),
@@ -515,7 +618,7 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForFileRestore(c *C) {
 				},
 			},
 		}
-		pod, pvc, err := stepper.CreateInspectorApplication(ctx, tc.args, tc.snapshot, &sourcePVC, tc.sc)
+		pod, pvc, err := stepper.CreateInspectorApplication(ctx, tc.args, tc.fromSnapshot, tc.fromPVC, &sourcePVC, tc.sc)
 		c.Check(err, tc.errChecker)
 		c.Check(pod, tc.podChecker)
 		c.Check(pvc, tc.pvcChecker)
@@ -532,11 +635,17 @@ func (s *CSITestSuite) TestFileRestoreCleanup(c *C) {
 		cleanerOps *mocks.MockCleaner
 	}
 	for _, tc := range []struct {
+		args       *types.FileRestoreArgs
 		restorePVC *v1.PersistentVolumeClaim
 		pod        *v1.Pod
 		prepare    func(f *fields)
 	}{
 		{
+			args: &types.FileRestoreArgs{
+				Namespace:        "ns",
+				RunAsUser:        100,
+				FromSnapshotName: "vs",
+			},
 			restorePVC: &v1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "restorePVC",
@@ -557,6 +666,37 @@ func (s *CSITestSuite) TestFileRestoreCleanup(c *C) {
 			},
 		},
 		{
+			args: &types.FileRestoreArgs{
+				Namespace:        "ns",
+				RunAsUser:        100,
+				FromSnapshotName: "",
+				FromPVCName:      "restorePVC",
+				ToPVCName:        "sourcePVC",
+			},
+			restorePVC: &v1.PersistentVolumeClaim{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "restorePVC",
+					Namespace: "ns",
+				},
+			},
+			pod: &v1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "pod",
+					Namespace: "ns",
+				},
+			},
+			prepare: func(f *fields) {
+				gomock.InOrder(
+					f.cleanerOps.EXPECT().DeletePod(ctx, "pod", "ns").Return(nil),
+				)
+			},
+		},
+		{
+			args: &types.FileRestoreArgs{
+				Namespace:        "ns",
+				RunAsUser:        100,
+				FromSnapshotName: "vs",
+			},
 			restorePVC: &v1.PersistentVolumeClaim{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "restorePVC",
@@ -589,6 +729,6 @@ func (s *CSITestSuite) TestFileRestoreCleanup(c *C) {
 			cleanerOps:           f.cleanerOps,
 			SnapshotGroupVersion: groupversion,
 		}
-		stepper.Cleanup(ctx, tc.restorePVC, tc.pod)
+		stepper.Cleanup(ctx, tc.args, tc.restorePVC, tc.pod)
 	}
 }

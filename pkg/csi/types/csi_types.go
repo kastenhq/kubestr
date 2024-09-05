@@ -163,16 +163,23 @@ func (p *SnapshotBrowseArgs) Validate() error {
 }
 
 type FileRestoreArgs struct {
-	SnapshotName string
-	PVCName      string
-	Namespace    string
-	RunAsUser    int64
-	LocalPort    int
-	Path         string
+	FromSnapshotName string
+	FromPVCName      string
+	ToPVCName        string
+	Namespace        string
+	RunAsUser        int64
+	LocalPort        int
+	Path             string
 }
 
 func (f *FileRestoreArgs) Validate() error {
-	if f.SnapshotName == "" || f.Namespace == "" {
+	if (f.FromSnapshotName == "" && f.FromPVCName == "") || (f.FromSnapshotName != "" && f.FromPVCName != "") {
+		return fmt.Errorf("Either --fromSnapshot or --fromPVC argument must be specified. Both cannot be specified together.")
+	}
+	if f.FromPVCName != "" && f.ToPVCName == "" {
+		return fmt.Errorf("--toPVC argument must be specified if using --fromPVC.")
+	}
+	if f.Namespace == "" {
 		return fmt.Errorf("Invalid FileRestoreArgs (%v)", f)
 	}
 	return nil
