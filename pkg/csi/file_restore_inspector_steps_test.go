@@ -618,7 +618,7 @@ func (s *CSITestSuite) TestCreateInspectorApplicationForFileRestore(c *C) {
 				},
 			},
 		}
-		pod, pvc, err := stepper.CreateInspectorApplication(ctx, tc.args, tc.fromSnapshot, tc.fromPVC, &sourcePVC, tc.sc)
+		pod, pvc, _, err := stepper.CreateInspectorApplication(ctx, tc.args, tc.fromSnapshot, tc.fromPVC, &sourcePVC, tc.sc)
 		c.Check(err, tc.errChecker)
 		c.Check(pod, tc.podChecker)
 		c.Check(pvc, tc.pvcChecker)

@@ -51,13 +51,14 @@ func (mr *MockFileRestoreStepperMockRecorder) Cleanup(arg0, arg1, arg2, arg3 int
 }
 
 // CreateInspectorApplication mocks base method.
-func (m *MockFileRestoreStepper) CreateInspectorApplication(arg0 context.Context, arg1 *types.FileRestoreArgs, arg2 *v1.VolumeSnapshot, arg3, arg4 *v10.PersistentVolumeClaim, arg5 *v11.StorageClass) (*v10.Pod, *v10.PersistentVolumeClaim, error) {
+func (m *MockFileRestoreStepper) CreateInspectorApplication(arg0 context.Context, arg1 *types.FileRestoreArgs, arg2 *v1.VolumeSnapshot, arg3, arg4 *v10.PersistentVolumeClaim, arg5 *v11.StorageClass) (*v10.Pod, *v10.PersistentVolumeClaim, string, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateInspectorApplication", arg0, arg1, arg2, arg3, arg4, arg5)
 	ret0, _ := ret[0].(*v10.Pod)
 	ret1, _ := ret[1].(*v10.PersistentVolumeClaim)
-	ret2, _ := ret[2].(error)
-	return ret0, ret1, ret2
+	ret2, _ := ret[2].(string)
+	ret3, _ := ret[3].(error)
+	return ret0, ret1, ret2, ret3
 }
 
 // CreateInspectorApplication indicates an expected call of CreateInspectorApplication.
@@ -67,18 +68,18 @@ func (mr *MockFileRestoreStepperMockRecorder) CreateInspectorApplication(arg0, a
 }
 
 // ExecuteCopyCommand mocks base method.
-func (m *MockFileRestoreStepper) ExecuteCopyCommand(arg0 context.Context, arg1 *types.FileRestoreArgs, arg2 *v10.Pod) (string, error) {
+func (m *MockFileRestoreStepper) ExecuteCopyCommand(arg0 context.Context, arg1 *types.FileRestoreArgs, arg2 *v10.Pod, arg3 string) (string, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ExecuteCopyCommand", arg0, arg1, arg2)
+	ret := m.ctrl.Call(m, "ExecuteCopyCommand", arg0, arg1, arg2, arg3)
 	ret0, _ := ret[0].(string)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ExecuteCopyCommand indicates an expected call of ExecuteCopyCommand.
-func (mr *MockFileRestoreStepperMockRecorder) ExecuteCopyCommand(arg0, arg1, arg2 interface{}) *gomock.Call {
+func (mr *MockFileRestoreStepperMockRecorder) ExecuteCopyCommand(arg0, arg1, arg2, arg3 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteCopyCommand", reflect.TypeOf((*MockFileRestoreStepper)(nil).ExecuteCopyCommand), arg0, arg1, arg2)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ExecuteCopyCommand", reflect.TypeOf((*MockFileRestoreStepper)(nil).ExecuteCopyCommand), arg0, arg1, arg2, arg3)
 }
 
 // PortForwardAPod mocks base method.

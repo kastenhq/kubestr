@@ -56,6 +56,7 @@ func (s *CSITestSuite) TestRunFileRestoreHelper(c *C) {
 								Namespace: "ns",
 							},
 						},
+						"",
 						nil,
 					),
 					f.stepperOps.EXPECT().PortForwardAPod(
@@ -92,7 +93,7 @@ func (s *CSITestSuite) TestRunFileRestoreHelper(c *C) {
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, nil, nil, nil),
-					f.stepperOps.EXPECT().CreateInspectorApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, nil),
+					f.stepperOps.EXPECT().CreateInspectorApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, "", nil),
 					f.stepperOps.EXPECT().PortForwardAPod(gomock.Any(), gomock.Any()).Return(fmt.Errorf("portforward error")),
 					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()),
 				)
@@ -107,7 +108,7 @@ func (s *CSITestSuite) TestRunFileRestoreHelper(c *C) {
 			prepare: func(f *fields) {
 				gomock.InOrder(
 					f.stepperOps.EXPECT().ValidateArgs(gomock.Any(), gomock.Any()).Return(nil, nil, nil, nil, nil),
-					f.stepperOps.EXPECT().CreateInspectorApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, fmt.Errorf("createapp error")),
+					f.stepperOps.EXPECT().CreateInspectorApplication(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()).Return(nil, nil, "", fmt.Errorf("createapp error")),
 					f.stepperOps.EXPECT().Cleanup(gomock.Any(), gomock.Any(), gomock.Any(), gomock.Any()),
 				)
 			},
