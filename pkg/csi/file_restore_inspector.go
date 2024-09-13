@@ -68,18 +68,23 @@ func (f *FileRestoreRunner) RunFileRestoreHelper(ctx context.Context, args *type
 	f.snapshot = vs
 
 	fmt.Println("Creating the browser pod & mounting the PVCs.")
-	f.pod, f.restorePVC, err = f.restoreSteps.CreateInspectorApplication(ctx, args, f.snapshot, restorePVC, sourcePVC, sc)
+	var restoreMountPath string
+	f.pod, f.restorePVC, restoreMountPath, err = f.restoreSteps.CreateInspectorApplication(ctx, args, f.snapshot, restorePVC, sourcePVC, sc)
 	if err != nil {
 		return errors.Wrap(err, "Failed to create inspector application.")
 	}
 
 	if args.Path != "" {
 		fmt.Printf("Restoring the file %s\n", args.Path)
-		_, err := f.restoreSteps.ExecuteCopyCommand(ctx, args, f.pod)
+		_, err := f.restoreSteps.ExecuteCopyCommand(ctx, args, f.pod, restoreMountPath)
 		if err != nil {
 			return errors.Wrap(err, "Failed to execute cp command in pod.")
 		}
-		fmt.Printf("File restored from VolumeSnapshot %s to Source PVC %s.\n", f.snapshot.Name, sourcePVC.Name)
+		if args.FromSnapshotName != "" {
+			fmt.Printf("File restored from VolumeSnapshot %s to Source PVC %s.\n", f.snapshot.Name, sourcePVC.Name)
+		} else {
+			fmt.Printf("File restored from PVC %s to Source PVC %s.\n", f.restorePVC.Name, sourcePVC.Name)
+		}
 		return nil
 	}
 
@@ -95,8 +100,8 @@ func (f *FileRestoreRunner) RunFileRestoreHelper(ctx context.Context, args *type
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_file_restore_stepper.go -package=mocks . FileRestoreStepper
 type FileRestoreStepper interface {
 	ValidateArgs(ctx context.Context, args *types.FileRestoreArgs) (*snapv1.VolumeSnapshot, *v1.PersistentVolumeClaim, *v1.PersistentVolumeClaim, *sv1.StorageClass, error)
-	CreateInspectorApplication(ctx context.Context, args *types.FileRestoreArgs, snapshot *snapv1.VolumeSnapshot, restorePVC *v1.PersistentVolumeClaim, sourcePVC *v1.PersistentVolumeClaim, storageClass *sv1.StorageClass) (*v1.Pod, *v1.PersistentVolumeClaim, error)
-	ExecuteCopyCommand(ctx context.Context, args *types.FileRestoreArgs, pod *v1.Pod) (string, error)
+	CreateInspectorApplication(ctx context.Context, args *types.FileRestoreArgs, snapshot *snapv1.VolumeSnapshot, restorePVC *v1.PersistentVolumeClaim, sourcePVC *v1.PersistentVolumeClaim, storageClass *sv1.StorageClass) (*v1.Pod, *v1.PersistentVolumeClaim, string, error)
+	ExecuteCopyCommand(ctx context.Context, args *types.FileRestoreArgs, pod *v1.Pod, restoreMountPath string) (string, error)
 	PortForwardAPod(pod *v1.Pod, localPort int) error
 	Cleanup(ctx context.Context, args *types.FileRestoreArgs, restorePVC *v1.PersistentVolumeClaim, pod *v1.Pod)
 }
@@ -189,8 +194,8 @@ func (f *fileRestoreSteps) ValidateArgs(ctx context.Context, args *types.FileRes
 	return snapshot, restorePVC, sourcePVC, sc, nil
 }
 
-func (f *fileRestoreSteps) CreateInspectorApplication(ctx context.Context, args *types.FileRestoreArgs, snapshot *snapv1.VolumeSnapshot, restorePVC *v1.PersistentVolumeClaim, sourcePVC *v1.PersistentVolumeClaim, storageClass *sv1.StorageClass) (*v1.Pod, *v1.PersistentVolumeClaim, error) {
-	restoreMountPath := "/srv/restore-pvc-data"
+func (f *fileRestoreSteps) CreateInspectorApplication(ctx context.Context, args *types.FileRestoreArgs, snapshot *snapv1.VolumeSnapshot, restorePVC *v1.PersistentVolumeClaim, sourcePVC *v1.PersistentVolumeClaim, storageClass *sv1.StorageClass) (*v1.Pod, *v1.PersistentVolumeClaim, string, error) {
+	restoreMountPath := "/restore-pvc-data"
 	if args.FromSnapshotName != "" {
 		snapshotAPIGroup := "snapshot.storage.k8s.io"
 		snapshotKind := "VolumeSnapshot"
@@ -209,9 +214,9 @@ func (f *fileRestoreSteps) CreateInspectorApplication(ctx context.Context, args 
 		var err error
 		restorePVC, err = f.createAppOps.CreatePVC(ctx, pvcArgs)
 		if err != nil {
-			return nil, nil, errors.Wrap(err, "Failed to restore PVC")
+			return nil, nil, "", errors.Wrap(err, "Failed to restore PVC")
 		}
-		restoreMountPath = "/srv/snapshot-data"
+		restoreMountPath = "/snapshot-data"
 	}
 	podArgs := &types.CreatePodArgs{
 		GenerateName:   clonedPodGenerateName,
@@ -221,7 +226,7 @@ func (f *fileRestoreSteps) CreateInspectorApplication(ctx context.Context, args 
 		ContainerArgs:  []string{"--noauth"},
 		PVCMap: map[string]types.VolumePath{
 			restorePVC.Name: {
-				MountPath: restoreMountPath,
+				MountPath: fmt.Sprintf("/srv%s", restoreMountPath),
 			},
 			sourcePVC.Name: {
 				MountPath: "/srv/source-data",
@@ -248,16 +253,16 @@ func (f *fileRestoreSteps) CreateInspectorApplication(ctx context.Context, args 
 	}
 	pod, err := f.createAppOps.CreatePod(ctx, podArgs)
 	if err != nil {
-		return nil, restorePVC, errors.Wrap(err, "Failed to create browse Pod")
+		return nil, restorePVC, "", errors.Wrap(err, "Failed to create browse Pod")
 	}
 	if err = f.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
-		return pod, restorePVC, errors.Wrap(err, "Pod failed to become ready")
+		return pod, restorePVC, "", errors.Wrap(err, "Pod failed to become ready")
 	}
-	return pod, restorePVC, nil
+	return pod, restorePVC, restoreMountPath, nil
 }
 
-func (f *fileRestoreSteps) ExecuteCopyCommand(ctx context.Context, args *types.FileRestoreArgs, pod *v1.Pod) (string, error) {
-	command := []string{"cp", "-rf", fmt.Sprintf("/snapshot-data%s", args.Path), fmt.Sprintf("/source-data%s", args.Path)}
+func (f *fileRestoreSteps) ExecuteCopyCommand(ctx context.Context, args *types.FileRestoreArgs, pod *v1.Pod, restoreMountPath string) (string, error) {
+	command := []string{"cp", "-rf", fmt.Sprintf("%s%s", restoreMountPath, args.Path), fmt.Sprintf("/source-data%s", args.Path)}
 	stdout, err := f.kubeExecutor.Exec(ctx, args.Namespace, pod.Name, pod.Spec.Containers[0].Name, command)
 	if err != nil {
 		return "", errors.Wrapf(err, "Error running command:(%v)", command)
