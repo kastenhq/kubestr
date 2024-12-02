@@ -22,7 +22,7 @@ COPY . .
 
 RUN go build -o /dist/kubestr -ldflags="-w -s" .
 
-FROM --platform=$TARGETPLATFORM alpine:3.19
+FROM alpine:3.19
 
 RUN apk --no-cache add fio
 
