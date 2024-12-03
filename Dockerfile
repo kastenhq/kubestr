@@ -1,10 +1,15 @@
-FROM golang:1.22-bullseye AS builder
+ARG BUILDPLATFROM
+
+FROM --platform=$BUILDPLATFORM golang:1.22-bookworm AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
+ARG TARGETPLATFROM
 
 ENV GO111MODULE=on \
     CGO_ENABLED=0 \
-    GOOS=linux \
-    GOARCH=amd64 \
-    GOBIN=/dist
+    GOOS=${TARGETOS} \
+    GOARCH=${TARGETARCH} 
 
 WORKDIR /app
 
@@ -15,7 +20,7 @@ RUN go mod download
 
 COPY . .
 
-RUN go install -ldflags="-w -s" .
+RUN go build -o /dist/kubestr -ldflags="-w -s" .
 
 FROM alpine:3.19
 
