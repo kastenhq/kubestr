@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
+	kansnapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
 	. "gopkg.in/check.v1"
 	scv1 "k8s.io/api/storage/v1"
 	"k8s.io/api/storage/v1beta1"
@@ -115,41 +115,10 @@ func (s *ProvisionerTestSuite) TestValidateVolumeSnapshotClass(c *C) {
 					"metadata": map[string]interface{}{
 						"name": "vsc1",
 					},
-					"snapshotter": "something",
-				},
-			},
-			groupVersion: "snapshot.storage.k8s.io/v1alpha1",
-			out: &VSCInfo{
-				Name: "vsc1",
-			},
-		},
-		{ // failure
-			vsc: unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"metadata": map[string]interface{}{
-						"name": "vsc1",
-					},
-					"notsnapshotter": "something",
-				},
-			},
-			groupVersion: "snapshot.storage.k8s.io/v1alpha1",
-			out: &VSCInfo{
-				Name: "vsc1",
-				StatusList: []Status{
-					makeStatus(StatusError, fmt.Sprintf("VolumeSnapshotClass (%s) missing 'snapshotter' field", "vsc1"), nil),
-				},
-			},
-		},
-		{
-			vsc: unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"metadata": map[string]interface{}{
-						"name": "vsc1",
-					},
 					"driver": "something",
 				},
 			},
-			groupVersion: "snapshot.storage.k8s.io/v1beta1",
+			groupVersion: "snapshot.storage.k8s.io/v1",
 			out: &VSCInfo{
 				Name: "vsc1",
 			},
@@ -163,7 +132,7 @@ func (s *ProvisionerTestSuite) TestValidateVolumeSnapshotClass(c *C) {
 					"notdriver": "something",
 				},
 			},
-			groupVersion: "snapshot.storage.k8s.io/v1beta1",
+			groupVersion: "snapshot.storage.k8s.io/v1",
 			out: &VSCInfo{
 				Name: "vsc1",
 				StatusList: []Status{
@@ -206,26 +175,26 @@ func (s *ProvisionerTestSuite) TestLoadStorageClassesAndProvisioners(c *C) {
 func (s *ProvisionerTestSuite) TestLoadVolumeSnaphsotClasses(c *C) {
 	ctx := context.Background()
 	scheme := runtime.NewScheme()
-	scheme.AddKnownTypeWithName(schema.GroupVersionKind{Group: "snapshot.storage.k8s.io", Version: "v1alpha1", Kind: "VolumeSnapshotClassList"}, &unstructured.UnstructuredList{})
+	scheme.AddKnownTypeWithName(schema.GroupVersionKind{Group: "snapshot.storage.k8s.io", Version: "v1", Kind: "VolumeSnapshotClassList"}, &unstructured.UnstructuredList{})
 	p := &Kubestr{dynCli: fakedynamic.NewSimpleDynamicClient(scheme, &unstructured.Unstructured{
 		Object: map[string]interface{}{
-			"apiVersion": fmt.Sprintf("%s/%s", v1alpha1.GroupName, v1alpha1.Version),
+			"apiVersion": fmt.Sprintf("%s/%s", kansnapshot.GroupName, kansnapshot.Version),
 			"kind":       "VolumeSnapshotClass",
 			"metadata": map[string]interface{}{
 				"name": "theVSC",
 			},
-			"snapshotter":    "somesnapshotter",
+			"driver":         "somesnapshotter",
 			"deletionPolicy": "Delete",
 		},
 	})}
-	vsc, err := p.loadVolumeSnapshotClasses(ctx, v1alpha1.Version)
+	vsc, err := p.loadVolumeSnapshotClasses(ctx, kansnapshot.Version)
 	c.Assert(err, IsNil)
 	c.Assert(len(vsc.Items), Equals, 1)
 	c.Assert(vsc, Equals, p.volumeSnapshotClassList)
 
 	// reload has the same
 	p.dynCli = fakedynamic.NewSimpleDynamicClient(runtime.NewScheme())
-	vsc, err = p.loadVolumeSnapshotClasses(ctx, v1alpha1.Version)
+	vsc, err = p.loadVolumeSnapshotClasses(ctx, kansnapshot.Version)
 	c.Assert(err, IsNil)
 	c.Assert(len(vsc.Items), Equals, 1)
 	c.Assert(vsc, Equals, p.volumeSnapshotClassList)
@@ -281,36 +250,20 @@ func (s *ProvisionerTestSuite) TestGetDriverNameFromUVSC(c *C) {
 		version string
 		out     string
 	}{
-		{ // alpha success
-			vsc: unstructured.Unstructured{
-				Object: map[string]interface{}{
-					"snapshotter": "drivername",
-				},
-			},
-			version: "snapshot.storage.k8s.io/v1alpha1",
-			out:     "drivername",
-		},
-		{ // key missing
-			vsc: unstructured.Unstructured{
-				Object: map[string]interface{}{},
-			},
-			version: "snapshot.storage.k8s.io/v1alpha1",
-			out:     "",
-		},
 		{ // beta success
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{
 					"driver": "drivername",
 				},
 			},
-			version: "snapshot.storage.k8s.io/v1beta1",
+			version: "snapshot.storage.k8s.io/v1",
 			out:     "drivername",
 		},
 		{ // key missing
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{},
 			},
-			version: "snapshot.storage.k8s.io/v1beta1",
+			version: "snapshot.storage.k8s.io/v1",
 			out:     "",
 		},
 		{ // type conversion
@@ -319,7 +272,7 @@ func (s *ProvisionerTestSuite) TestGetDriverNameFromUVSC(c *C) {
 					"driver": int64(1),
 				},
 			},
-			version: "snapshot.storage.k8s.io/v1beta1",
+			version: "snapshot.storage.k8s.io/v1",
 			out:     "",
 		},
 	} {

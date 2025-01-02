@@ -5,12 +5,13 @@ package csi
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/runtime"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/kanisterio/kanister/pkg/kube"
 	kankube "github.com/kanisterio/kanister/pkg/kube"
@@ -353,7 +354,7 @@ func (c *snapshotCreate) NewSnapshotter() (kansnapshot.Snapshotter, error) {
 	if c.dynCli == nil {
 		return nil, fmt.Errorf("dynCli not initialized")
 	}
-	return kansnapshot.NewSnapshotter(c.kubeCli, c.dynCli)
+	return kansnapshot.NewSnapshotter(c.kubeCli, c.dynCli), nil
 }
 
 func (c *snapshotCreate) CreateSnapshot(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateSnapshotArgs) (*snapv1.VolumeSnapshot, error) {

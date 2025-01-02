@@ -15,10 +15,6 @@ const (
 	VolumeSnapshotClassResourcePlural = "volumesnapshotclasses"
 	// VolumeSnapshotResourcePlural is "volumesnapshots"
 	VolumeSnapshotResourcePlural = "volumesnapshots"
-	// SnapshotAlphaVersion is the apiversion of the alpha relase
-	SnapshotAlphaVersion = "snapshot.storage.k8s.io/v1alpha1"
-	// SnapshotBetaVersion is the apiversion of the beta relase
-	SnapshotBetaVersion = "snapshot.storage.k8s.io/v1beta1"
 	// SnapshotStableVersion is the apiversion of the stable release
 	SnapshotStableVersion = "snapshot.storage.k8s.io/v1"
 )
