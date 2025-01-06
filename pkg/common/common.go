@@ -1,10 +1,6 @@
 package common
 
 const (
-	// VolSnapClassAlphaDriverKey describes alpha driver key
-	VolSnapClassAlphaDriverKey = "snapshotter"
-	// VolSnapClassBetaDriverKey describes beta driver key
-	VolSnapClassBetaDriverKey = "driver"
 	// VolSnapClassStableDriverKey describes the stable driver key
 	VolSnapClassStableDriverKey = "driver"
 	// DefaultPodImage the default pod image

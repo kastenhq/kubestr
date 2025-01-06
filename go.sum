@@ -251,8 +251,8 @@ github.com/jstemmer/go-junit-report v0.0.0-20190106144839-af01ea7f8024/go.mod h1
 github.com/jstemmer/go-junit-report v0.9.1/go.mod h1:Brl9GWCQeLvo8nXZwPNNblvFj/XSXhF0NWZEnDohbsk=
 github.com/kanisterio/errkit v0.0.3 h1:1wHaTqV4DZE0XrN+Nq7Q2M8kyKnV8NhhEF3OB7A/Pd8=
 github.com/kanisterio/errkit v0.0.3/go.mod h1:0xesKaif6++1IXFdhb6fywa40J07odjwWq3IKzxWC3A=
-github.com/kanisterio/kanister v0.0.0-20241226113100-c408dbf13a72 h1:/XWrYhmmWPD2vhihqtbP3C/EqUVgcLI1WLreT4/4nYs=
-github.com/kanisterio/kanister v0.0.0-20241226113100-c408dbf13a72/go.mod h1:EQhZUczxuhLqkaou9a5qpzn6WHGkX1He2lqKZMPVQJM=
+github.com/kanisterio/kanister v0.0.0-20250103120835-c8610f490b92 h1:adSr1+4SJnypYNCnEh9Rw4r5hBQDLf3wNrnxvH2zJ28=
+github.com/kanisterio/kanister v0.0.0-20250103120835-c8610f490b92/go.mod h1:EQhZUczxuhLqkaou9a5qpzn6WHGkX1He2lqKZMPVQJM=
 github.com/kisielk/errcheck v1.2.0/go.mod h1:/BMXB+zMLi60iA8Vv6Ksmxu/1UDYcXs4uQLJ+jE2L00=
 github.com/kisielk/errcheck v1.5.0/go.mod h1:pFxgyoBC7bSaBwPgfKdkLd5X25qrDl4LWUI2bnpBCr8=
 github.com/kisielk/gotool v1.0.0/go.mod h1:XhKaO+MFFWcvkIS/tQcRk01m1F5IRFswLeQ+oQHNcck=

@@ -43,13 +43,13 @@ func (s *CSITestSuite) TestValidateArgs(c *C) {
 						}, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
-							GroupVersion: common.SnapshotAlphaVersion,
+							GroupVersion: common.SnapshotStableVersion,
 						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), "vsc", &metav1.GroupVersionForDiscovery{
-						GroupVersion: common.SnapshotAlphaVersion,
+						GroupVersion: common.SnapshotStableVersion,
 					}).Return(&unstructured.Unstructured{
 						Object: map[string]interface{}{
-							common.VolSnapClassAlphaDriverKey: "p1",
+							common.VolSnapClassStableDriverKey: "p1",
 						},
 					}, nil),
 				)
@@ -71,13 +71,13 @@ func (s *CSITestSuite) TestValidateArgs(c *C) {
 						}, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
-							GroupVersion: common.SnapshotAlphaVersion,
+							GroupVersion: common.SnapshotStableVersion,
 						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), "vsc", &metav1.GroupVersionForDiscovery{
-						GroupVersion: common.SnapshotAlphaVersion,
+						GroupVersion: common.SnapshotStableVersion,
 					}).Return(&unstructured.Unstructured{
 						Object: map[string]interface{}{
-							common.VolSnapClassAlphaDriverKey: "p2",
+							common.VolSnapClassStableDriverKey: "p2",
 						},
 					}, nil),
 				)
@@ -99,10 +99,10 @@ func (s *CSITestSuite) TestValidateArgs(c *C) {
 						}, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
-							GroupVersion: common.SnapshotAlphaVersion,
+							GroupVersion: common.SnapshotStableVersion,
 						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), "vsc", &metav1.GroupVersionForDiscovery{
-						GroupVersion: common.SnapshotAlphaVersion,
+						GroupVersion: common.SnapshotStableVersion,
 					}).Return(nil, fmt.Errorf("vsc error")),
 				)
 			},

@@ -1064,7 +1064,7 @@ func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
 			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
 				&unstructured.Unstructured{
 					Object: map[string]interface{}{
-						"apiVersion": fmt.Sprintf("%s/%s", kansnapshot.GroupName, kansnapshot.Version),
+						"apiVersion": fmt.Sprintf("%s/%s", kansnapshot.GroupName, "v1beta1"),
 						"kind":       "VolumeSnapshot",
 						"metadata": map[string]interface{}{
 							"name":      "snap1",
