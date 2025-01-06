@@ -330,10 +330,10 @@ func (s *snapshotRestoreSteps) Cleanup(ctx context.Context, results *types.CSISn
 func getDriverNameFromUVSC(vsc unstructured.Unstructured, version string) string {
 	var driverName interface{}
 	var ok bool
-	if version != common.SnapshotStableVersion {
+	if version != common.SnapshotVersion {
 		return ""
 	}
-	driverName, ok = vsc.Object[common.VolSnapClassStableDriverKey]
+	driverName, ok = vsc.Object[common.VolSnapClassDriverKey]
 	if !ok {
 		return ""
 	}

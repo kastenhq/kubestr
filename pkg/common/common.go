@@ -1,8 +1,8 @@
 package common
 
 const (
-	// VolSnapClassStableDriverKey describes the stable driver key
-	VolSnapClassStableDriverKey = "driver"
+	// VolSnapClassDriverKey describes the driver key in VolumeSnapshotClass resource
+	VolSnapClassDriverKey = "driver"
 	// DefaultPodImage the default pod image
 	DefaultPodImage = "ghcr.io/kastenhq/kubestr:latest"
 	// SnapGroupName describes the snapshot group name
@@ -11,6 +11,6 @@ const (
 	VolumeSnapshotClassResourcePlural = "volumesnapshotclasses"
 	// VolumeSnapshotResourcePlural is "volumesnapshots"
 	VolumeSnapshotResourcePlural = "volumesnapshots"
-	// SnapshotStableVersion is the apiversion of the stable release
-	SnapshotStableVersion = "snapshot.storage.k8s.io/v1"
+	// SnapshotVersion is the apiversion of the VolumeSnapshot resource
+	SnapshotVersion = "snapshot.storage.k8s.io/v1"
 )

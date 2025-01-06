@@ -277,12 +277,12 @@ func (p *Kubestr) validateVolumeSnapshotClass(vsc unstructured.Unstructured, gro
 		Name: vsc.GetName(),
 		Raw:  vsc,
 	}
-	if groupVersion != common.SnapshotStableVersion {
+	if groupVersion != common.SnapshotVersion {
 		retVSC.StatusList = append(retVSC.StatusList,
 			makeStatus(StatusError, fmt.Sprintf("Unsupported GroupVersion (%s) for VolumeSnapshotClass (%s)", vsc.GetName(), groupVersion), nil))
 		return retVSC
 	}
-	_, ok := vsc.Object[common.VolSnapClassStableDriverKey]
+	_, ok := vsc.Object[common.VolSnapClassDriverKey]
 	if !ok {
 		retVSC.StatusList = append(retVSC.StatusList,
 			makeStatus(StatusError, fmt.Sprintf("VolumeSnapshotClass (%s) missing 'driver' field", vsc.GetName()), nil))
@@ -329,10 +329,10 @@ func (p *Kubestr) loadVolumeSnapshotClasses(ctx context.Context, version string)
 func (p *Kubestr) getDriverNameFromUVSC(vsc unstructured.Unstructured, version string) string {
 	var driverName interface{}
 	var ok bool
-	if version != common.SnapshotStableVersion {
+	if version != common.SnapshotVersion {
 		return ""
 	}
-	driverName, ok = vsc.Object[common.VolSnapClassStableDriverKey]
+	driverName, ok = vsc.Object[common.VolSnapClassDriverKey]
 	if !ok {
 		return ""
 	}

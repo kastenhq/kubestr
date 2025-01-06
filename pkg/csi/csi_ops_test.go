@@ -37,26 +37,26 @@ func (s *CSITestSuite) TestGetDriverNameFromUVSC(c *C) {
 		{
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{
-					common.VolSnapClassStableDriverKey: "p2",
+					common.VolSnapClassDriverKey: "p2",
 				},
 			},
-			version: common.SnapshotStableVersion,
+			version: common.SnapshotVersion,
 			expOut:  "p2",
 		},
 		{
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{},
 			},
-			version: common.SnapshotStableVersion,
+			version: common.SnapshotVersion,
 			expOut:  "",
 		},
 		{
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{
-					common.VolSnapClassStableDriverKey: map[string]string{},
+					common.VolSnapClassDriverKey: map[string]string{},
 				},
 			},
-			version: common.SnapshotStableVersion,
+			version: common.SnapshotVersion,
 			expOut:  "",
 		},
 	} {
@@ -226,7 +226,7 @@ func (s *CSITestSuite) TestValidateVolumeSnapshotClass(c *C) {
 			ops: &validateOperations{
 				dynCli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 			},
-			groupVersion: common.SnapshotStableVersion,
+			groupVersion: common.SnapshotVersion,
 			errChecker:   NotNil,
 			uVCSChecker:  IsNil,
 		},
@@ -247,7 +247,7 @@ func (s *CSITestSuite) TestValidateVolumeSnapshotClass(c *C) {
 					},
 				),
 			},
-			groupVersion: common.SnapshotStableVersion,
+			groupVersion: common.SnapshotVersion,
 			version:      kansnapshot.Version,
 			errChecker:   IsNil,
 			uVCSChecker:  NotNil,
