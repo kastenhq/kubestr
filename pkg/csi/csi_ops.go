@@ -5,12 +5,13 @@ package csi
 import (
 	"context"
 	"fmt"
-	"k8s.io/apimachinery/pkg/runtime"
 	"log"
 	"net/http"
 	"net/url"
 	"strings"
 	"time"
+
+	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/kanisterio/kanister/pkg/kube"
 	kankube "github.com/kanisterio/kanister/pkg/kube"
@@ -68,7 +69,11 @@ func (o *validateOperations) ValidatePVC(ctx context.Context, pvcName, namespace
 	if o.kubeCli == nil {
 		return nil, fmt.Errorf("kubeCli not initialized")
 	}
-	return o.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
+	pvc, err := o.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(ctx, pvcName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pvc, nil
 }
 
 func (o *validateOperations) ValidateVolumeSnapshot(ctx context.Context, snapshotName, namespace string, groupVersion *metav1.GroupVersionForDiscovery) (*snapv1.VolumeSnapshot, error) {
@@ -86,7 +91,11 @@ func (o *validateOperations) FetchPV(ctx context.Context, pvName string) (*v1.Pe
 	if o.kubeCli == nil {
 		return nil, fmt.Errorf("kubeCli not initialized")
 	}
-	return o.kubeCli.CoreV1().PersistentVolumes().Get(ctx, pvName, metav1.GetOptions{})
+	pv, err := o.kubeCli.CoreV1().PersistentVolumes().Get(ctx, pvName, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return pv, nil
 }
 
 func (o *validateOperations) ValidateNamespace(ctx context.Context, namespace string) error {
@@ -101,7 +110,11 @@ func (o *validateOperations) ValidateStorageClass(ctx context.Context, storageCl
 	if o.kubeCli == nil {
 		return nil, fmt.Errorf("kubeCli not initialized")
 	}
-	return o.kubeCli.StorageV1().StorageClasses().Get(ctx, storageClass, metav1.GetOptions{})
+	sc, err := o.kubeCli.StorageV1().StorageClasses().Get(ctx, storageClass, metav1.GetOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return sc, nil
 }
 
 func (o *validateOperations) ValidateVolumeSnapshotClass(ctx context.Context, volumeSnapshotClass string, groupVersion *metav1.GroupVersionForDiscovery) (*unstructured.Unstructured, error) {
@@ -353,7 +366,7 @@ func (c *snapshotCreate) NewSnapshotter() (kansnapshot.Snapshotter, error) {
 	if c.dynCli == nil {
 		return nil, fmt.Errorf("dynCli not initialized")
 	}
-	return kansnapshot.NewSnapshotter(c.kubeCli, c.dynCli)
+	return kansnapshot.NewSnapshotter(c.kubeCli, c.dynCli), nil
 }
 
 func (c *snapshotCreate) CreateSnapshot(ctx context.Context, snapshotter kansnapshot.Snapshotter, args *types.CreateSnapshotArgs) (*snapv1.VolumeSnapshot, error) {

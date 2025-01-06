@@ -277,25 +277,15 @@ func (p *Kubestr) validateVolumeSnapshotClass(vsc unstructured.Unstructured, gro
 		Name: vsc.GetName(),
 		Raw:  vsc,
 	}
-	switch groupVersion {
-	case common.SnapshotAlphaVersion:
-		_, ok := vsc.Object[common.VolSnapClassAlphaDriverKey]
-		if !ok {
-			retVSC.StatusList = append(retVSC.StatusList,
-				makeStatus(StatusError, fmt.Sprintf("VolumeSnapshotClass (%s) missing 'snapshotter' field", vsc.GetName()), nil))
-		}
-	case common.SnapshotBetaVersion:
-		_, ok := vsc.Object[common.VolSnapClassBetaDriverKey]
-		if !ok {
-			retVSC.StatusList = append(retVSC.StatusList,
-				makeStatus(StatusError, fmt.Sprintf("VolumeSnapshotClass (%s) missing 'driver' field", vsc.GetName()), nil))
-		}
-	case common.SnapshotStableVersion:
-		_, ok := vsc.Object[common.VolSnapClassStableDriverKey]
-		if !ok {
-			retVSC.StatusList = append(retVSC.StatusList,
-				makeStatus(StatusError, fmt.Sprintf("VolumeSnapshotClass (%s) missing 'driver' field", vsc.GetName()), nil))
-		}
+	if groupVersion != common.SnapshotVersion {
+		retVSC.StatusList = append(retVSC.StatusList,
+			makeStatus(StatusError, fmt.Sprintf("Unsupported GroupVersion (%s) for VolumeSnapshotClass (%s)", vsc.GetName(), groupVersion), nil))
+		return retVSC
+	}
+	_, ok := vsc.Object[common.VolSnapClassDriverKey]
+	if !ok {
+		retVSC.StatusList = append(retVSC.StatusList,
+			makeStatus(StatusError, fmt.Sprintf("VolumeSnapshotClass (%s) missing 'driver' field", vsc.GetName()), nil))
 	}
 	return retVSC
 }
@@ -339,22 +329,12 @@ func (p *Kubestr) loadVolumeSnapshotClasses(ctx context.Context, version string)
 func (p *Kubestr) getDriverNameFromUVSC(vsc unstructured.Unstructured, version string) string {
 	var driverName interface{}
 	var ok bool
-	switch version {
-	case common.SnapshotAlphaVersion:
-		driverName, ok = vsc.Object[common.VolSnapClassAlphaDriverKey]
-		if !ok {
-			return ""
-		}
-	case common.SnapshotBetaVersion:
-		driverName, ok = vsc.Object[common.VolSnapClassBetaDriverKey]
-		if !ok {
-			return ""
-		}
-	case common.SnapshotStableVersion:
-		driverName, ok = vsc.Object[common.VolSnapClassStableDriverKey]
-		if !ok {
-			return ""
-		}
+	if version != common.SnapshotVersion {
+		return ""
+	}
+	driverName, ok = vsc.Object[common.VolSnapClassDriverKey]
+	if !ok {
+		return ""
 	}
 	driver, ok := driverName.(string)
 	if !ok {

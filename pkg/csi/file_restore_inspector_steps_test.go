@@ -3,6 +3,7 @@ package csi
 import (
 	"context"
 	"fmt"
+
 	"k8s.io/apimachinery/pkg/api/resource"
 
 	"github.com/golang/mock/gomock"
@@ -41,7 +42,7 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 					f.validateOps.EXPECT().ValidateNamespace(gomock.Any(), "ns").Return(nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
-							GroupVersion: common.SnapshotAlphaVersion,
+							GroupVersion: common.SnapshotVersion,
 						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshot(gomock.Any(), "vs", "ns", gomock.Any()).Return(
 						&snapv1.VolumeSnapshot{
@@ -74,10 +75,10 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 							Provisioner: "p1",
 						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), "vsc", &metav1.GroupVersionForDiscovery{
-						GroupVersion: common.SnapshotAlphaVersion,
+						GroupVersion: common.SnapshotVersion,
 					}).Return(&unstructured.Unstructured{
 						Object: map[string]interface{}{
-							common.VolSnapClassAlphaDriverKey: "p1",
+							common.VolSnapClassDriverKey: "p1",
 						},
 					}, nil),
 				)
@@ -95,7 +96,7 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 					f.validateOps.EXPECT().ValidateNamespace(gomock.Any(), "ns").Return(nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
-							GroupVersion: common.SnapshotAlphaVersion,
+							GroupVersion: common.SnapshotVersion,
 						}, nil),
 					f.validateOps.EXPECT().ValidatePVC(gomock.Any(), "restorePVC", "ns").Return(
 						&v1.PersistentVolumeClaim{
@@ -143,7 +144,7 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 					f.validateOps.EXPECT().ValidateNamespace(gomock.Any(), "ns").Return(nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
-							GroupVersion: common.SnapshotAlphaVersion,
+							GroupVersion: common.SnapshotVersion,
 						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshot(gomock.Any(), "vs", "ns", gomock.Any()).Return(
 						&snapv1.VolumeSnapshot{
@@ -176,10 +177,10 @@ func (s *CSITestSuite) TestFileRestoreValidateArgs(c *C) {
 							Provisioner: "p1",
 						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), "vsc", &metav1.GroupVersionForDiscovery{
-						GroupVersion: common.SnapshotAlphaVersion,
+						GroupVersion: common.SnapshotVersion,
 					}).Return(&unstructured.Unstructured{
 						Object: map[string]interface{}{
-							common.VolSnapClassAlphaDriverKey: "p2",
+							common.VolSnapClassDriverKey: "p2",
 						},
 					}, nil),
 				)

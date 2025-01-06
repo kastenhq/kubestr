@@ -69,13 +69,13 @@ func (s *CSITestSuite) TestPvcBrowseValidateArgs(c *C) {
 						}, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
-							GroupVersion: common.SnapshotAlphaVersion,
+							GroupVersion: common.SnapshotVersion,
 						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), "vsc", &metav1.GroupVersionForDiscovery{
-						GroupVersion: common.SnapshotAlphaVersion,
+						GroupVersion: common.SnapshotVersion,
 					}).Return(&unstructured.Unstructured{
 						Object: map[string]interface{}{
-							common.VolSnapClassAlphaDriverKey: "p1",
+							common.VolSnapClassDriverKey: "p1",
 						},
 					}, nil),
 				)
@@ -122,13 +122,13 @@ func (s *CSITestSuite) TestPvcBrowseValidateArgs(c *C) {
 						}, nil),
 					f.versionOps.EXPECT().GetCSISnapshotGroupVersion().Return(
 						&metav1.GroupVersionForDiscovery{
-							GroupVersion: common.SnapshotAlphaVersion,
+							GroupVersion: common.SnapshotVersion,
 						}, nil),
 					f.validateOps.EXPECT().ValidateVolumeSnapshotClass(gomock.Any(), "vsc", &metav1.GroupVersionForDiscovery{
-						GroupVersion: common.SnapshotAlphaVersion,
+						GroupVersion: common.SnapshotVersion,
 					}).Return(&unstructured.Unstructured{
 						Object: map[string]interface{}{
-							common.VolSnapClassAlphaDriverKey: "p2",
+							common.VolSnapClassDriverKey: "p2",
 						},
 					}, nil),
 				)

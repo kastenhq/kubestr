@@ -227,7 +227,11 @@ func (s *fioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.C
 	// create
 	configMap.GenerateName = KubestrFIOJobGenName
 	configMap.Labels = map[string]string{CreatedByFIOLabel: "true"}
-	return s.cli.CoreV1().ConfigMaps(args.Namespace).Create(ctx, configMap, metav1.CreateOptions{})
+	cm, err := s.cli.CoreV1().ConfigMaps(args.Namespace).Create(ctx, configMap, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return cm, nil
 }
 
 func (s *fioStepper) createPVC(ctx context.Context, storageclass, size, namespace string) (*v1.PersistentVolumeClaim, error) {
@@ -249,7 +253,11 @@ func (s *fioStepper) createPVC(ctx context.Context, storageclass, size, namespac
 			},
 		},
 	}
-	return s.cli.CoreV1().PersistentVolumeClaims(namespace).Create(ctx, pvc, metav1.CreateOptions{})
+	cm, err := s.cli.CoreV1().PersistentVolumeClaims(namespace).Create(ctx, pvc, metav1.CreateOptions{})
+	if err != nil {
+		return nil, err
+	}
+	return cm, nil
 }
 
 func (s *fioStepper) deletePVC(ctx context.Context, pvcName, namespace string) error {

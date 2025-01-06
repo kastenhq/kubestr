@@ -7,8 +7,6 @@ import (
 	"strings"
 
 	kansnapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
-	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1alpha1"
-	"github.com/kanisterio/kanister/pkg/kube/snapshot/apis/v1beta1"
 	"github.com/kastenhq/kubestr/pkg/common"
 	"github.com/kastenhq/kubestr/pkg/csi/types"
 	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
@@ -39,67 +37,26 @@ func (s *CSITestSuite) TestGetDriverNameFromUVSC(c *C) {
 		{
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{
-					common.VolSnapClassAlphaDriverKey: "p2",
+					common.VolSnapClassDriverKey: "p2",
 				},
 			},
-			version: common.SnapshotAlphaVersion,
+			version: common.SnapshotVersion,
 			expOut:  "p2",
 		},
 		{
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{},
 			},
-			version: common.SnapshotAlphaVersion,
+			version: common.SnapshotVersion,
 			expOut:  "",
 		},
 		{
 			vsc: unstructured.Unstructured{
 				Object: map[string]interface{}{
-					common.VolSnapClassBetaDriverKey: "p2",
+					common.VolSnapClassDriverKey: map[string]string{},
 				},
 			},
-			version: common.SnapshotBetaVersion,
-			expOut:  "p2",
-		},
-		{
-			vsc: unstructured.Unstructured{
-				Object: map[string]interface{}{},
-			},
-			version: common.SnapshotBetaVersion,
-			expOut:  "",
-		},
-		{
-			vsc: unstructured.Unstructured{
-				Object: map[string]interface{}{
-					common.VolSnapClassBetaDriverKey: map[string]string{},
-				},
-			},
-			version: common.SnapshotBetaVersion,
-			expOut:  "",
-		},
-		{
-			vsc: unstructured.Unstructured{
-				Object: map[string]interface{}{
-					common.VolSnapClassStableDriverKey: "p2",
-				},
-			},
-			version: common.SnapshotStableVersion,
-			expOut:  "p2",
-		},
-		{
-			vsc: unstructured.Unstructured{
-				Object: map[string]interface{}{},
-			},
-			version: common.SnapshotStableVersion,
-			expOut:  "",
-		},
-		{
-			vsc: unstructured.Unstructured{
-				Object: map[string]interface{}{
-					common.VolSnapClassStableDriverKey: map[string]string{},
-				},
-			},
-			version: common.SnapshotStableVersion,
+			version: common.SnapshotVersion,
 			expOut:  "",
 		},
 	} {
@@ -125,26 +82,6 @@ func (s *CSITestSuite) TestGetCSISnapshotGroupVersion(c *C) {
 			},
 			errChecker: NotNil,
 			gvChecker:  IsNil,
-		},
-		{
-			cli: fake.NewSimpleClientset(),
-			resources: []*metav1.APIResourceList{
-				{
-					GroupVersion: "snapshot.storage.k8s.io/v1alpha1",
-				},
-			},
-			errChecker: IsNil,
-			gvChecker:  NotNil,
-		},
-		{
-			cli: fake.NewSimpleClientset(),
-			resources: []*metav1.APIResourceList{
-				{
-					GroupVersion: "snapshot.storage.k8s.io/v1beta1",
-				},
-			},
-			errChecker: IsNil,
-			gvChecker:  NotNil,
 		},
 		{
 			cli: fake.NewSimpleClientset(),
@@ -289,59 +226,9 @@ func (s *CSITestSuite) TestValidateVolumeSnapshotClass(c *C) {
 			ops: &validateOperations{
 				dynCli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme()),
 			},
-			groupVersion: common.SnapshotAlphaVersion,
+			groupVersion: common.SnapshotVersion,
 			errChecker:   NotNil,
 			uVCSChecker:  IsNil,
-		},
-		{
-			ops: &validateOperations{
-				dynCli: fakedynamic.NewSimpleDynamicClient(
-					runtime.NewScheme(),
-					&unstructured.Unstructured{
-						Object: map[string]interface{}{
-							"apiVersion": fmt.Sprintf("%s/%s", v1alpha1.GroupName, v1alpha1.Version),
-							"kind":       "VolumeSnapshotClass",
-							"metadata": map[string]interface{}{
-								"name": "vsc",
-							},
-							"snapshotter":    "somesnapshotter",
-							"deletionPolicy": "Delete",
-						},
-					},
-				),
-			},
-			version:     v1alpha1.Version,
-			errChecker:  IsNil,
-			uVCSChecker: NotNil,
-		},
-		{
-			ops: &validateOperations{
-				dynCli: nil,
-			},
-			version:     v1alpha1.Version,
-			errChecker:  NotNil,
-			uVCSChecker: IsNil,
-		},
-		{
-			ops: &validateOperations{
-				dynCli: fakedynamic.NewSimpleDynamicClient(
-					runtime.NewScheme(),
-					&unstructured.Unstructured{
-						Object: map[string]interface{}{
-							"apiVersion": fmt.Sprintf("%s/%s", v1beta1.GroupName, v1beta1.Version),
-							"kind":       "VolumeSnapshotClass",
-							"metadata": map[string]interface{}{
-								"name": "vsc",
-							},
-							"driver":         "somesnapshotter",
-							"deletionPolicy": "Delete",
-						},
-					},
-				),
-			},
-			version:     v1beta1.Version,
-			errChecker:  IsNil,
-			uVCSChecker: NotNil,
 		},
 		{
 			ops: &validateOperations{
@@ -360,7 +247,7 @@ func (s *CSITestSuite) TestValidateVolumeSnapshotClass(c *C) {
 					},
 				),
 			},
-			groupVersion: common.SnapshotStableVersion,
+			groupVersion: common.SnapshotVersion,
 			version:      kansnapshot.Version,
 			errChecker:   IsNil,
 			uVCSChecker:  NotNil,
@@ -867,7 +754,7 @@ func (s *CSITestSuite) TestCreateSnapshot(c *C) {
 
 func (s *CSITestSuite) TestCreateFromSourceCheck(c *C) {
 	ctx := context.Background()
-	gv := &metav1.GroupVersionForDiscovery{Version: v1alpha1.Version}
+	gv := &metav1.GroupVersionForDiscovery{Version: kansnapshot.Version}
 	for _, tc := range []struct {
 		dyncli       dynamic.Interface
 		snapshotter  kansnapshot.Snapshotter
@@ -1169,7 +1056,7 @@ func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
 			snapshotName: "snap1",
 			namespace:    "ns",
 			groupVersion: &metav1.GroupVersionForDiscovery{
-				Version: v1alpha1.Version,
+				Version: kansnapshot.Version,
 			},
 			errChecker: NotNil,
 		},
@@ -1177,45 +1064,7 @@ func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
 			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
 				&unstructured.Unstructured{
 					Object: map[string]interface{}{
-						"apiVersion": fmt.Sprintf("%s/%s", v1alpha1.GroupName, v1alpha1.Version),
-						"kind":       "VolumeSnapshot",
-						"metadata": map[string]interface{}{
-							"name":      "snap1",
-							"namespace": "notns",
-						},
-					},
-				}),
-			snapshotName: "pod",
-			namespace:    "ns",
-			errChecker:   NotNil,
-			groupVersion: &metav1.GroupVersionForDiscovery{
-				Version: v1alpha1.Version,
-			},
-		},
-		{
-			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
-				&unstructured.Unstructured{
-					Object: map[string]interface{}{
-						"apiVersion": fmt.Sprintf("%s/%s", v1alpha1.GroupName, v1alpha1.Version),
-						"kind":       "VolumeSnapshot",
-						"metadata": map[string]interface{}{
-							"name":      "snap1",
-							"namespace": "ns",
-						},
-					},
-				}),
-			snapshotName: "snap1",
-			namespace:    "ns",
-			errChecker:   IsNil,
-			groupVersion: &metav1.GroupVersionForDiscovery{
-				Version: v1alpha1.Version,
-			},
-		},
-		{
-			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
-				&unstructured.Unstructured{
-					Object: map[string]interface{}{
-						"apiVersion": fmt.Sprintf("%s/%s", v1beta1.GroupName, v1beta1.Version),
+						"apiVersion": fmt.Sprintf("%s/%s", kansnapshot.GroupName, "v1beta1"),
 						"kind":       "VolumeSnapshot",
 						"metadata": map[string]interface{}{
 							"name":      "snap1",
@@ -1227,45 +1076,7 @@ func (s *CSITestSuite) TestDeleteSnapshot(c *C) {
 			namespace:    "ns",
 			errChecker:   NotNil,
 			groupVersion: &metav1.GroupVersionForDiscovery{
-				Version: v1alpha1.Version,
-			},
-		},
-		{
-			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
-				&unstructured.Unstructured{
-					Object: map[string]interface{}{
-						"apiVersion": fmt.Sprintf("%s/%s", v1beta1.GroupName, v1beta1.Version),
-						"kind":       "VolumeSnapshot",
-						"metadata": map[string]interface{}{
-							"name":      "snap1",
-							"namespace": "ns",
-						},
-					},
-				}),
-			snapshotName: "snap1",
-			namespace:    "ns",
-			errChecker:   IsNil,
-			groupVersion: &metav1.GroupVersionForDiscovery{
-				Version: v1beta1.Version,
-			},
-		},
-		{
-			cli: fakedynamic.NewSimpleDynamicClient(runtime.NewScheme(),
-				&unstructured.Unstructured{
-					Object: map[string]interface{}{
-						"apiVersion": fmt.Sprintf("%s/%s", kansnapshot.GroupName, kansnapshot.Version),
-						"kind":       "VolumeSnapshot",
-						"metadata": map[string]interface{}{
-							"name":      "snap1",
-							"namespace": "ns",
-						},
-					},
-				}),
-			snapshotName: "snap1",
-			namespace:    "ns",
-			errChecker:   NotNil,
-			groupVersion: &metav1.GroupVersionForDiscovery{
-				Version: v1alpha1.Version,
+				Version: kansnapshot.Version,
 			},
 		},
 		{
