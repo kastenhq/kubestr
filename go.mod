@@ -7,7 +7,7 @@ toolchain go1.22.10
 replace github.com/graymeta/stow => github.com/kastenhq/stow v0.1.2-kasten
 
 require (
-	github.com/briandowns/spinner v1.23.1
+	github.com/briandowns/spinner v1.23.2
 	github.com/frankban/quicktest v1.14.6
 	github.com/golang/mock v1.6.0
 	github.com/kanisterio/kanister v0.0.0-20250106180853-0abc731c8242
