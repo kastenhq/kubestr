@@ -49,9 +49,9 @@ jobs:
           go-version-file: 'go.mod'
       -
         name: golangci-lint
-        uses: golangci/golangci-lint-action@2226d7cb06a077cd73e56eedd38eecad18e5d837 # v6.5.0
+        uses: golangci/golangci-lint-action@55c2c1448f86e01eaae002a5a3a9624417608d84 # v6.5.2
         with:
           # Required: the version of golangci-lint is required and must be specified without patch version: we always use the latest patch version.
-          version: v1.54.2
+          version: v1.64.8
           args: --timeout=5m --modules-download-mode=mod
           skip-pkg-cache: true
