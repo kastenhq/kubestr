@@ -26,3 +26,13 @@ updates:
       docker:
         patterns:
         - "docker/*"
+  - package-ecosystem: docker
+    directories:
+    - "/docker/*"
+    open-pull-requests-limit: 4
+    schedule:
+      interval: monthly
+    groups:
+      all:
+        patterns:
+        - "*"
