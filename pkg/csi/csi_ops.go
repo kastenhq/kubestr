@@ -40,6 +40,9 @@ const (
 
 	PVCKind = "PersistentVolumeClaim"
 	PodKind = "Pod"
+
+	// DefaultVolumeSnapshotClassAnnotation is an annotation used to denote a default VolumeSnapshotClass.
+	DefaultVolumeSnapshotClassAnnotation = "snapshot.storage.kubernetes.io/is-default-class"
 )
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_argument_validator.go -package=mocks . ArgumentValidator
@@ -405,7 +408,7 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 		return err
 	}
 	targetSnapClassName := clonePrefix + args.VolumeSnapshotClass
-	err := snapshotter.CloneVolumeSnapshotClass(ctx, args.VolumeSnapshotClass, targetSnapClassName, kansnapshot.DeletionPolicyRetain, nil)
+	err := snapshotter.CloneVolumeSnapshotClass(ctx, args.VolumeSnapshotClass, targetSnapClassName, kansnapshot.DeletionPolicyRetain, []string{DefaultVolumeSnapshotClassAnnotation})
 	if err != nil {
 		return errors.Wrapf(err, "Failed to clone a VolumeSnapshotClass to use to restore the snapshot")
 	}
