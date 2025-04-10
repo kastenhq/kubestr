@@ -143,7 +143,7 @@ func (s *snapshotBrowserSteps) ValidateArgs(ctx context.Context, args *types.Sna
 	}
 	vscDriver := getDriverNameFromUVSC(*uVSC, groupVersion.GroupVersion)
 	if sc.Provisioner != vscDriver {
-		return nil, nil, fmt.Errorf("StorageClass provisioner (%s) and VolumeSnapshotClass driver (%s) are different.", sc.Provisioner, vscDriver)
+		return nil, nil, fmt.Errorf("provisioner for StorageClass (%s) and VolumeSnapshotClass driver (%s) are different", sc.Provisioner, vscDriver)
 	}
 	return snapshot, sc, nil
 }

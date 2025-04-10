@@ -169,7 +169,7 @@ func (p *pvcBrowserSteps) ValidateArgs(ctx context.Context, args *types.PVCBrows
 	}
 	vscDriver := getDriverNameFromUVSC(*uVSC, groupVersion.GroupVersion)
 	if sc.Provisioner != vscDriver {
-		return nil, fmt.Errorf("StorageClass provisioner (%s) and VolumeSnapshotClass driver (%s) are different.", sc.Provisioner, vscDriver)
+		return nil, fmt.Errorf("provisioner for StorageClass (%s) and VolumeSnapshotClass driver (%s) are different", sc.Provisioner, vscDriver)
 	}
 	return sc, nil
 }

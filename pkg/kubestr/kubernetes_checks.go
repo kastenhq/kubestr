@@ -61,11 +61,11 @@ func (p *Kubestr) validateK8sVersionHelper() (*version.Info, error) {
 	}
 	minor, err := strconv.Atoi(minorStr)
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to derive kubernetes minor version")
+		return nil, errors.Wrap(err, "unable to derive kubernetes minor version")
 	}
 	if (major < MinK8sMajorVersion) ||
 		(major == MinK8sMajorVersion && minor < MinK8sMinorVersion) {
-		return version, fmt.Errorf("Current kubernetes version (%s) is not supported. Minimum version is %s", version.String(), MinK8sGitVersion)
+		return version, fmt.Errorf("current kubernetes version (%s) is not supported, minimum version is %s", version.String(), MinK8sGitVersion)
 	}
 	return version, nil
 }
@@ -91,7 +91,7 @@ func (p *Kubestr) validateRBACHelper() (*v1.APIGroup, error) {
 			return &group, nil
 		}
 	}
-	return nil, fmt.Errorf("Kubernetes RBAC is not enabled")
+	return nil, fmt.Errorf("Kubernetes RBAC is not enabled") //nolint:staticcheck
 }
 
 func (p *Kubestr) validateAggregatedLayer() *TestOutput {
@@ -114,5 +114,5 @@ func (p *Kubestr) validateAggregatedLayerHelper() (*v1.APIResourceList, error) {
 			return resourceList, nil
 		}
 	}
-	return nil, fmt.Errorf("Can not detect the Aggregated Layer. Is it enabled?")
+	return nil, fmt.Errorf("can not detect the Aggregated API Layer, is it enabled?")
 }

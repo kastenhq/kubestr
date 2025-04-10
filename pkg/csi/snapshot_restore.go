@@ -162,7 +162,7 @@ func (s *snapshotRestoreSteps) ValidateArgs(ctx context.Context, args *types.CSI
 
 	vscDriver := getDriverNameFromUVSC(*uVSC, groupVersion.GroupVersion)
 	if sc.Provisioner != vscDriver {
-		return fmt.Errorf("StorageClass provisioner (%s) and VolumeSnapshotClass driver (%s) are different.", sc.Provisioner, vscDriver)
+		return fmt.Errorf("provisioner for StorageClass (%s) and VolumeSnapshotClass driver (%s) are different", sc.Provisioner, vscDriver)
 	}
 	return nil
 }

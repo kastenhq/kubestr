@@ -72,7 +72,7 @@ type RunFIOArgs struct {
 
 func (a *RunFIOArgs) Validate() error {
 	if a.StorageClass == "" || a.Size == "" || a.Namespace == "" {
-		return fmt.Errorf("Require fields are missing. (StorageClass, Size, Namespace)")
+		return fmt.Errorf("required fields are missing: (StorageClass, Size, Namespace)")
 	}
 	return nil
 }
@@ -195,7 +195,7 @@ func (s *fioStepper) validateNodeSelector(ctx context.Context, selector map[stri
 	}
 
 	if len(nodes.Items) == 0 {
-		return fmt.Errorf("No nodes match selector")
+		return fmt.Errorf("no nodes match selector")
 	}
 
 	return nil
@@ -218,7 +218,7 @@ func (s *fioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.C
 		configMap.Data[filepath.Base(args.FIOJobFilepath)] = string(data)
 	case args.FIOJobName != "":
 		if _, ok := fioJobs[args.FIOJobName]; !ok {
-			return nil, fmt.Errorf("FIO job not found- (%s)", args.FIOJobName)
+			return nil, fmt.Errorf("did not find FIO job (%s)", args.FIOJobName)
 		}
 		configMap.Data[args.FIOJobName] = fioJobs[args.FIOJobName]
 	default:
@@ -266,7 +266,7 @@ func (s *fioStepper) deletePVC(ctx context.Context, pvcName, namespace string) e
 
 func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, nodeSelector map[string]string, image string) (*v1.Pod, error) {
 	if pvcName == "" || configMapName == "" || testFileName == "" {
-		return nil, fmt.Errorf("Create pod missing required arguments.")
+		return nil, fmt.Errorf("create pod missing required arguments")
 	}
 
 	if image == "" {
@@ -379,7 +379,7 @@ func (s *fioStepper) deleteConfigMap(ctx context.Context, configMap *v1.ConfigMa
 
 func fioTestFilename(configMap map[string]string) (string, error) {
 	if len(configMap) != 1 {
-		return "", fmt.Errorf("Unable to find fio file in configmap/more than one found %v", configMap)
+		return "", fmt.Errorf("unable to find fio file in configmap/more than one found %v", configMap)
 	}
 	var fileName string
 	for key := range configMap {

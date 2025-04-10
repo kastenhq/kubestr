@@ -164,7 +164,7 @@ func (f *fileRestoreSteps) ValidateArgs(ctx context.Context, args *types.FileRes
 		}
 		vscDriver := getDriverNameFromUVSC(*uVSC, groupVersion.GroupVersion)
 		if sc.Provisioner != vscDriver {
-			return nil, nil, nil, nil, fmt.Errorf("StorageClass provisioner (%s) and VolumeSnapshotClass driver (%s) are different.", sc.Provisioner, vscDriver)
+			return nil, nil, nil, nil, fmt.Errorf("provisioner for StorageClass (%s) and VolumeSnapshotClass driver (%s) are different", sc.Provisioner, vscDriver)
 		}
 	} else {
 		fmt.Println("Fetching the restore PVC.")
@@ -188,7 +188,7 @@ func (f *fileRestoreSteps) ValidateArgs(ctx context.Context, args *types.FileRes
 	}
 	for _, sourceAccessMode := range sourcePVC.Spec.AccessModes {
 		if sourceAccessMode == v1.ReadWriteOncePod {
-			return nil, nil, nil, nil, fmt.Errorf("Unsupported %s AccessMode found in source PVC. Supported AccessModes are ReadOnlyMany & ReadWriteMany", sourceAccessMode)
+			return nil, nil, nil, nil, fmt.Errorf("unsupported %s AccessMode found in source PVC. Supported AccessModes are ReadOnlyMany & ReadWriteMany", sourceAccessMode)
 		}
 	}
 

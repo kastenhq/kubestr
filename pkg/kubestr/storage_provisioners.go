@@ -163,7 +163,7 @@ func (v *Provisioner) Print() {
 func (p *Kubestr) ValidateProvisioners(ctx context.Context) ([]*Provisioner, error) {
 	provisionerList, err := p.provisionerList(ctx)
 	if err != nil {
-		return nil, fmt.Errorf("Error listing provisioners: %s", err.Error())
+		return nil, fmt.Errorf("error listing provisioners: %w", err)
 	}
 	var validateProvisionersOutput []*Provisioner
 	for _, provisioner := range provisionerList {

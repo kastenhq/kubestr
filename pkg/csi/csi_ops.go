@@ -510,7 +510,7 @@ func (p *apiVersionFetch) GetCSISnapshotGroupVersion() (*metav1.GroupVersionForD
 			return &group.PreferredVersion, nil
 		}
 	}
-	return nil, fmt.Errorf("Snapshot API group not found")
+	return nil, fmt.Errorf("snapshot API group not found")
 }
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_data_validator.go -package=mocks . DataValidator
