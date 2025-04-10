@@ -11,8 +11,7 @@ import (
 	"github.com/pkg/errors"
 	. "gopkg.in/check.v1"
 	v1 "k8s.io/api/core/v1"
-	scv1 "k8s.io/api/storage/v1"
-	sv1 "k8s.io/api/storage/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -289,7 +288,7 @@ type fakeFioStepper struct {
 
 	vnsErr error
 
-	sceSC  *sv1.StorageClass
+	sceSC  *storagev1.StorageClass
 	sceErr error
 
 	lcmConfigMap *v1.ConfigMap
@@ -322,7 +321,7 @@ func (f *fakeFioStepper) validateNodeSelector(ctx context.Context, selector map[
 	f.steps = append(f.steps, "VNS")
 	return f.vnsErr
 }
-func (f *fakeFioStepper) storageClassExists(ctx context.Context, storageClass string) (*sv1.StorageClass, error) {
+func (f *fakeFioStepper) storageClassExists(ctx context.Context, storageClass string) (*storagev1.StorageClass, error) {
 	f.steps = append(f.steps, "SCE")
 	return f.sceSC, f.sceErr
 }
@@ -373,7 +372,7 @@ func (s *FIOTestSuite) TestStorageClassExists(c *C) {
 			checker:      NotNil,
 		},
 		{
-			cli:          fake.NewSimpleClientset(&scv1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: "sc"}}),
+			cli:          fake.NewSimpleClientset(&storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: "sc"}}),
 			storageClass: "sc",
 			checker:      IsNil,
 		},
