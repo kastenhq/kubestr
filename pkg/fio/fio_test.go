@@ -512,7 +512,7 @@ func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 		c.Log(i)
 		stepper := &fioStepper{cli: tc.cli}
 		if tc.failCreates {
-			stepper.cli.(*fake.Clientset).Fake.PrependReactor("create", "configmaps", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			stepper.cli.(*fake.Clientset).PrependReactor("create", "configmaps", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 				return true, nil, errors.New("Error creating object")
 			})
 		}
@@ -561,7 +561,7 @@ func (s *FIOTestSuite) TestCreatePVC(c *C) {
 	} {
 		stepper := &fioStepper{cli: tc.cli}
 		if tc.failCreates {
-			stepper.cli.(*fake.Clientset).Fake.PrependReactor("create", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			stepper.cli.(*fake.Clientset).PrependReactor("create", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 				return true, nil, errors.New("Error creating object")
 			})
 		}
@@ -691,7 +691,7 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 			podReady: &fakePodReadyChecker{prcErr: tc.podReadyErr},
 		}
 		if tc.reactor != nil {
-			stepper.cli.(*fake.Clientset).Fake.ReactionChain = tc.reactor
+			stepper.cli.(*fake.Clientset).ReactionChain = tc.reactor
 		}
 		pod, err := stepper.createPod(ctx, tc.pvcName, tc.configMapName, tc.testFileName, DefaultNS, tc.nodeSelector, tc.image)
 		c.Check(err, tc.errChecker)
@@ -701,9 +701,9 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 			for _, vol := range pod.Spec.Volumes {
 				switch vol.Name {
 				case "persistent-storage":
-					c.Assert(vol.VolumeSource.PersistentVolumeClaim.ClaimName, Equals, tc.pvcName)
+					c.Assert(vol.PersistentVolumeClaim.ClaimName, Equals, tc.pvcName)
 				case "config-map":
-					c.Assert(vol.VolumeSource.ConfigMap.Name, Equals, tc.configMapName)
+					c.Assert(vol.ConfigMap.Name, Equals, tc.configMapName)
 				}
 			}
 			c.Assert(len(pod.Spec.Containers), Equals, 1)

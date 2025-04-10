@@ -357,7 +357,7 @@ func (s *CSITestSuite) TestCreatePVC(c *C) {
 		appCreator := NewApplicationCreator(tc.cli, 0)
 		creator := appCreator.(*applicationCreate)
 		if tc.failCreates {
-			creator.kubeCli.(*fake.Clientset).Fake.PrependReactor("create", "persistentvolumeclaims", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			creator.kubeCli.(*fake.Clientset).PrependReactor("create", "persistentvolumeclaims", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 				return true, nil, errors.New("Error creating object")
 			})
 		}
@@ -567,7 +567,7 @@ func (s *CSITestSuite) TestCreatePod(c *C) {
 		fmt.Println("test:", tc.description)
 		creator := &applicationCreate{kubeCli: tc.cli}
 		if tc.failCreates {
-			creator.kubeCli.(*fake.Clientset).Fake.PrependReactor("create", "pods", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			creator.kubeCli.(*fake.Clientset).PrependReactor("create", "pods", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 				return true, nil, errors.New("Error creating object")
 			})
 		}
