@@ -4,7 +4,6 @@ import (
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	version "k8s.io/apimachinery/pkg/version"
 	discoveryfake "k8s.io/client-go/discovery/fake"
 	"k8s.io/client-go/kubernetes/fake"
@@ -58,7 +57,7 @@ func (s *K8sChecksTestSuite) TestValidateRBAC(c *C) {
 	for _, tc := range []struct {
 		resources []*metav1.APIResourceList
 		checker   Checker
-		out       *v1.APIGroup
+		out       *metav1.APIGroup
 	}{
 		{
 			resources: []*metav1.APIResourceList{
@@ -76,12 +75,12 @@ func (s *K8sChecksTestSuite) TestValidateRBAC(c *C) {
 				},
 			},
 			checker: IsNil,
-			out: &v1.APIGroup{
+			out: &metav1.APIGroup{
 				Name: "rbac.authorization.k8s.io",
-				Versions: []v1.GroupVersionForDiscovery{
+				Versions: []metav1.GroupVersionForDiscovery{
 					{GroupVersion: "rbac.authorization.k8s.io/v1", Version: "v1"},
 				},
-				PreferredVersion: v1.GroupVersionForDiscovery{GroupVersion: "rbac.authorization.k8s.io/v1", Version: "v1"},
+				PreferredVersion: metav1.GroupVersionForDiscovery{GroupVersion: "rbac.authorization.k8s.io/v1", Version: "v1"},
 			},
 		},
 		{
