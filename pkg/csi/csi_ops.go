@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/kanisterio/kanister/pkg/kube"
-	kankube "github.com/kanisterio/kanister/pkg/kube"
 	kansnapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
 	"github.com/kanisterio/kanister/pkg/poll"
 	"github.com/kastenhq/kubestr/pkg/common"
@@ -323,7 +322,7 @@ func (c *applicationCreate) waitForPodReady(ctx context.Context, namespace strin
 
 	timeoutCtx, waitCancel := context.WithTimeout(ctx, podReadyTimeout)
 	defer waitCancel()
-	err := kankube.WaitForPodReady(timeoutCtx, c.kubeCli, namespace, podName)
+	err := kube.WaitForPodReady(timeoutCtx, c.kubeCli, namespace, podName)
 	return err
 }
 
@@ -527,7 +526,7 @@ func (p *validateData) FetchPodData(ctx context.Context, podName string, podName
 	if p.kubeCli == nil {
 		return "", fmt.Errorf("kubeCli not initialized")
 	}
-	stdout, _, err := kankube.Exec(ctx, p.kubeCli, podNamespace, podName, "", []string{"sh", "-c", "cat /data/out.txt"}, nil)
+	stdout, _, err := kube.Exec(ctx, p.kubeCli, podNamespace, podName, "", []string{"sh", "-c", "cat /data/out.txt"}, nil)
 	return stdout, err
 }
 
@@ -574,6 +573,6 @@ func (k *kubeExec) Exec(ctx context.Context, namespace string, podName string, C
 	if k.kubeCli == nil {
 		return "", fmt.Errorf("kubeCli not initialized")
 	}
-	stdout, _, err := kankube.Exec(ctx, k.kubeCli, namespace, podName, ContainerName, command, nil)
+	stdout, _, err := kube.Exec(ctx, k.kubeCli, namespace, podName, ContainerName, command, nil)
 	return stdout, err
 }
