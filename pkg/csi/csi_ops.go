@@ -289,7 +289,7 @@ func (c *applicationCreate) waitForPVCReady(ctx context.Context, namespace strin
 	return poll.Wait(timeoutCtx, func(ctx context.Context) (bool, error) {
 		pvc, err := c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(timeoutCtx, name, metav1.GetOptions{})
 		if err != nil {
-			return false, errors.Wrapf(err, "Could not find PVC")
+			return false, errors.Wrapf(err, "could not find PVC")
 		}
 
 		if pvc.Status.Phase == v1.ClaimLost {
@@ -388,7 +388,7 @@ func (c *snapshotCreate) CreateSnapshot(ctx context.Context, snapshotter kansnap
 	}
 	snap, err := snapshotter.Get(ctx, args.SnapshotName, args.Namespace)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to get CSI snapshot (%s) in Namespace (%s)", args.SnapshotName, args.Namespace)
+		return nil, errors.Wrapf(err, "failed to get CSI snapshot (%s) in Namespace (%s)", args.SnapshotName, args.Namespace)
 	}
 	return snap, nil
 }
@@ -409,7 +409,7 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 	targetSnapClassName := clonePrefix + args.VolumeSnapshotClass
 	err := snapshotter.CloneVolumeSnapshotClass(ctx, args.VolumeSnapshotClass, targetSnapClassName, kansnapshot.DeletionPolicyRetain, []string{DefaultVolumeSnapshotClassAnnotation})
 	if err != nil {
-		return errors.Wrapf(err, "Failed to clone a VolumeSnapshotClass to use to restore the snapshot")
+		return errors.Wrapf(err, "failed to clone a VolumeSnapshotClass to use to restore the snapshot")
 	}
 	defer func() {
 		VolSnapClassGVR := schema.GroupVersionResource{Group: common.SnapGroupName, Version: SnapshotGroupVersion.Version, Resource: common.VolumeSnapshotClassResourcePlural}
@@ -421,7 +421,7 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 
 	snapSrc, err := snapshotter.GetSource(ctx, args.SnapshotName, args.Namespace)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to get source snapshot source (%s)", args.SnapshotName)
+		return errors.Wrapf(err, "failed to get source snapshot source (%s)", args.SnapshotName)
 	}
 	snapshotCFSCloneName := clonePrefix + args.SnapshotName
 	// test the CreateFromSource API
@@ -439,7 +439,7 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 	}
 	err = snapshotter.CreateFromSource(ctx, src, true, snapshotMeta, kansnapshot.ObjectMeta{})
 	if err != nil {
-		return errors.Wrapf(err, "Failed to clone snapshot from source (%s)", snapshotCFSCloneName)
+		return errors.Wrapf(err, "failed to clone snapshot from source (%s)", snapshotCFSCloneName)
 	}
 	return nil
 }

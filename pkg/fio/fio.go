@@ -105,21 +105,21 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 	}
 
 	if err := f.fioSteps.validateNamespace(ctx, args.Namespace); err != nil {
-		return nil, errors.Wrapf(err, "Unable to find namespace (%s)", args.Namespace)
+		return nil, errors.Wrapf(err, "unable to find namespace (%s)", args.Namespace)
 	}
 
 	if err := f.fioSteps.validateNodeSelector(ctx, args.NodeSelector); err != nil {
-		return nil, errors.Wrapf(err, "Unable to find nodes satisfying node selector (%v)", args.NodeSelector)
+		return nil, errors.Wrapf(err, "unable to find nodes satisfying node selector (%v)", args.NodeSelector)
 	}
 
 	sc, err := f.fioSteps.storageClassExists(ctx, args.StorageClass)
 	if err != nil {
-		return nil, errors.Wrap(err, "Cannot find StorageClass")
+		return nil, errors.Wrap(err, "cannot find StorageClass")
 	}
 
 	configMap, err := f.fioSteps.loadConfigMap(ctx, args)
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to create a ConfigMap")
+		return nil, errors.Wrap(err, "unable to create a ConfigMap")
 	}
 	defer func() {
 		_ = f.fioSteps.deleteConfigMap(context.TODO(), configMap, args.Namespace)
@@ -127,12 +127,12 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 
 	testFileName, err := fioTestFilename(configMap.Data)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to get test file name.")
+		return nil, errors.Wrap(err, "failed to get test file name")
 	}
 
 	pvc, err := f.fioSteps.createPVC(ctx, args.StorageClass, args.Size, args.Namespace)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create PVC")
+		return nil, errors.Wrap(err, "failed to create PVC")
 	}
 	defer func() {
 		_ = f.fioSteps.deletePVC(context.TODO(), pvc.Name, args.Namespace)
@@ -141,7 +141,7 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 
 	pod, err := f.fioSteps.createPod(ctx, pvc.Name, configMap.Name, testFileName, args.Namespace, args.NodeSelector, args.Image)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create POD")
+		return nil, errors.Wrap(err, "failed to create POD")
 	}
 	defer func() {
 		_ = f.fioSteps.deletePod(context.TODO(), pod.Name, args.Namespace)
@@ -150,7 +150,7 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 	fmt.Printf("Running FIO test (%s) on StorageClass (%s) with a PVC of Size (%s)\n", testFileName, args.StorageClass, args.Size)
 	fioOutput, err := f.fioSteps.runFIOCommand(ctx, pod.Name, ContainerName, testFileName, args.Namespace)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed while running FIO test.")
+		return nil, errors.Wrap(err, "failed while running FIO test")
 	}
 	return &RunFIOResult{
 		Size:         args.Size,
@@ -213,7 +213,7 @@ func (s *fioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.C
 	case args.FIOJobFilepath != "":
 		data, err := os.ReadFile(args.FIOJobFilepath)
 		if err != nil {
-			return nil, errors.Wrap(err, "File reading error")
+			return nil, errors.Wrap(err, "file reading error")
 		}
 		configMap.Data[filepath.Base(args.FIOJobFilepath)] = string(data)
 	case args.FIOJobName != "":
@@ -237,7 +237,7 @@ func (s *fioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.C
 func (s *fioStepper) createPVC(ctx context.Context, storageclass, size, namespace string) (*v1.PersistentVolumeClaim, error) {
 	sizeResource, err := resource.ParseQuantity(size)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Unable to parse PVC size (%s)", size)
+		return nil, errors.Wrapf(err, "unable to parse PVC size (%s)", size)
 	}
 	pvc := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -347,7 +347,7 @@ func (s *fioStepper) runFIOCommand(ctx context.Context, podName, containerName, 
 			if err == nil {
 				err = fmt.Errorf("stderr when running FIO")
 			}
-			err = errors.Wrapf(err, "Error running command:(%v), stderr:(%s)", command, stderr)
+			err = errors.Wrapf(err, "error running command:(%v), stderr:(%s)", command, stderr)
 		}
 		done <- true
 	}()
@@ -363,7 +363,7 @@ func (s *fioStepper) runFIOCommand(ctx context.Context, podName, containerName, 
 
 	err = json.Unmarshal([]byte(stdout), &fioOut)
 	if err != nil {
-		return fioOut, errors.Wrapf(err, "Unable to parse fio output into json.")
+		return fioOut, errors.Wrapf(err, "unable to parse fio output into JSON")
 	}
 
 	return fioOut, nil

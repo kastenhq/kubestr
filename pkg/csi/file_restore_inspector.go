@@ -64,7 +64,7 @@ func (f *FileRestoreRunner) RunFileRestoreHelper(ctx context.Context, args *type
 	fmt.Println("Fetching the snapshot or PVC.")
 	vs, restorePVC, sourcePVC, sc, err := f.restoreSteps.ValidateArgs(ctx, args)
 	if err != nil {
-		return errors.Wrap(err, "Failed to validate arguments.")
+		return errors.Wrap(err, "failed to validate arguments.")
 	}
 	f.snapshot = vs
 
@@ -72,14 +72,14 @@ func (f *FileRestoreRunner) RunFileRestoreHelper(ctx context.Context, args *type
 	var restoreMountPath string
 	f.pod, f.restorePVC, restoreMountPath, err = f.restoreSteps.CreateInspectorApplication(ctx, args, f.snapshot, restorePVC, sourcePVC, sc)
 	if err != nil {
-		return errors.Wrap(err, "Failed to create inspector application.")
+		return errors.Wrap(err, "failed to create inspector application.")
 	}
 
 	if args.Path != "" {
 		fmt.Printf("Restoring the file %s\n", args.Path)
 		_, err := f.restoreSteps.ExecuteCopyCommand(ctx, args, f.pod, restoreMountPath)
 		if err != nil {
-			return errors.Wrap(err, "Failed to execute cp command in pod.")
+			return errors.Wrap(err, "failed to execute cp command in pod.")
 		}
 		if args.FromSnapshotName != "" {
 			fmt.Printf("File restored from VolumeSnapshot %s to Source PVC %s.\n", f.snapshot.Name, sourcePVC.Name)
@@ -92,7 +92,7 @@ func (f *FileRestoreRunner) RunFileRestoreHelper(ctx context.Context, args *type
 	fmt.Println("Forwarding the port.")
 	err = f.restoreSteps.PortForwardAPod(f.pod, args.LocalPort)
 	if err != nil {
-		return errors.Wrap(err, "Failed to port forward Pod.")
+		return errors.Wrap(err, "failed to port forward Pod.")
 	}
 
 	return nil
@@ -119,14 +119,14 @@ type fileRestoreSteps struct {
 
 func (f *fileRestoreSteps) ValidateArgs(ctx context.Context, args *types.FileRestoreArgs) (*snapv1.VolumeSnapshot, *v1.PersistentVolumeClaim, *v1.PersistentVolumeClaim, *sv1.StorageClass, error) {
 	if err := args.Validate(); err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate input arguments")
+		return nil, nil, nil, nil, errors.Wrap(err, "failed to validate input arguments")
 	}
 	if err := f.validateOps.ValidateNamespace(ctx, args.Namespace); err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate Namespace")
+		return nil, nil, nil, nil, errors.Wrap(err, "failed to validate Namespace")
 	}
 	groupVersion, err := f.versionFetchOps.GetCSISnapshotGroupVersion()
 	if err != nil {
-		return nil, nil, nil, nil, errors.Wrap(err, "Failed to fetch groupVersion")
+		return nil, nil, nil, nil, errors.Wrap(err, "failed to fetch groupVersion")
 	}
 	f.SnapshotGroupVersion = groupVersion
 	var snapshot *snapv1.VolumeSnapshot
@@ -136,31 +136,31 @@ func (f *fileRestoreSteps) ValidateArgs(ctx context.Context, args *types.FileRes
 		fmt.Println("Fetching the snapshot.")
 		snapshot, err := f.validateOps.ValidateVolumeSnapshot(ctx, args.FromSnapshotName, args.Namespace, groupVersion)
 		if err != nil {
-			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate VolumeSnapshot")
+			return nil, nil, nil, nil, errors.Wrap(err, "failed to validate VolumeSnapshot")
 		}
 		if args.ToPVCName == "" {
 			fmt.Println("Fetching the source PVC from snapshot.")
 			if *snapshot.Spec.Source.PersistentVolumeClaimName == "" {
-				return nil, nil, nil, nil, errors.Wrap(err, "Failed to fetch source PVC. VolumeSnapshot does not have a PVC as it's source")
+				return nil, nil, nil, nil, errors.Wrap(err, "failed to fetch source PVC. VolumeSnapshot does not have a PVC as it's source")
 			}
 			sourcePVC, err = f.validateOps.ValidatePVC(ctx, *snapshot.Spec.Source.PersistentVolumeClaimName, args.Namespace)
 			if err != nil {
-				return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+				return nil, nil, nil, nil, errors.Wrap(err, "failed to validate source PVC")
 			}
 		} else {
 			fmt.Println("Fetching the source PVC.")
 			sourcePVC, err = f.validateOps.ValidatePVC(ctx, args.ToPVCName, args.Namespace)
 			if err != nil {
-				return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+				return nil, nil, nil, nil, errors.Wrap(err, "failed to validate source PVC")
 			}
 		}
 		sc, err = f.validateOps.ValidateStorageClass(ctx, *sourcePVC.Spec.StorageClassName)
 		if err != nil {
-			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate StorageClass for source PVC")
+			return nil, nil, nil, nil, errors.Wrap(err, "failed to validate StorageClass for source PVC")
 		}
 		uVSC, err := f.validateOps.ValidateVolumeSnapshotClass(ctx, *snapshot.Spec.VolumeSnapshotClassName, groupVersion)
 		if err != nil {
-			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate VolumeSnapshotClass")
+			return nil, nil, nil, nil, errors.Wrap(err, "failed to validate VolumeSnapshotClass")
 		}
 		vscDriver := getDriverNameFromUVSC(*uVSC, groupVersion.GroupVersion)
 		if sc.Provisioner != vscDriver {
@@ -170,20 +170,20 @@ func (f *fileRestoreSteps) ValidateArgs(ctx context.Context, args *types.FileRes
 		fmt.Println("Fetching the restore PVC.")
 		restorePVC, err = f.validateOps.ValidatePVC(ctx, args.FromPVCName, args.Namespace)
 		if err != nil {
-			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate restore PVC")
+			return nil, nil, nil, nil, errors.Wrap(err, "failed to validate restore PVC")
 		}
 		fmt.Println("Fetching the source PVC.")
 		sourcePVC, err = f.validateOps.ValidatePVC(ctx, args.ToPVCName, args.Namespace)
 		if err != nil {
-			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+			return nil, nil, nil, nil, errors.Wrap(err, "failed to validate source PVC")
 		}
 		_, err = f.validateOps.ValidateStorageClass(ctx, *restorePVC.Spec.StorageClassName)
 		if err != nil {
-			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate StorageClass for restore PVC")
+			return nil, nil, nil, nil, errors.Wrap(err, "failed to validate StorageClass for restore PVC")
 		}
 		sc, err = f.validateOps.ValidateStorageClass(ctx, *sourcePVC.Spec.StorageClassName)
 		if err != nil {
-			return nil, nil, nil, nil, errors.Wrap(err, "Failed to validate StorageClass for source PVC")
+			return nil, nil, nil, nil, errors.Wrap(err, "failed to validate StorageClass for source PVC")
 		}
 	}
 	for _, sourceAccessMode := range sourcePVC.Spec.AccessModes {
@@ -215,7 +215,7 @@ func (f *fileRestoreSteps) CreateInspectorApplication(ctx context.Context, args 
 		var err error
 		restorePVC, err = f.createAppOps.CreatePVC(ctx, pvcArgs)
 		if err != nil {
-			return nil, nil, "", errors.Wrap(err, "Failed to restore PVC")
+			return nil, nil, "", errors.Wrap(err, "failed to restore PVC")
 		}
 		restoreMountPath = "/snapshot-data"
 	}
@@ -254,10 +254,10 @@ func (f *fileRestoreSteps) CreateInspectorApplication(ctx context.Context, args 
 	}
 	pod, err := f.createAppOps.CreatePod(ctx, podArgs)
 	if err != nil {
-		return nil, restorePVC, "", errors.Wrap(err, "Failed to create browse Pod")
+		return nil, restorePVC, "", errors.Wrap(err, "failed to create browse Pod")
 	}
 	if err = f.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
-		return pod, restorePVC, "", errors.Wrap(err, "Pod failed to become ready")
+		return pod, restorePVC, "", errors.Wrap(err, "pod failed to become ready")
 	}
 	return pod, restorePVC, restoreMountPath, nil
 }
@@ -266,7 +266,7 @@ func (f *fileRestoreSteps) ExecuteCopyCommand(ctx context.Context, args *types.F
 	command := []string{"cp", "-rf", fmt.Sprintf("%s%s", restoreMountPath, args.Path), fmt.Sprintf("/source-data%s", args.Path)}
 	stdout, err := f.kubeExecutor.Exec(ctx, args.Namespace, pod.Name, pod.Spec.Containers[0].Name, command)
 	if err != nil {
-		return "", errors.Wrapf(err, "Error running command:(%v)", command)
+		return "", errors.Wrapf(err, "error running command:(%v)", command)
 	}
 	return stdout, nil
 }
@@ -278,7 +278,7 @@ func (f *fileRestoreSteps) PortForwardAPod(pod *v1.Pod, localPort int) error {
 	out, errOut := new(bytes.Buffer), new(bytes.Buffer)
 	cfg, err := f.portForwardOps.FetchRestConfig()
 	if err != nil {
-		return errors.New("Failed to fetch rest config")
+		return errors.New("failed to fetch rest config")
 	}
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)

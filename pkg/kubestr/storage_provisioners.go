@@ -206,7 +206,7 @@ func (p *Kubestr) processProvisioner(ctx context.Context, provisioner string) (*
 		if clusterCsiSnapshotCapable, err := p.isK8sVersionCSISnapshotCapable(ctx); err != nil || !clusterCsiSnapshotCapable {
 			retProvisioner.StatusList = append(retProvisioner.StatusList,
 				makeStatus(StatusInfo, "Cluster is not CSI snapshot capable. Requires VolumeSnapshotDataSource feature gate.", nil))
-			return retProvisioner, errors.Wrap(err, "Failed to validate if Kubernetes version was CSI capable")
+			return retProvisioner, errors.Wrap(err, "failed to validate if Kubernetes version was CSI capable")
 		}
 		csiSnapshotGroupVersion := p.getCSIGroupVersion()
 		if csiSnapshotGroupVersion == nil {
@@ -217,7 +217,7 @@ func (p *Kubestr) processProvisioner(ctx context.Context, provisioner string) (*
 		// load volumeSnapshotClass
 		vscs, err := p.loadVolumeSnapshotClasses(ctx, csiSnapshotGroupVersion.Version)
 		if err != nil {
-			return nil, errors.Wrap(err, "Failed to load volume snapshot classes")
+			return nil, errors.Wrap(err, "failed to load volume snapshot classes")
 		}
 		for _, vsc := range vscs.Items {
 			if p.getDriverNameFromUVSC(vsc, csiSnapshotGroupVersion.GroupVersion) == provisioner {
@@ -372,7 +372,7 @@ func (s *snapshotDataSourceFGValidator) validate(ctx context.Context) (bool, err
 	// deletes if exists. If it doesn't exist, this is a noop
 	err := kanvolume.DeletePVC(s.cli, ns, FeatureGateTestPVCName)
 	if err != nil {
-		return false, errors.Wrap(err, "Error deleting VolumeSnapshotDataSource feature-gate validation pvc")
+		return false, errors.Wrap(err, "error deleting VolumeSnapshotDataSource feature-gate validation pvc")
 	}
 	// defer delete
 	defer func() {
@@ -403,7 +403,7 @@ func (s *snapshotDataSourceFGValidator) validate(ctx context.Context) (bool, err
 
 	pvcRes, err := s.cli.CoreV1().PersistentVolumeClaims(ns).Create(ctx, pvc, metav1.CreateOptions{})
 	if err != nil {
-		return false, errors.Wrap(err, "Error creating VolumeSnapshotDataSource feature-gate validation pvc")
+		return false, errors.Wrap(err, "error creating VolumeSnapshotDataSource feature-gate validation pvc")
 	}
 	if pvcRes.Spec.DataSource == nil {
 		return false, nil

@@ -73,7 +73,7 @@ func (r *SnapshotRestoreRunner) RunSnapshotRestoreHelper(ctx context.Context, ar
 		return results, fmt.Errorf("cli uninitialized")
 	}
 	if err := r.srSteps.ValidateArgs(ctx, args); err != nil {
-		return results, errors.Wrap(err, "Failed to validate arguments.")
+		return results, errors.Wrap(err, "failed to validate arguments")
 	}
 	data := time.Now().Format("20060102150405")
 
@@ -139,25 +139,25 @@ type snapshotRestoreSteps struct {
 
 func (s *snapshotRestoreSteps) ValidateArgs(ctx context.Context, args *types.CSISnapshotRestoreArgs) error {
 	if err := args.Validate(); err != nil {
-		return errors.Wrap(err, "Failed to validate input arguments")
+		return errors.Wrap(err, "failed to validate input arguments")
 	}
 	if err := s.validateOps.ValidateNamespace(ctx, args.Namespace); err != nil {
-		return errors.Wrap(err, "Failed to validate Namespace")
+		return errors.Wrap(err, "failed to validate Namespace")
 	}
 	sc, err := s.validateOps.ValidateStorageClass(ctx, args.StorageClass)
 	if err != nil {
-		return errors.Wrap(err, "Failed to validate Storageclass")
+		return errors.Wrap(err, "failed to validate Storageclass")
 	}
 
 	groupVersion, err := s.versionFetchOps.GetCSISnapshotGroupVersion()
 	if err != nil {
-		return errors.Wrap(err, "Failed to fetch groupVersion")
+		return errors.Wrap(err, "failed to fetch groupVersion")
 	}
 	s.SnapshotGroupVersion = groupVersion
 
 	uVSC, err := s.validateOps.ValidateVolumeSnapshotClass(ctx, args.VolumeSnapshotClass, groupVersion)
 	if err != nil {
-		return errors.Wrap(err, "Failed to validate VolumeSnapshotClass")
+		return errors.Wrap(err, "failed to validate VolumeSnapshotClass")
 	}
 
 	vscDriver := getDriverNameFromUVSC(*uVSC, groupVersion.GroupVersion)
@@ -175,7 +175,7 @@ func (s *snapshotRestoreSteps) CreateApplication(ctx context.Context, args *type
 	}
 	pvc, err := s.createAppOps.CreatePVC(ctx, pvcArgs)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "Failed to create PVC")
+		return nil, nil, errors.Wrap(err, "failed to create PVC")
 	}
 	podArgs := &types.CreatePodArgs{
 		GenerateName:   originalPodGenerateName,
@@ -192,7 +192,7 @@ func (s *snapshotRestoreSteps) CreateApplication(ctx context.Context, args *type
 	}
 	pod, err := s.createAppOps.CreatePod(ctx, podArgs)
 	if err != nil {
-		return nil, pvc, errors.Wrap(err, "Failed to create POD")
+		return nil, pvc, errors.Wrap(err, "failed to create pod")
 	}
 
 	if err = s.createAppOps.WaitForPVCReady(ctx, args.Namespace, pvc.Name); err != nil {
@@ -200,7 +200,7 @@ func (s *snapshotRestoreSteps) CreateApplication(ctx context.Context, args *type
 	}
 
 	if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
-		return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
+		return pod, pvc, errors.Wrap(err, "pod failed to become ready")
 	}
 	return pod, pvc, nil
 }
@@ -208,7 +208,7 @@ func (s *snapshotRestoreSteps) CreateApplication(ctx context.Context, args *type
 func (s *snapshotRestoreSteps) ValidateData(ctx context.Context, pod *v1.Pod, data string) error {
 	podData, err := s.dataValidatorOps.FetchPodData(ctx, pod.Name, pod.Namespace)
 	if err != nil {
-		return errors.Wrap(err, "Failed to fetch data from pod. Failure may be due to permissions issues. Try again with runAsUser=1000 option.")
+		return errors.Wrap(err, "failed to fetch data from pod. Failure may be due to permissions issues, try again with runAsUser=1000 option")
 	}
 	if podData != data {
 		return fmt.Errorf("string didn't match (%s , %s)", podData, data)
@@ -219,7 +219,7 @@ func (s *snapshotRestoreSteps) ValidateData(ctx context.Context, pod *v1.Pod, da
 func (s *snapshotRestoreSteps) SnapshotApplication(ctx context.Context, args *types.CSISnapshotRestoreArgs, pvc *v1.PersistentVolumeClaim, snapshotName string) (*snapv1.VolumeSnapshot, error) {
 	snapshotter, err := s.snapshotCreateOps.NewSnapshotter()
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to load snapshotter")
+		return nil, errors.Wrap(err, "failed to load snapshotter")
 	}
 	createSnapshotArgs := &types.CreateSnapshotArgs{
 		Namespace:           args.Namespace,
@@ -229,7 +229,7 @@ func (s *snapshotRestoreSteps) SnapshotApplication(ctx context.Context, args *ty
 	}
 	snapshot, err := s.snapshotCreateOps.CreateSnapshot(ctx, snapshotter, createSnapshotArgs)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create Snapshot")
+		return nil, errors.Wrap(err, "failed to create snapshot")
 	}
 	if !args.SkipCFSCheck {
 		cfsArgs := &types.CreateFromSourceCheckArgs{
@@ -238,7 +238,7 @@ func (s *snapshotRestoreSteps) SnapshotApplication(ctx context.Context, args *ty
 			Namespace:           args.Namespace,
 		}
 		if err = s.snapshotCreateOps.CreateFromSourceCheck(ctx, snapshotter, cfsArgs, s.SnapshotGroupVersion); err != nil {
-			return snapshot, errors.Wrap(err, "Failed to create duplicate snapshot from source. To skip check use '--skipcfs=true' option.")
+			return snapshot, errors.Wrap(err, "failed to create duplicate snapshot from source. To skip check use '--skipcfs=true' option")
 		}
 	}
 	return snapshot, nil
@@ -261,7 +261,7 @@ func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *typ
 	}
 	pvc, err := s.createAppOps.CreatePVC(ctx, pvcArgs)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "Failed to restore PVC")
+		return nil, nil, errors.Wrap(err, "failed to restore PVC")
 	}
 	podArgs := &types.CreatePodArgs{
 		GenerateName:   clonedPodGenerateName,
@@ -278,7 +278,7 @@ func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *typ
 	}
 	pod, err := s.createAppOps.CreatePod(ctx, podArgs)
 	if err != nil {
-		return nil, pvc, errors.Wrap(err, "Failed to create restored Pod")
+		return nil, pvc, errors.Wrap(err, "failed to create restored pod")
 	}
 
 	if err = s.createAppOps.WaitForPVCReady(ctx, args.Namespace, pvc.Name); err != nil {
@@ -286,7 +286,7 @@ func (s *snapshotRestoreSteps) RestoreApplication(ctx context.Context, args *typ
 	}
 
 	if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
-		return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
+		return pod, pvc, errors.Wrap(err, "pod failed to become ready")
 	}
 	return pod, pvc, nil
 }

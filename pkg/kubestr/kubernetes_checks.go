@@ -52,7 +52,7 @@ func (p *Kubestr) validateK8sVersionHelper() (*version.Info, error) {
 	}
 	major, err := strconv.Atoi(majorStr)
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to derive kubernetes major version")
+		return nil, errors.Wrap(err, "unable to derive kubernetes major version")
 	}
 
 	minorStr := version.Minor
