@@ -451,7 +451,10 @@ func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 	ctx := context.Background()
 	file, err := os.CreateTemp("", "tempTLCfile")
 	c.Check(err, IsNil)
-	defer os.Remove(file.Name())
+	defer func() {
+		c.Check(os.Remove(file.Name()), IsNil)
+	}()
+
 	for i, tc := range []struct {
 		cli           kubernetes.Interface
 		configMapName string
@@ -849,7 +852,7 @@ func (s *FIOTestSuite) TestRunFioCommand(c *C) {
 func (s *FIOTestSuite) TestDeleteConfigMap(c *C) {
 	ctx := context.Background()
 	defaultNS := "default"
-	os.Setenv(PodNamespaceEnvKey, defaultNS)
+	c.Check(os.Setenv(PodNamespaceEnvKey, defaultNS), IsNil)
 	for _, tc := range []struct {
 		cli        kubernetes.Interface
 		cm         *v1.ConfigMap
@@ -914,7 +917,7 @@ func (s *FIOTestSuite) TestDeleteConfigMap(c *C) {
 			c.Assert(len(list.Items), Equals, tc.lenCMList)
 		}
 	}
-	os.Unsetenv(PodNamespaceEnvKey)
+	c.Check(os.Unsetenv(PodNamespaceEnvKey), IsNil)
 }
 
 func (s *FIOTestSuite) TestWaitForPodReady(c *C) {
