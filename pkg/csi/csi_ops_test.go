@@ -1154,7 +1154,7 @@ func (s *CSITestSuite) TestWaitForPVCReady(c *C) {
 			cli:         fake.NewSimpleClientset(),
 			pvcGetFunc:  normalGetFunc,
 			errChecker:  NotNil,
-			errString:   "Could not find PVC",
+			errString:   "could not find PVC",
 		},
 		{
 			description: "PVC ClaimLost",
