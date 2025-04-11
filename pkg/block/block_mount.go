@@ -32,7 +32,7 @@ type BlockMountCheckerArgs struct {
 
 func (a *BlockMountCheckerArgs) Validate() error {
 	if a.KubeCli == nil || a.DynCli == nil || a.StorageClass == "" || a.Namespace == "" {
-		return fmt.Errorf("Require fields are missing. (KubeCli, DynCli, StorageClass, Namespace)")
+		return fmt.Errorf("require fields are missing. (KubeCli, DynCli, StorageClass, Namespace)")
 	}
 	return nil
 

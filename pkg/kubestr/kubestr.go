@@ -64,11 +64,11 @@ func NewKubestr() (*Kubestr, error) {
 func LoadDynCli() (dynamic.Interface, error) {
 	cfg, err := kube.LoadConfig()
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to load config for Dynamic client")
+		return nil, errors.Wrap(err, "failed to load config for Dynamic client")
 	}
 	clientset, err := dynamic.NewForConfig(cfg)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create Dynamic client")
+		return nil, errors.Wrap(err, "failed to create Dynamic client")
 	}
 	return clientset, nil
 }

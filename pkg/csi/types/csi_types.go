@@ -24,7 +24,7 @@ type CSISnapshotRestoreArgs struct {
 
 func (a *CSISnapshotRestoreArgs) Validate() error {
 	if a.StorageClass == "" || a.VolumeSnapshotClass == "" || a.Namespace == "" {
-		return fmt.Errorf("Require fields are missing. (StorageClass, VolumeSnapshotClass, Namespace)")
+		return fmt.Errorf("required fields are missing: (StorageClass, VolumeSnapshotClass, Namespace)")
 	}
 	return nil
 }
@@ -51,7 +51,7 @@ func (c *CreatePVCArgs) Validate() error {
 	if (c.GenerateName == "" && c.Name == "") ||
 		(c.GenerateName != "" && c.Name != "") ||
 		c.StorageClass == "" || c.Namespace == "" {
-		return fmt.Errorf("Invalid CreatePVCArgs (%#v)", c)
+		return fmt.Errorf("invalid CreatePVCArgs (%#v)", c)
 	}
 	return nil
 }
@@ -76,17 +76,17 @@ func (c *CreatePodArgs) Validate() error {
 	if (c.GenerateName == "" && c.Name == "") ||
 		(c.GenerateName != "" && c.Name != "") ||
 		(c.Namespace == "") || (c.PVCMap == nil) {
-		return fmt.Errorf("Invalid CreatePodArgs (%#v)", c)
+		return fmt.Errorf("invalid CreatePodArgs (%#v)", c)
 	}
 	for pvcName, path := range c.PVCMap {
 		if pvcName == "" {
-			return fmt.Errorf("PVC Name not set")
+			return fmt.Errorf("name for PVC is not set")
 		}
 		if path.DevicePath == "" && path.MountPath == "" {
-			return fmt.Errorf("Neither DevicePath nor MountPath are set. One is required.")
+			return fmt.Errorf("neither DevicePath nor MountPath are set, one is required")
 		}
 		if path.DevicePath != "" && path.MountPath != "" {
-			return fmt.Errorf("Both MountPath and DevicePath are set. Only one must be set.")
+			return fmt.Errorf("both MountPath and DevicePath are set, only one must be set")
 		}
 	}
 	return nil
@@ -101,7 +101,7 @@ type CreateSnapshotArgs struct {
 
 func (c *CreateSnapshotArgs) Validate() error {
 	if c.Namespace == "" || c.PVCName == "" || c.VolumeSnapshotClass == "" || c.SnapshotName == "" {
-		return fmt.Errorf("Invalid CreateSnapshotArgs (%v)", c)
+		return fmt.Errorf("invalid CreateSnapshotArgs (%v)", c)
 	}
 	return nil
 }
@@ -113,7 +113,7 @@ type FetchSnapshotArgs struct {
 
 func (c *FetchSnapshotArgs) Validate() error {
 	if c.Namespace == "" || c.SnapshotName == "" {
-		return fmt.Errorf("Invalid FetchSnapshotArgs (%v)", c)
+		return fmt.Errorf("invalid FetchSnapshotArgs (%v)", c)
 	}
 	return nil
 }
@@ -126,7 +126,7 @@ type CreateFromSourceCheckArgs struct {
 
 func (c *CreateFromSourceCheckArgs) Validate() error {
 	if c.VolumeSnapshotClass == "" || c.SnapshotName == "" || c.Namespace == "" {
-		return fmt.Errorf("Invalid CreateFromSourceCheckArgs (%v)", c)
+		return fmt.Errorf("invalid CreateFromSourceCheckArgs (%v)", c)
 	}
 	return nil
 }
@@ -142,7 +142,7 @@ type PVCBrowseArgs struct {
 
 func (p *PVCBrowseArgs) Validate() error {
 	if p.PVCName == "" || p.Namespace == "" || p.VolumeSnapshotClass == "" {
-		return fmt.Errorf("Invalid PVCBrowseArgs (%v)", p)
+		return fmt.Errorf("invalid PVCBrowseArgs (%v)", p)
 	}
 	return nil
 }
@@ -157,7 +157,7 @@ type SnapshotBrowseArgs struct {
 
 func (p *SnapshotBrowseArgs) Validate() error {
 	if p.SnapshotName == "" || p.Namespace == "" {
-		return fmt.Errorf("Invalid SnapshotBrowseArgs (%v)", p)
+		return fmt.Errorf("invalid SnapshotBrowseArgs (%v)", p)
 	}
 	return nil
 }
@@ -174,13 +174,13 @@ type FileRestoreArgs struct {
 
 func (f *FileRestoreArgs) Validate() error {
 	if (f.FromSnapshotName == "" && f.FromPVCName == "") || (f.FromSnapshotName != "" && f.FromPVCName != "") {
-		return fmt.Errorf("Either --fromSnapshot or --fromPVC argument must be specified. Both cannot be specified together.")
+		return fmt.Errorf("either --fromSnapshot or --fromPVC argument must be specified. Both cannot be specified together")
 	}
 	if f.FromPVCName != "" && f.ToPVCName == "" {
-		return fmt.Errorf("--toPVC argument must be specified if using --fromPVC.")
+		return fmt.Errorf("--toPVC argument must be specified if using --fromPVC")
 	}
 	if f.Namespace == "" {
-		return fmt.Errorf("Invalid FileRestoreArgs (%v)", f)
+		return fmt.Errorf("invalid FileRestoreArgs (%v)", f)
 	}
 	return nil
 }

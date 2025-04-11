@@ -4,6 +4,11 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+
 	"github.com/kastenhq/kubestr/pkg/csi/types"
 	snapv1 "github.com/kubernetes-csi/external-snapshotter/client/v4/apis/volumesnapshot/v1"
 	"github.com/pkg/errors"
@@ -12,10 +17,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/dynamic"
 	"k8s.io/client-go/kubernetes"
-	"os"
-	"os/signal"
-	"sync"
-	"syscall"
 )
 
 type SnapshotBrowseRunner struct {
@@ -64,21 +65,21 @@ func (r *SnapshotBrowseRunner) RunSnapshotBrowseHelper(ctx context.Context, args
 	fmt.Println("Fetching the snapshot.")
 	vs, sc, err := r.browserSteps.ValidateArgs(ctx, args)
 	if err != nil {
-		return errors.Wrap(err, "Failed to validate arguments.")
+		return errors.Wrap(err, "failed to validate arguments.")
 	}
 	r.snapshot = vs
 
 	fmt.Println("Creating the browser pod.")
 	r.pod, r.pvc, err = r.browserSteps.CreateInspectorApplication(ctx, args, r.snapshot, sc)
 	if err != nil {
-		return errors.Wrap(err, "Failed to create inspector application.")
+		return errors.Wrap(err, "failed to create inspector application.")
 	}
 
 	if args.ShowTree {
 		fmt.Println("Printing the tree structure from root directory.")
 		stdout, err := r.browserSteps.ExecuteTreeCommand(ctx, args, r.pod)
 		if err != nil {
-			return errors.Wrap(err, "Failed to execute tree command in pod.")
+			return errors.Wrap(err, "failed to execute tree command in pod.")
 		}
 		fmt.Printf("\n%s\n\n", stdout)
 		return nil
@@ -87,7 +88,7 @@ func (r *SnapshotBrowseRunner) RunSnapshotBrowseHelper(ctx context.Context, args
 	fmt.Println("Forwarding the port.")
 	err = r.browserSteps.PortForwardAPod(ctx, r.pod, args.LocalPort)
 	if err != nil {
-		return errors.Wrap(err, "Failed to port forward Pod.")
+		return errors.Wrap(err, "failed to port forward Pod.")
 	}
 
 	return nil
@@ -114,35 +115,35 @@ type snapshotBrowserSteps struct {
 
 func (s *snapshotBrowserSteps) ValidateArgs(ctx context.Context, args *types.SnapshotBrowseArgs) (*snapv1.VolumeSnapshot, *sv1.StorageClass, error) {
 	if err := args.Validate(); err != nil {
-		return nil, nil, errors.Wrap(err, "Failed to validate input arguments")
+		return nil, nil, errors.Wrap(err, "failed to validate input arguments")
 	}
 	if err := s.validateOps.ValidateNamespace(ctx, args.Namespace); err != nil {
-		return nil, nil, errors.Wrap(err, "Failed to validate Namespace")
+		return nil, nil, errors.Wrap(err, "failed to validate Namespace")
 	}
 	groupVersion, err := s.versionFetchOps.GetCSISnapshotGroupVersion()
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "Failed to fetch groupVersion")
+		return nil, nil, errors.Wrap(err, "failed to fetch groupVersion")
 	}
 	s.SnapshotGroupVersion = groupVersion
 	snapshot, err := s.validateOps.ValidateVolumeSnapshot(ctx, args.SnapshotName, args.Namespace, groupVersion)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "Failed to validate VolumeSnapshot")
+		return nil, nil, errors.Wrap(err, "failed to validate VolumeSnapshot")
 	}
 	pvc, err := s.validateOps.ValidatePVC(ctx, *snapshot.Spec.Source.PersistentVolumeClaimName, args.Namespace)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "Failed to validate source PVC")
+		return nil, nil, errors.Wrap(err, "failed to validate source PVC")
 	}
 	sc, err := s.validateOps.ValidateStorageClass(ctx, *pvc.Spec.StorageClassName)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "Failed to validate SC")
+		return nil, nil, errors.Wrap(err, "failed to validate SC")
 	}
 	uVSC, err := s.validateOps.ValidateVolumeSnapshotClass(ctx, *snapshot.Spec.VolumeSnapshotClassName, groupVersion)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "Failed to validate VolumeSnapshotClass")
+		return nil, nil, errors.Wrap(err, "failed to validate VolumeSnapshotClass")
 	}
 	vscDriver := getDriverNameFromUVSC(*uVSC, groupVersion.GroupVersion)
 	if sc.Provisioner != vscDriver {
-		return nil, nil, fmt.Errorf("StorageClass provisioner (%s) and VolumeSnapshotClass driver (%s) are different.", sc.Provisioner, vscDriver)
+		return nil, nil, fmt.Errorf("provisioner for StorageClass (%s) and VolumeSnapshotClass driver (%s) are different", sc.Provisioner, vscDriver)
 	}
 	return snapshot, sc, nil
 }
@@ -164,7 +165,7 @@ func (s *snapshotBrowserSteps) CreateInspectorApplication(ctx context.Context, a
 	}
 	pvc, err := s.createAppOps.CreatePVC(ctx, pvcArgs)
 	if err != nil {
-		return nil, nil, errors.Wrap(err, "Failed to restore PVC")
+		return nil, nil, errors.Wrap(err, "failed to restore PVC")
 	}
 	podArgs := &types.CreatePodArgs{
 		GenerateName:   clonedPodGenerateName,
@@ -195,10 +196,10 @@ func (s *snapshotBrowserSteps) CreateInspectorApplication(ctx context.Context, a
 	}
 	pod, err := s.createAppOps.CreatePod(ctx, podArgs)
 	if err != nil {
-		return nil, pvc, errors.Wrap(err, "Failed to create browse Pod")
+		return nil, pvc, errors.Wrap(err, "failed to create browse Pod")
 	}
 	if err = s.createAppOps.WaitForPodReady(ctx, args.Namespace, pod.Name); err != nil {
-		return pod, pvc, errors.Wrap(err, "Pod failed to become ready")
+		return pod, pvc, errors.Wrap(err, "pod failed to become ready")
 	}
 	return pod, pvc, nil
 }
@@ -207,7 +208,7 @@ func (s *snapshotBrowserSteps) ExecuteTreeCommand(ctx context.Context, args *typ
 	command := []string{"tree", "/snapshot-data"}
 	stdout, err := s.kubeExecutor.Exec(ctx, args.Namespace, pod.Name, pod.Spec.Containers[0].Name, command)
 	if err != nil {
-		return "", errors.Wrapf(err, "Error running command:(%v)", command)
+		return "", errors.Wrapf(err, "error running command:(%v)", command)
 	}
 	return stdout, nil
 }
@@ -219,7 +220,7 @@ func (s *snapshotBrowserSteps) PortForwardAPod(ctx context.Context, pod *v1.Pod,
 	out, errOut := new(bytes.Buffer), new(bytes.Buffer)
 	cfg, err := s.portForwardOps.FetchRestConfig()
 	if err != nil {
-		return errors.New("Failed to fetch rest config")
+		return errors.New("failed to fetch rest config")
 	}
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)

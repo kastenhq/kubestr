@@ -14,7 +14,6 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 
 	"github.com/kanisterio/kanister/pkg/kube"
-	kankube "github.com/kanisterio/kanister/pkg/kube"
 	kansnapshot "github.com/kanisterio/kanister/pkg/kube/snapshot"
 	"github.com/kanisterio/kanister/pkg/poll"
 	"github.com/kastenhq/kubestr/pkg/common"
@@ -290,7 +289,7 @@ func (c *applicationCreate) waitForPVCReady(ctx context.Context, namespace strin
 	return poll.Wait(timeoutCtx, func(ctx context.Context) (bool, error) {
 		pvc, err := c.kubeCli.CoreV1().PersistentVolumeClaims(namespace).Get(timeoutCtx, name, metav1.GetOptions{})
 		if err != nil {
-			return false, errors.Wrapf(err, "Could not find PVC")
+			return false, errors.Wrapf(err, "could not find PVC")
 		}
 
 		if pvc.Status.Phase == v1.ClaimLost {
@@ -323,7 +322,7 @@ func (c *applicationCreate) waitForPodReady(ctx context.Context, namespace strin
 
 	timeoutCtx, waitCancel := context.WithTimeout(ctx, podReadyTimeout)
 	defer waitCancel()
-	err := kankube.WaitForPodReady(timeoutCtx, c.kubeCli, namespace, podName)
+	err := kube.WaitForPodReady(timeoutCtx, c.kubeCli, namespace, podName)
 	return err
 }
 
@@ -389,7 +388,7 @@ func (c *snapshotCreate) CreateSnapshot(ctx context.Context, snapshotter kansnap
 	}
 	snap, err := snapshotter.Get(ctx, args.SnapshotName, args.Namespace)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Failed to get CSI snapshot (%s) in Namespace (%s)", args.SnapshotName, args.Namespace)
+		return nil, errors.Wrapf(err, "failed to get CSI snapshot (%s) in Namespace (%s)", args.SnapshotName, args.Namespace)
 	}
 	return snap, nil
 }
@@ -410,7 +409,7 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 	targetSnapClassName := clonePrefix + args.VolumeSnapshotClass
 	err := snapshotter.CloneVolumeSnapshotClass(ctx, args.VolumeSnapshotClass, targetSnapClassName, kansnapshot.DeletionPolicyRetain, []string{DefaultVolumeSnapshotClassAnnotation})
 	if err != nil {
-		return errors.Wrapf(err, "Failed to clone a VolumeSnapshotClass to use to restore the snapshot")
+		return errors.Wrapf(err, "failed to clone a VolumeSnapshotClass to use to restore the snapshot")
 	}
 	defer func() {
 		VolSnapClassGVR := schema.GroupVersionResource{Group: common.SnapGroupName, Version: SnapshotGroupVersion.Version, Resource: common.VolumeSnapshotClassResourcePlural}
@@ -422,7 +421,7 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 
 	snapSrc, err := snapshotter.GetSource(ctx, args.SnapshotName, args.Namespace)
 	if err != nil {
-		return errors.Wrapf(err, "Failed to get source snapshot source (%s)", args.SnapshotName)
+		return errors.Wrapf(err, "failed to get source snapshot source (%s)", args.SnapshotName)
 	}
 	snapshotCFSCloneName := clonePrefix + args.SnapshotName
 	// test the CreateFromSource API
@@ -440,7 +439,7 @@ func (c *snapshotCreate) CreateFromSourceCheck(ctx context.Context, snapshotter 
 	}
 	err = snapshotter.CreateFromSource(ctx, src, true, snapshotMeta, kansnapshot.ObjectMeta{})
 	if err != nil {
-		return errors.Wrapf(err, "Failed to clone snapshot from source (%s)", snapshotCFSCloneName)
+		return errors.Wrapf(err, "failed to clone snapshot from source (%s)", snapshotCFSCloneName)
 	}
 	return nil
 }
@@ -511,7 +510,7 @@ func (p *apiVersionFetch) GetCSISnapshotGroupVersion() (*metav1.GroupVersionForD
 			return &group.PreferredVersion, nil
 		}
 	}
-	return nil, fmt.Errorf("Snapshot API group not found")
+	return nil, fmt.Errorf("snapshot API group not found")
 }
 
 //go:generate go run github.com/golang/mock/mockgen -destination=mocks/mock_data_validator.go -package=mocks . DataValidator
@@ -527,7 +526,7 @@ func (p *validateData) FetchPodData(ctx context.Context, podName string, podName
 	if p.kubeCli == nil {
 		return "", fmt.Errorf("kubeCli not initialized")
 	}
-	stdout, _, err := kankube.Exec(ctx, p.kubeCli, podNamespace, podName, "", []string{"sh", "-c", "cat /data/out.txt"}, nil)
+	stdout, _, err := kube.Exec(ctx, p.kubeCli, podNamespace, podName, "", []string{"sh", "-c", "cat /data/out.txt"}, nil)
 	return stdout, err
 }
 
@@ -574,6 +573,6 @@ func (k *kubeExec) Exec(ctx context.Context, namespace string, podName string, C
 	if k.kubeCli == nil {
 		return "", fmt.Errorf("kubeCli not initialized")
 	}
-	stdout, _, err := kankube.Exec(ctx, k.kubeCli, namespace, podName, ContainerName, command, nil)
+	stdout, _, err := kube.Exec(ctx, k.kubeCli, namespace, podName, ContainerName, command, nil)
 	return stdout, err
 }

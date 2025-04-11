@@ -11,8 +11,7 @@ import (
 	"github.com/pkg/errors"
 	. "gopkg.in/check.v1"
 	v1 "k8s.io/api/core/v1"
-	scv1 "k8s.io/api/storage/v1"
-	sv1 "k8s.io/api/storage/v1"
+	storagev1 "k8s.io/api/storage/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
@@ -289,7 +288,7 @@ type fakeFioStepper struct {
 
 	vnsErr error
 
-	sceSC  *sv1.StorageClass
+	sceSC  *storagev1.StorageClass
 	sceErr error
 
 	lcmConfigMap *v1.ConfigMap
@@ -322,7 +321,7 @@ func (f *fakeFioStepper) validateNodeSelector(ctx context.Context, selector map[
 	f.steps = append(f.steps, "VNS")
 	return f.vnsErr
 }
-func (f *fakeFioStepper) storageClassExists(ctx context.Context, storageClass string) (*sv1.StorageClass, error) {
+func (f *fakeFioStepper) storageClassExists(ctx context.Context, storageClass string) (*storagev1.StorageClass, error) {
 	f.steps = append(f.steps, "SCE")
 	return f.sceSC, f.sceErr
 }
@@ -373,7 +372,7 @@ func (s *FIOTestSuite) TestStorageClassExists(c *C) {
 			checker:      NotNil,
 		},
 		{
-			cli:          fake.NewSimpleClientset(&scv1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: "sc"}}),
+			cli:          fake.NewSimpleClientset(&storagev1.StorageClass{ObjectMeta: metav1.ObjectMeta{Name: "sc"}}),
 			storageClass: "sc",
 			checker:      IsNil,
 		},
@@ -452,7 +451,10 @@ func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 	ctx := context.Background()
 	file, err := os.CreateTemp("", "tempTLCfile")
 	c.Check(err, IsNil)
-	defer os.Remove(file.Name())
+	defer func() {
+		c.Check(os.Remove(file.Name()), IsNil)
+	}()
+
 	for i, tc := range []struct {
 		cli           kubernetes.Interface
 		configMapName string
@@ -513,7 +515,7 @@ func (s *FIOTestSuite) TestLoadConfigMap(c *C) {
 		c.Log(i)
 		stepper := &fioStepper{cli: tc.cli}
 		if tc.failCreates {
-			stepper.cli.(*fake.Clientset).Fake.PrependReactor("create", "configmaps", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			stepper.cli.(*fake.Clientset).PrependReactor("create", "configmaps", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 				return true, nil, errors.New("Error creating object")
 			})
 		}
@@ -562,7 +564,7 @@ func (s *FIOTestSuite) TestCreatePVC(c *C) {
 	} {
 		stepper := &fioStepper{cli: tc.cli}
 		if tc.failCreates {
-			stepper.cli.(*fake.Clientset).Fake.PrependReactor("create", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
+			stepper.cli.(*fake.Clientset).PrependReactor("create", "*", func(action k8stesting.Action) (handled bool, ret runtime.Object, err error) {
 				return true, nil, errors.New("Error creating object")
 			})
 		}
@@ -692,7 +694,7 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 			podReady: &fakePodReadyChecker{prcErr: tc.podReadyErr},
 		}
 		if tc.reactor != nil {
-			stepper.cli.(*fake.Clientset).Fake.ReactionChain = tc.reactor
+			stepper.cli.(*fake.Clientset).ReactionChain = tc.reactor
 		}
 		pod, err := stepper.createPod(ctx, tc.pvcName, tc.configMapName, tc.testFileName, DefaultNS, tc.nodeSelector, tc.image)
 		c.Check(err, tc.errChecker)
@@ -702,9 +704,9 @@ func (s *FIOTestSuite) TestCreatPod(c *C) {
 			for _, vol := range pod.Spec.Volumes {
 				switch vol.Name {
 				case "persistent-storage":
-					c.Assert(vol.VolumeSource.PersistentVolumeClaim.ClaimName, Equals, tc.pvcName)
+					c.Assert(vol.PersistentVolumeClaim.ClaimName, Equals, tc.pvcName)
 				case "config-map":
-					c.Assert(vol.VolumeSource.ConfigMap.Name, Equals, tc.configMapName)
+					c.Assert(vol.ConfigMap.Name, Equals, tc.configMapName)
 				}
 			}
 			c.Assert(len(pod.Spec.Containers), Equals, 1)
@@ -850,7 +852,7 @@ func (s *FIOTestSuite) TestRunFioCommand(c *C) {
 func (s *FIOTestSuite) TestDeleteConfigMap(c *C) {
 	ctx := context.Background()
 	defaultNS := "default"
-	os.Setenv(PodNamespaceEnvKey, defaultNS)
+	c.Check(os.Setenv(PodNamespaceEnvKey, defaultNS), IsNil)
 	for _, tc := range []struct {
 		cli        kubernetes.Interface
 		cm         *v1.ConfigMap
@@ -915,7 +917,7 @@ func (s *FIOTestSuite) TestDeleteConfigMap(c *C) {
 			c.Assert(len(list.Items), Equals, tc.lenCMList)
 		}
 	}
-	os.Unsetenv(PodNamespaceEnvKey)
+	c.Check(os.Unsetenv(PodNamespaceEnvKey), IsNil)
 }
 
 func (s *FIOTestSuite) TestWaitForPodReady(c *C) {

@@ -72,7 +72,7 @@ type RunFIOArgs struct {
 
 func (a *RunFIOArgs) Validate() error {
 	if a.StorageClass == "" || a.Size == "" || a.Namespace == "" {
-		return fmt.Errorf("Require fields are missing. (StorageClass, Size, Namespace)")
+		return fmt.Errorf("required fields are missing: (StorageClass, Size, Namespace)")
 	}
 	return nil
 }
@@ -105,21 +105,21 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 	}
 
 	if err := f.fioSteps.validateNamespace(ctx, args.Namespace); err != nil {
-		return nil, errors.Wrapf(err, "Unable to find namespace (%s)", args.Namespace)
+		return nil, errors.Wrapf(err, "unable to find namespace (%s)", args.Namespace)
 	}
 
 	if err := f.fioSteps.validateNodeSelector(ctx, args.NodeSelector); err != nil {
-		return nil, errors.Wrapf(err, "Unable to find nodes satisfying node selector (%v)", args.NodeSelector)
+		return nil, errors.Wrapf(err, "unable to find nodes satisfying node selector (%v)", args.NodeSelector)
 	}
 
 	sc, err := f.fioSteps.storageClassExists(ctx, args.StorageClass)
 	if err != nil {
-		return nil, errors.Wrap(err, "Cannot find StorageClass")
+		return nil, errors.Wrap(err, "cannot find StorageClass")
 	}
 
 	configMap, err := f.fioSteps.loadConfigMap(ctx, args)
 	if err != nil {
-		return nil, errors.Wrap(err, "Unable to create a ConfigMap")
+		return nil, errors.Wrap(err, "unable to create a ConfigMap")
 	}
 	defer func() {
 		_ = f.fioSteps.deleteConfigMap(context.TODO(), configMap, args.Namespace)
@@ -127,12 +127,12 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 
 	testFileName, err := fioTestFilename(configMap.Data)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to get test file name.")
+		return nil, errors.Wrap(err, "failed to get test file name")
 	}
 
 	pvc, err := f.fioSteps.createPVC(ctx, args.StorageClass, args.Size, args.Namespace)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create PVC")
+		return nil, errors.Wrap(err, "failed to create PVC")
 	}
 	defer func() {
 		_ = f.fioSteps.deletePVC(context.TODO(), pvc.Name, args.Namespace)
@@ -141,7 +141,7 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 
 	pod, err := f.fioSteps.createPod(ctx, pvc.Name, configMap.Name, testFileName, args.Namespace, args.NodeSelector, args.Image)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed to create POD")
+		return nil, errors.Wrap(err, "failed to create POD")
 	}
 	defer func() {
 		_ = f.fioSteps.deletePod(context.TODO(), pod.Name, args.Namespace)
@@ -150,7 +150,7 @@ func (f *FIOrunner) RunFioHelper(ctx context.Context, args *RunFIOArgs) (*RunFIO
 	fmt.Printf("Running FIO test (%s) on StorageClass (%s) with a PVC of Size (%s)\n", testFileName, args.StorageClass, args.Size)
 	fioOutput, err := f.fioSteps.runFIOCommand(ctx, pod.Name, ContainerName, testFileName, args.Namespace)
 	if err != nil {
-		return nil, errors.Wrap(err, "Failed while running FIO test.")
+		return nil, errors.Wrap(err, "failed while running FIO test")
 	}
 	return &RunFIOResult{
 		Size:         args.Size,
@@ -195,7 +195,7 @@ func (s *fioStepper) validateNodeSelector(ctx context.Context, selector map[stri
 	}
 
 	if len(nodes.Items) == 0 {
-		return fmt.Errorf("No nodes match selector")
+		return fmt.Errorf("no nodes match selector")
 	}
 
 	return nil
@@ -213,12 +213,12 @@ func (s *fioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.C
 	case args.FIOJobFilepath != "":
 		data, err := os.ReadFile(args.FIOJobFilepath)
 		if err != nil {
-			return nil, errors.Wrap(err, "File reading error")
+			return nil, errors.Wrap(err, "file reading error")
 		}
 		configMap.Data[filepath.Base(args.FIOJobFilepath)] = string(data)
 	case args.FIOJobName != "":
 		if _, ok := fioJobs[args.FIOJobName]; !ok {
-			return nil, fmt.Errorf("FIO job not found- (%s)", args.FIOJobName)
+			return nil, fmt.Errorf("did not find FIO job (%s)", args.FIOJobName)
 		}
 		configMap.Data[args.FIOJobName] = fioJobs[args.FIOJobName]
 	default:
@@ -237,7 +237,7 @@ func (s *fioStepper) loadConfigMap(ctx context.Context, args *RunFIOArgs) (*v1.C
 func (s *fioStepper) createPVC(ctx context.Context, storageclass, size, namespace string) (*v1.PersistentVolumeClaim, error) {
 	sizeResource, err := resource.ParseQuantity(size)
 	if err != nil {
-		return nil, errors.Wrapf(err, "Unable to parse PVC size (%s)", size)
+		return nil, errors.Wrapf(err, "unable to parse PVC size (%s)", size)
 	}
 	pvc := &v1.PersistentVolumeClaim{
 		ObjectMeta: metav1.ObjectMeta{
@@ -266,7 +266,7 @@ func (s *fioStepper) deletePVC(ctx context.Context, pvcName, namespace string) e
 
 func (s *fioStepper) createPod(ctx context.Context, pvcName, configMapName, testFileName, namespace string, nodeSelector map[string]string, image string) (*v1.Pod, error) {
 	if pvcName == "" || configMapName == "" || testFileName == "" {
-		return nil, fmt.Errorf("Create pod missing required arguments.")
+		return nil, fmt.Errorf("create pod missing required arguments")
 	}
 
 	if image == "" {
@@ -347,7 +347,7 @@ func (s *fioStepper) runFIOCommand(ctx context.Context, podName, containerName, 
 			if err == nil {
 				err = fmt.Errorf("stderr when running FIO")
 			}
-			err = errors.Wrapf(err, "Error running command:(%v), stderr:(%s)", command, stderr)
+			err = errors.Wrapf(err, "error running command:(%v), stderr:(%s)", command, stderr)
 		}
 		done <- true
 	}()
@@ -363,7 +363,7 @@ func (s *fioStepper) runFIOCommand(ctx context.Context, podName, containerName, 
 
 	err = json.Unmarshal([]byte(stdout), &fioOut)
 	if err != nil {
-		return fioOut, errors.Wrapf(err, "Unable to parse fio output into json.")
+		return fioOut, errors.Wrapf(err, "unable to parse fio output into JSON")
 	}
 
 	return fioOut, nil
@@ -379,7 +379,7 @@ func (s *fioStepper) deleteConfigMap(ctx context.Context, configMap *v1.ConfigMa
 
 func fioTestFilename(configMap map[string]string) (string, error) {
 	if len(configMap) != 1 {
-		return "", fmt.Errorf("Unable to find fio file in configmap/more than one found %v", configMap)
+		return "", fmt.Errorf("unable to find fio file in configmap/more than one found %v", configMap)
 	}
 	var fileName string
 	for key := range configMap {
