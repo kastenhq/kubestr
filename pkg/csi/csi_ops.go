@@ -343,7 +343,7 @@ func (c *applicationCreate) getErrorFromEvents(ctx context.Context, namespace, n
 
 	for _, event := range events.Items {
 		if event.Type == v1.EventTypeWarning {
-			return fmt.Errorf(event.Message)
+			return errors.New(event.Message)
 		}
 	}
 	return nil
