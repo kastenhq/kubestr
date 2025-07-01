@@ -14,6 +14,8 @@ updates:
     schedule:
       interval: daily
   - package-ecosystem: github-actions
+    commit-message:
+      prefix: "deps(actions):"
     directory: "/"
     open-pull-requests-limit: 3
     schedule:
@@ -27,8 +29,8 @@ updates:
         patterns:
         - "docker/*"
   - package-ecosystem: docker
-    directories:
-    - "/docker/*"
+    commit-message:
+      prefix: "deps(docker):"
     open-pull-requests-limit: 4
     schedule:
       interval: monthly
