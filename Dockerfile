@@ -1,6 +1,6 @@
 ARG BUILDPLATFROM
 
-FROM --platform=$BUILDPLATFORM golang:1.24-bookworm@sha256:ef8c5c733079ac219c77edab604c425d748c740d8699530ea6aced9de79aea40 AS builder
+FROM --platform=$BUILDPLATFORM golang:1.25-bookworm@sha256:c4bc0741e3c79c0e2d47ca2505a06f5f2a44682ada94e1dba251a3854e60c2bd AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
