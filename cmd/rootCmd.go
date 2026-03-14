@@ -19,6 +19,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"runtime/debug"
 	"time"
 
 	"github.com/kastenhq/kubestr/pkg/block"
@@ -30,6 +31,8 @@ import (
 )
 
 var (
+	version = "dev" // overridden at build time via ldflags
+
 	output  string
 	outfile string
 	rootCmd = &cobra.Command{
@@ -154,7 +157,15 @@ var (
 	blockMountCleanupOnly        bool
 	blockMountWaitTimeoutSeconds uint32
 	blockMountPVCSize            string
-	blockMountCmd                = &cobra.Command{
+	versionCmd                   = &cobra.Command{
+		Use:   "version",
+		Short: "Print the version of kubestr",
+		Run: func(cmd *cobra.Command, args []string) {
+			fmt.Println(GetVersion())
+		},
+	}
+
+	blockMountCmd = &cobra.Command{
 		Use:   "blockmount",
 		Short: "Checks if a storage class supports block volumes",
 		Long: `Checks if volumes provisioned by a storage class can be mounted in block mode.
@@ -193,6 +204,7 @@ func init() {
 	rootCmd.PersistentFlags().StringVarP(&output, "output", "o", "", "Options(json)")
 	rootCmd.PersistentFlags().StringVarP(&outfile, "outfile", "e", "", "The file where test results will be written")
 
+	rootCmd.AddCommand(versionCmd)
 	rootCmd.AddCommand(fioCmd)
 	fioCmd.Flags().StringVarP(&storageClass, "storageclass", "s", "", "The name of a Storageclass. (Required)")
 	_ = fioCmd.MarkFlagRequired("storageclass")
@@ -547,4 +559,44 @@ func BlockMountCheck(ctx context.Context, output, outfile string, cleanupOnly bo
 	}
 
 	return err
+}
+
+// GetVersion returns the version of kubestr.
+// If the version was injected at build time via ldflags by goreleaser, it returns that.
+// Otherwise, it falls back to reading the git commit hash that Go automatically
+// bakes into the binary since Go 1.18 (see runtime/debug.BuildSetting).
+func GetVersion() string {
+	// version is set at build time via ldflags by goreleaser (e.g. v0.4.49).
+	// If it was injected, return it.
+	if version != "dev" {
+		return version
+	}
+	// For binaries built with `go build .`, the Go toolchain automatically
+	// embeds VCS info (commit SHA, dirty state) since Go 1.18. Read it back
+	// here as a fallback so dev builds still report something useful.
+	info, ok := debug.ReadBuildInfo()
+	if !ok {
+		// No build info available (e.g. built outside a git repo).
+		return "dev"
+	}
+	var revision, modified string
+	for _, s := range info.Settings {
+		switch s.Key {
+		case "vcs.revision":
+			// Use the short 7-character SHA, matching the `git log --oneline` format.
+			if len(s.Value) >= 7 {
+				revision = s.Value[:7]
+			}
+		case "vcs.modified":
+			// Append -dirty if the working tree had uncommitted changes at build time.
+			if s.Value == "true" {
+				modified = "-dirty"
+			}
+		}
+	}
+	if revision != "" {
+		return fmt.Sprintf("dev (%s%s)", revision, modified)
+	}
+	// Git repo exists but VCS info was not embedded (e.g. -buildvcs=false was passed).
+	return "dev"
 }
