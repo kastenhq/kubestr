@@ -8,6 +8,8 @@ builds:
   - env:
       - CGO_ENABLED=0
       - GO_EXTLINK_ENABLED=0
+    ldflags:
+      - -X github.com/kastenhq/kubestr/cmd.version={{.Version}}
     goos:
       - linux
       - windows
