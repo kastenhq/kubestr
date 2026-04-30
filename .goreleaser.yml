@@ -9,7 +9,7 @@ builds:
       - CGO_ENABLED=0
       - GO_EXTLINK_ENABLED=0
     ldflags:
-      - -X github.com/kastenhq/kubestr/cmd.version={{.Version}}
+      - -X github.com/kastenhq/kubestr/cmd.version=v{{ trimprefix .Version "v" }}
     goos:
       - linux
       - windows
