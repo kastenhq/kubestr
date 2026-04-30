@@ -162,7 +162,7 @@ var (
 		Short: "Print the version of kubestr",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println(getVersion())
+			fmt.Println(getVersion())
 		},
 	}
 
