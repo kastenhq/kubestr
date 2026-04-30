@@ -31,7 +31,7 @@ import (
 )
 
 var (
-	version = "dev" // overridden at build time via ldflags
+	version string // overridden at build time via ldflags
 
 	output  string
 	outfile string
@@ -162,7 +162,7 @@ var (
 		Short: "Print the version of kubestr",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			cmd.Println(GetVersion())
+			cmd.Println(getVersion())
 		},
 	}
 
@@ -562,14 +562,14 @@ func BlockMountCheck(ctx context.Context, output, outfile string, cleanupOnly bo
 	return err
 }
 
-// GetVersion returns the version of kubestr.
+// getVersion returns the version of kubestr.
 // If the version was injected at build time via ldflags by goreleaser, it returns that.
 // Otherwise, it falls back to reading the git commit hash that Go automatically
 // bakes into the binary since Go 1.18 (see runtime/debug.BuildSetting).
-func GetVersion() string {
+func getVersion() string {
 	// version is set at build time via ldflags by goreleaser (e.g. v0.4.49).
 	// If it was injected, return it.
-	if version != "dev" {
+	if version != "" {
 		return version
 	}
 	// For binaries built with `go build .`, the Go toolchain automatically
@@ -596,7 +596,7 @@ func GetVersion() string {
 		}
 	}
 	if revision != "" {
-		return fmt.Sprintf("dev (%s%s)", revision, modified)
+		return fmt.Sprintf("dev-%s%s", revision, modified)
 	}
 	// Git repo exists but VCS info was not embedded (e.g. -buildvcs=false was passed).
 	return "dev"
