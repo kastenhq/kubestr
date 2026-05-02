@@ -1,6 +1,6 @@
 ARG BUILDPLATFROM
 
-FROM --platform=$BUILDPLATFORM golang:1.26.1-bookworm@sha256:8e8aa801e8417ef0b5c42b504dd34db3db911bb73dba933bd8bde75ed815fdbb AS builder
+FROM --platform=$BUILDPLATFORM golang:1.26.2-bookworm@sha256:47ce5636e9936b2c5cbf708925578ef386b4f8872aec74a67bd13a627d242b19 AS builder
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -22,7 +22,7 @@ COPY . .
 
 RUN go build -o /dist/kubestr -ldflags="-w -s" .
 
-FROM alpine:3.23@sha256:25109184c71bdad752c8312a8623239686a9a2071e8825f20acb8f2198c3f659
+FROM alpine:3.23@sha256:5b10f432ef3da1b8d4c7eb6c487f2f5a8f096bc91145e68878dd4a5019afde11
 
 RUN apk --no-cache add fio
 
