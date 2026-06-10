@@ -578,7 +578,7 @@ func getVersion() string {
 	info, ok := debug.ReadBuildInfo()
 	if !ok {
 		// No build info available (e.g. built outside a git repo).
-		return "dev"
+		return "unknown"
 	}
 	var revision, modified string
 	for _, s := range info.Settings {
@@ -599,5 +599,5 @@ func getVersion() string {
 		return fmt.Sprintf("dev-%s%s", revision, modified)
 	}
 	// Git repo exists but VCS info was not embedded (e.g. -buildvcs=false was passed).
-	return "dev"
+	return "unknown"
 }
