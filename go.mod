@@ -1,6 +1,6 @@
 module github.com/kastenhq/kubestr
 
-go 1.24
+go 1.25
 
 replace github.com/graymeta/stow => github.com/kastenhq/stow v0.1.2-kasten
 
