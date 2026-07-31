@@ -231,7 +231,7 @@ func (p *Kubestr) processProvisioner(ctx context.Context, provisioner string) (*
 
 // hasCSIDriverObject sees if a provisioner has a CSIDriver Object
 func (p *Kubestr) hasCSIDriverObject(ctx context.Context, provisioner string) bool {
-	csiDrivers, err := p.cli.StorageV1beta1().CSIDrivers().List(ctx, metav1.ListOptions{})
+	csiDrivers, err := p.cli.StorageV1().CSIDrivers().List(ctx, metav1.ListOptions{})
 	if err != nil {
 		return false
 	}
