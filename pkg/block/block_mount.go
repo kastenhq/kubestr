@@ -76,8 +76,8 @@ func NewBlockMountChecker(args BlockMountCheckerArgs) (BlockMountChecker, error)
 
 	b := &blockMountChecker{}
 	b.args = args
-	b.podName = fmt.Sprintf(blockMountCheckerPodNameFmt, b.args.StorageClass)
-	b.pvcName = fmt.Sprintf(blockMountCheckerPVCNameFmt, b.args.StorageClass)
+	b.podName = ResourceNameShortener(fmt.Sprintf(blockMountCheckerPodNameFmt, b.args.StorageClass))
+	b.pvcName = ResourceNameShortener(fmt.Sprintf(blockMountCheckerPVCNameFmt, b.args.StorageClass))
 	b.validator = csi.NewArgumentValidator(b.args.KubeCli, b.args.DynCli)
 	b.appCreator = csi.NewApplicationCreator(b.args.KubeCli, args.K8sObjectReadyTimeout)
 	b.cleaner = csi.NewCleaner(b.args.KubeCli, b.args.DynCli)
